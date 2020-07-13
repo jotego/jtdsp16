@@ -24,11 +24,19 @@ module jtdsp16_ram_dau(
     input         cen,
 );
 
-reg  [15:0] re,
-            rb,
+reg  [15:0] re, // end   - virtual shift register
+            rb, // begin - virtual shift register
             j,
             k,
-            r0, r1, r2, r3;
+            r0, r1, r2, r3,
+            post;
+reg         post_sel;
+
+wire        vse_en = |re;   // virtual shift register enable
+
+always @(*) begin
+
+end
 
 always @(posedge clk, posedge rst ) begin
     if( rst ) begin
