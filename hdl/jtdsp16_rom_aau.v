@@ -19,9 +19,19 @@
 // ROM Address Arithmetic Unit
 
 module jtdsp16_rom_aau(
-    input         rst,
-    input         clk,
-    input         cen,
+    input           rst,
+    input           clk,
+    input           cen,
+    // instruction types
+    input           goto_ja,
+    input           goto_b,
+    input           call_ja,
+    input           icall,
+    // instruction fields
+    input    [11:0] ifield,
+    input           con_result,
+    // ROM request
+    output   [15:0] rom_req
 );
 
 reg  [11:0] i;
@@ -32,26 +42,38 @@ reg  [15:0] pc,     // Program Counter
 
 wire [15:0] next_pc;
 wire [15:0] i_ext;
+wire [ 2:0] b_field;
+
+wire        ret, iret, goto_pt, call_pt;
 
 assign      next_pc = pc+1'd1;
 assign      i_ext   = { {4{i[11]}}, i };
+assign      b_field = ifield[10:8];
+
+assign      ret     = goto_b && b_field==3'b00;
+assign      iret    = goto_b && b_field==3'b01;
+assign      goto_pt = goto_b && b_field==3'b10;
+assign      call_pt = goto_b && b_field==3'b11;
+
+assign      rom_req = pc;
 
 always @(posedge clk, posedge rst ) begin
     if( rst ) begin
-        pc <= 16'd0; //?
+        pc <= 16'd0;
         pr <= 16'd0;
         pi <= 16'd0;
         pt <= 16'd0;
     end else begin
         if( shadow ) pi <= next_pc;
-        if( gosub  ) pr <= next_pc;
-        if( posti  ) pt <= pt + i_ext;
+        if( call_pt || call_ja ) pr <= next_pc;
+        if( post_inc  ) pt <= pt + i_ext;
         pc <= 
             ext_irq ? 16'd0 : (
-            int_irq ? 16'd1 : (
-            gosub ? din : (
+            icall   ? 16'd1 : (
+            (goto_ja || call_ja) ? { pc[15:12], ifield } : (
+            (goto_pt || call_pt) ? pt : (
             ret   ? pr  : (
-            reti  ? pi  : next_pc ))));
+            iret  ? pi  : next_pc )))));
     end
 end
 
