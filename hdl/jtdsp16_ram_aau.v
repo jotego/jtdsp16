@@ -17,8 +17,9 @@
     Date: 12-7-2020 */
 
 // RAM Address Arithmetic Unit
+// This is caled YAAU in the block diagram
 
-module jtdsp16_ram_dau(
+module jtdsp16_ram_aau(
     input           rst,
     input           clk,
     input           cen,

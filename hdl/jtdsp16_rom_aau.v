@@ -17,6 +17,7 @@
     Date: 12-7-2020 */
 
 // ROM Address Arithmetic Unit
+// This is caled XAAU in the block diagram
 
 module jtdsp16_rom_aau(
     input           rst,
