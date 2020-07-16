@@ -103,13 +103,6 @@ jtdsp16_rom u_rom(
     .prog_we    ( prog_we   )
 );
 
-jtdsp16_ram u_ram(
-    .addr       ( ram_addr  ),
-    .din        ( ram_din   ),
-    .dout       ( ram_dout  ),
-    .we         ( ram_we    )
-);
-
 // ROM address arithmetic unit - XAAU
 jtdsp16_rom_aau u_rom_aau(
     .rst        ( rst       ),
@@ -127,17 +120,49 @@ jtdsp16_rom_aau u_rom_aau(
     .rom_req    ( rom_addr  )
 );
 
+jtdsp16_ram u_ram(
+    .addr       ( ram_addr  ),
+    .din        ( ram_din   ),
+    .dout       ( ram_dout  ),
+    .we         ( ram_we    )
+);
+
 jtdsp16_ram_aau u_ram_aau(
-    .rst            ( rst           ),
-    .clk            ( clk           ),
-    .cen            ( cen           ),
-    .short_imm      ( short_imm     ),
-    .long_imm       ( long_imm      ),
-    .acc            ( acc           ),
-    .reg_sel_field  ( reg_sel_field ),
-    .imm_type       ( imm_type      ), // 0 for short, 1 for long
-    .imm_en         ( imm_en        ),
-    .acc_en         ( acc_en        ),
+    .rst        ( rst           ),
+    .clk        ( clk           ),
+    .cen        ( cen           ),
+    .r_field    ( r_field       ),
+    // Increment selecction
+    .inc_sel    ( inc_sel       ),
+    .ksel       ( ksel          ),
+    .step_sel   ( step_sel      ),
+    // Load control
+    .imm_type   ( imm_type      ), // 0 for short, 1 for long
+    .short_load ( short_load    ),
+    .long_load  ( long_load     ),
+    .acc_load   ( acc_load      ),
+    .ram_load   ( ram_load      ),
+    .post_load  ( post_load     ),
+    // register load inputs
+    .short_imm  ( short_imm     ),
+    .long_imm   ( long_imm      ),
+    .acc        ( acc           ),
+    .ram_dout   ( ram_dout      ),
+    // outputs
+    .ram_addr   ( ram_addr      ),
+    .reg_dout   ( reg_dout      )
+);
+/*
+jtdsp16_dau u_dau(
+    .rst        ( rst       ),
+    .clk        ( clk       ),
+    .cen        ( cen       ),
+    .t_field    ( t_field   ),
+    .f1_field   ( f1_field  ),
+    .f2_field   ( f2_field  ),
+    .s_field    ( s_field   ),  // source
+    .d_field    ( d_field   ),  // destination
+    .c_field    ( c_field   ),  // condition
     // X load control
     .up_xram        ( up_xram       ),
     .up_xrom        ( up_xrom       ),
@@ -150,20 +175,5 @@ jtdsp16_ram_aau u_ram_aau(
     .ext_dout       ( ext_dout      ),
     .dau_dout       ( dau_dout      )
 );
-
-jtdsp16_dau u_dau(
-    .rst        ( rst       ),
-    .clk        ( clk       ),
-    .cen        ( cen       ),
-    .t_field    ( t_field   ),
-    .f1_field   ( f1_field  ),
-    .f2_field   ( f2_field  ),
-    .s_field    ( s_field   ),  // source
-    .d_field    ( d_field   ),  // destination
-    .c_field    ( c_field   ),  // condition
-    .dinX       ( dinX      ),
-    .dinY       ( dinY      ),
-    .dout       ( dau_dout  )
-);
-
+*/
 endmodule

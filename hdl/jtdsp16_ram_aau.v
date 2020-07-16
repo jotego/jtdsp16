@@ -23,7 +23,7 @@ module jtdsp16_ram_aau(
     input           rst,
     input           clk,
     input           cen,
-    input    [ 2:0] reg_sel_field,
+    input    [ 2:0] r_field,
     // Increment selecction
     input    [ 1:0] inc_sel,
     input           ksel,
@@ -39,7 +39,10 @@ module jtdsp16_ram_aau(
     input    [ 8:0] short_imm,
     input    [15:0] long_imm,
     input    [15:0] acc,
-    input    [15:0] ram_dout
+    input    [15:0] ram_dout,
+    // outputs
+    output   [10:0] ram_addr,
+    output   [15:0] reg_dout
 );
 
 reg  [15:0] re, // end   - virtual shift register
@@ -64,16 +67,16 @@ wire        vsr_loop;
 wire [ 2:0] reg_sel;
 wire        short_sign;
 wire [15:0] imm_ext;
-wire        load_type;
 wire        imm_load;
 
 assign      vsr_en     = |re;   // virtual shift register enable
 assign      vsr_loop   = rin==re && vsr_en;
-assign      reg_sel    = {imm_type,2'b0} ^ reg_sel_field;
+assign      reg_sel    = {imm_type,2'b0} ^ r_field;
 assign      short_sign = short_imm[8];
-assign      load_type  = acc_load || (imm_load&&imm_type);
 assign      imm_ext    = imm_type ? long_imm : { {7{short_imm[8]}}, short_imm };
 assign      imm_load   = short_load || long_load;
+assign      reg_dout   = rin;
+assign      ram_addr   = rin[10:0];
 
 always @(*) begin
     load_j  = (imm_load || acc_load ) && reg_sel==3'd0;
@@ -118,9 +121,9 @@ always @(*) begin
     endcase
     step_mux = step_sel ? jk_mux : unit_mux;
     rsum     = rin + step_mux;
-    rnext    = imm_load   ? imm_ext  : (
-               acc_load   ? acc      : (
-               ram_load   ? ram_dout : (
+    rnext    = imm_load ? imm_ext  : (
+               acc_load ? acc      : (
+               ram_load ? ram_dout : (
                vsr_loop ? rb       : rsum )));
 end
 
@@ -134,7 +137,7 @@ always @(posedge clk, posedge rst ) begin
         r1 <= 16'd0;
         r2 <= 16'd0;
         r3 <= 16'd0;
-    end else begin
+    end else if(cen) begin
         if( load_j  ) j  <= load_reg( acc_load, short_load, long_load, acc, long_imm, short_sign, short_imm );
         if( load_k  ) k  <= load_reg( acc_load, short_load, long_load, acc, long_imm, short_sign, short_imm );
         if( load_rb ) rb <= load_reg( acc_load, short_load, long_load, acc, long_imm,       1'b0, short_imm );
