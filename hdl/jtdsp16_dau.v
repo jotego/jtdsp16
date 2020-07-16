@@ -26,9 +26,17 @@ module jtdsp16_dau(
     input         s_field,  // source
     input         d_field,  // destination
     input  [ 4:0] c_field,  // condition
-    input  [15:0] dinX,
-    input  [15:0] dinY,
-    output [15:0] dout
+    // X load control
+    input         up_xram,
+    input         up_xrom,
+    input         up_xext,
+    input         up_xcache,
+    // Data buses
+    input  [15:0] ram_dout,
+    input  [15:0] rom_dout,
+    input  [15:0] cache_dout,
+    input  [15:0] ext_dout,
+    output [15:0] dau_dout
 );
 
 reg  [15:0] x, yh, yl;
@@ -48,7 +56,7 @@ reg         ov1, ov0;   // overflow
 wire [31:0] y;
 wire [35:0] as;
 wire [35:0] y_ext;
-wire [35:0] dinY_ext;
+wire [35:0] ram_ext;
 wire        up_p;
 wire        up_y;
 wire        ad_sel;
@@ -93,8 +101,8 @@ assign clr_a1l     = aux[5];
 assign clr_a0l     = aux[4];
 assign sat_a1      = aux[3];
 assign sat_a0      = aux[2];
-assign dinY_ext    = { {4{dinY[15]}}, dinY, 16'd0 };
-assign alu_in      = alu_sel ? dinY_ext : p_ext;
+assign ram_ext     = { {4{ram_dout[15]}}, ram_dout, 16'd0 };
+assign alu_in      = alu_sel ? ram_ext : p_ext;
 
 function [35:0] round;
     input [35:0] a;
@@ -109,13 +117,16 @@ always @(posedge clk, posedge rst) begin
         yl <= 16'd0;
     end else if(cen) begin
         if( up_p ) p  <= x*yh;
-        if( up_x ) x  <= din;
+        x <= up_xram   ? ram_dout   : (
+             up_xrom   ? rom_dout   : (
+             up_xcache ? cache_dout : (
+             up_xext   ? ext_dout   : x )));
         if( up_y ) begin
             if( !load_yl ) begin
-                yh <= load_ay1 ? a1[31:16] : (load_ay0 ? a1[15:0] : din);
+                yh <= load_ay1 ? a1[31:16] : (load_ay0 ? a1[15:0] : ram_dout);
                 if( clr_yl ) yl <= 16'd0;
             end else begin
-                yl <= din;
+                yl <= ram_dout[7:0];
             end
         end
         if( st_a0h ) a0[35:16] <= alu_out[35:16];

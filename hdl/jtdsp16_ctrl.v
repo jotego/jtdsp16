@@ -20,7 +20,38 @@ module jtdsp16_ctrl(
     input         rst,
     input         clk,
     input         cen,
+    // Instruction fields
+    output [ 4:0] t_field,
+    output [ 3:0] f1_field,
+    output [ 3:0] f2_field,
+    output        d_field,  // destination
+    output        s_field,  // source
+    output [ 4:0] c_field,  // condition
+    // X load control
+    output        up_xram,
+    output        up_xrom,
+    output        up_xext,
+    output        up_xcache,
+    // Data buses
+    input  [15:0] rom_dout,
+    output [15:0] cache_dout,
+    input  [15:0] ext_dout,
 );
 
+reg       x_field;
+reg [3:0] y_field;
+
+// Decode instruction
+always @(posedge clk, posedge rst) begin
+    if(rst) begin
+    end else begin
+        t_field <= rom_dout[15:11];
+        d_field <= rom_dout[10];
+        s_field <= rom_dout[9];
+        f1_field<= rom_dout[8:5];
+        x_field <= rom_dout[4];
+        y_field <= rom_dout[3:0];
+    end
+end
 
 endmodule
