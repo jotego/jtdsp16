@@ -37,8 +37,11 @@ wire        goto_ja;
 wire        goto_b;
 wire        call_ja;
 wire        icall;
+wire        post_inc;
 wire [11:0] ifield;
 wire        con_result;
+wire        ext_irq;
+wire        shadow;
 
 // Y-AAU
 wire [ 8:0] short_imm;
@@ -112,12 +115,16 @@ jtdsp16_rom_aau u_rom_aau(
     .goto_ja    ( goto_ja   ),
     .goto_b     ( goto_b    ),
     .call_ja    ( call_ja   ),
-    // instruction fields
     .icall      ( icall     ),
+    .post_inc   ( post_inc  ),
+    // instruction fields
     .ifield     ( ifield    ),
     .con_result ( con_result),
+    // Interruption
+    .ext_irq    ( ext_irq   ),
+    .shadow     ( shadow    ),
     // ROM request
-    .rom_req    ( rom_addr  )
+    .rom_addr   ( rom_addr  )
 );
 
 jtdsp16_ram u_ram(
@@ -137,7 +144,6 @@ jtdsp16_ram_aau u_ram_aau(
     .ksel       ( ksel          ),
     .step_sel   ( step_sel      ),
     // Load control
-    .imm_type   ( imm_type      ), // 0 for short, 1 for long
     .short_load ( short_load    ),
     .long_load  ( long_load     ),
     .acc_load   ( acc_load      ),

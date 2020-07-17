@@ -24,12 +24,12 @@ module jtdsp16_ram_aau(
     input           clk,
     input           cen,
     input    [ 2:0] r_field,
+    input    [ 1:0] y_field,
     // Increment selecction
     input    [ 1:0] inc_sel,
     input           ksel,
     input           step_sel,
     // Load control
-    input           imm_type, // 0 for short, 1 for long
     input           short_load,
     input           long_load,
     input           acc_load,
@@ -50,7 +50,7 @@ reg  [15:0] re, // end   - virtual shift register
             j,
             k,
             r0, r1, r2, r3, rin, rsum, rnext,
-            jk_mux, unit_mux, step_mux,
+            jk_mux, unit_mux, step_mux, rmux,
             post;
 reg         post_sel;
 reg         load_j,
@@ -64,29 +64,27 @@ reg         load_j,
 
 wire        vsr_en;
 wire        vsr_loop;
-wire [ 2:0] reg_sel;
 wire        short_sign;
 wire [15:0] imm_ext;
 wire        imm_load;
 
 assign      vsr_en     = |re;   // virtual shift register enable
 assign      vsr_loop   = rin==re && vsr_en;
-assign      reg_sel    = {imm_type,2'b0} ^ r_field;
 assign      short_sign = short_imm[8];
-assign      imm_ext    = imm_type ? long_imm : { {7{short_imm[8]}}, short_imm };
+assign      imm_ext    = long_load ? long_imm : { {7{short_imm[8]}}, short_imm };
 assign      imm_load   = short_load || long_load;
 assign      reg_dout   = rin;
-assign      ram_addr   = rin[10:0];
+assign      ram_addr   = rmux[10:0];
 
 always @(*) begin
-    load_j  = (imm_load || acc_load ) && reg_sel==3'd0;
-    load_k  = (imm_load || acc_load ) && reg_sel==3'd1;
-    load_rb = (imm_load || acc_load ) && reg_sel==3'd2;
-    load_re = (imm_load || acc_load ) && reg_sel==3'd3;
-    load_r0 = (imm_load || acc_load || ram_load || post_load ) && reg_sel==3'd4;
-    load_r1 = (imm_load || acc_load || ram_load || post_load ) && reg_sel==3'd5;
-    load_r2 = (imm_load || acc_load || ram_load || post_load ) && reg_sel==3'd6;
-    load_r3 = (imm_load || acc_load || ram_load || post_load ) && reg_sel==3'd7;
+    load_j  = (imm_load || acc_load ) && r_field==3'd4;
+    load_k  = (imm_load || acc_load ) && r_field==3'd5;
+    load_rb = (imm_load || acc_load ) && r_field==3'd6;
+    load_re = (imm_load || acc_load ) && r_field==3'd7;
+    load_r0 = (imm_load || acc_load || ram_load || post_load ) && r_field==3'd0;
+    load_r1 = (imm_load || acc_load || ram_load || post_load ) && r_field==3'd1;
+    load_r2 = (imm_load || acc_load || ram_load || post_load ) && r_field==3'd2;
+    load_r3 = (imm_load || acc_load || ram_load || post_load ) && r_field==3'd3;
 end
 
 function [15:0] load_reg;
@@ -102,17 +100,23 @@ function [15:0] load_reg;
 endfunction        
 
 always @(*) begin
-    case( reg_sel[1:0] )
+    case( r_field[1:0] )
         2'd0: rin = r0;
         2'd1: rin = r1;
         2'd2: rin = r2;
         2'd3: rin = r3;
     endcase
+    case( y_field )
+        2'd0: rmux = r0;
+        2'd1: rmux = r1;
+        2'd2: rmux = r2;
+        2'd3: rmux = r3;
+    endcase
 end
 
 always @(*) begin
     // Increment can be -1, 0, 1, 2, j or k
-    jk_mux = ksel ? j : k;
+    jk_mux = ksel ? k : j;
     case( inc_sel )
         2'd0: unit_mux = -16'd1;
         2'd1: unit_mux =  16'd0;

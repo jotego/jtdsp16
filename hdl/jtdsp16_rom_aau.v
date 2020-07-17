@@ -28,11 +28,15 @@ module jtdsp16_rom_aau(
     input           goto_b,
     input           call_ja,
     input           icall,
+    input           post_inc,
     // instruction fields
     input    [11:0] ifield,
     input           con_result,
+    // IRQ
+    input           ext_irq,
+    input           shadow,     // normal execution or inside IRQ
     // ROM request
-    output   [15:0] rom_req
+    output   [15:0] rom_addr
 );
 
 reg  [11:0] i;
@@ -47,16 +51,16 @@ wire [ 2:0] b_field;
 
 wire        ret, iret, goto_pt, call_pt;
 
-assign      next_pc = pc+1'd1;
-assign      i_ext   = { {4{i[11]}}, i };
-assign      b_field = ifield[10:8];
+assign      next_pc  = pc+1'd1;
+assign      i_ext    = { {4{i[11]}}, i };
+assign      b_field  = ifield[10:8];
 
-assign      ret     = goto_b && b_field==3'b00;
-assign      iret    = goto_b && b_field==3'b01;
-assign      goto_pt = goto_b && b_field==3'b10;
-assign      call_pt = goto_b && b_field==3'b11;
+assign      ret      = goto_b && b_field==3'b00;
+assign      iret     = goto_b && b_field==3'b01;
+assign      goto_pt  = goto_b && b_field==3'b10;
+assign      call_pt  = goto_b && b_field==3'b11;
 
-assign      rom_req = pc;
+assign      rom_addr = pc;
 
 always @(posedge clk, posedge rst ) begin
     if( rst ) begin
