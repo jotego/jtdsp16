@@ -32,6 +32,10 @@ module jtdsp16(
 wire [15:0] rom_data, ram_data, cache_data;
 wire [15:0] rom_addr;
 
+wire [ 2:0] r_field;
+wire [ 1:0] inc_sel;
+wire [15:0] reg_dout;
+
 // X-AAU
 wire        goto_ja;
 wire        goto_b;
@@ -69,14 +73,10 @@ wire        up_xrom;
 wire        up_xext;
 wire        up_xcache;
 
-// ROM
-wire [11:0] rom_addr;
-wire [15:0] ram_dout;
-
 // RAM
 wire [10:0] ram_addr;
 wire [15:0] ram_din;
-wire [15:0] ram_dout;
+wire [15:0] ram_dout, rom_dout;
 wire        ram_we;
 
 assign      ext_addr = rom_addr;
@@ -94,16 +94,16 @@ jtdsp16_ctrl u_ctrl(
     // Data buses
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
-    .ext_dout       ( ext_dout      ),
+    .ext_dout       ( ext_data      )
 );
 
 jtdsp16_rom u_rom(
-    .addr       ( rom_addr  ),
-    .dout       ( rom_dout  ),
+    .addr       ( rom_addr[11:0]  ),
+    .dout       ( rom_dout        ),
     // ROM programming interface
-    .prog_addr  ( prog_addr ),
-    .prog_data  ( prog_data ),
-    .prog_we    ( prog_we   )
+    .prog_addr  ( prog_addr       ),
+    .prog_data  ( prog_data       ),
+    .prog_we    ( prog_we         )
 );
 
 // ROM address arithmetic unit - XAAU

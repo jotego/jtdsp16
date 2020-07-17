@@ -21,14 +21,14 @@ module jtdsp16_ctrl(
     input             clk,
     input             cen,
     // Instruction fields
-    output     [ 4:0] t_field,
-    output     [ 3:0] f1_field,
+    output reg [ 4:0] t_field,
+    output reg [ 3:0] f1_field,
     output     [ 3:0] f2_field,
-    output            d_field,  // destination
-    output            s_field,  // source
+    output reg        d_field,  // destination
+    output reg        s_field,  // source
     output     [ 4:0] c_field,  // condition
-    output     [ 2:0] r_field,
-    output     [ 1:0] y_field,
+    output reg [ 2:0] r_field,
+    output reg [ 1:0] y_field,
 
     // YAAU control
     // Increment selecction
@@ -67,12 +67,11 @@ module jtdsp16_ctrl(
     // Data buses
     input      [15:0] rom_dout,
     output     [15:0] cache_dout,
-    input      [15:0] ext_dout,
+    input      [15:0] ext_dout
 );
 
 reg       x_field;
 reg       double;
-reg [3:0] y_field;
 
 assign    long_imm = rom_dout;
 
@@ -90,7 +89,6 @@ always @(posedge clk, posedge rst) begin
         s_field   <= rom_dout[    9];
         f1_field  <= rom_dout[ 8: 5];
         x_field   <= rom_dout[    4];
-        y_field   <= rom_dout[ 3: 0];
         short_imm <= rom_dout[ 8: 0];
 
         // disable all control signals
@@ -116,7 +114,7 @@ always @(posedge clk, posedge rst) begin
                     r_field   <= rom_dout[11:9];
                     y_field   <= rom_dout[ 3:2];
                     post_load <= 1;
-                    case( rom_dout[1:0] ) begin
+                    case( rom_dout[1:0] )
                         default: begin
                             inc_sel <= 2'd1;
                             step_sel<= 0;
@@ -130,8 +128,9 @@ always @(posedge clk, posedge rst) begin
                             step_sel <= 1;
                             ksel     <= 0;
                         end
-                    end
+                    endcase
                     double   <= 1;
+                end
             endcase
         end
     end
