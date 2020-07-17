@@ -42,7 +42,7 @@ wire        goto_b;
 wire        call_ja;
 wire        icall;
 wire        post_inc;
-wire [11:0] ifield;
+wire [11:0] i_field;
 wire        con_result;
 wire        ext_irq;
 wire        shadow;
@@ -86,11 +86,34 @@ jtdsp16_ctrl u_ctrl(
     .rst            ( rst           ),
     .clk            ( clk           ),
     .cen            ( cen           ),
+    // ROM AAU
+    .goto_ja        ( goto_ja       ),
+    .goto_b         ( goto_b        ),
+    .call_ja        ( call_ja       ),
+    .icall          ( icall         ),
+    .post_inc       ( post_inc      ),
+    .i_field        ( i_field       ),
+    .shadow         ( shadow        ),
     // X load control
     .up_xram        ( up_xram       ),
     .up_xrom        ( up_xrom       ),
     .up_xext        ( up_xext       ),
     .up_xcache      ( up_xcache     ),
+    // Y load control
+    .r_field        ( r_field       ),
+    // Increment selecction
+    .inc_sel        ( inc_sel       ),
+    .ksel           ( ksel          ),
+    .step_sel       ( step_sel      ),
+    // Load control
+    .short_load     ( short_load    ),
+    .long_load      ( long_load     ),
+    .acc_load       ( acc_load      ),
+    .ram_load       ( ram_load      ),
+    .post_load      ( post_load     ),
+    // register load inputs
+    .short_imm      ( short_imm     ),
+    .long_imm       ( long_imm      ),
     // Data buses
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
@@ -118,10 +141,10 @@ jtdsp16_rom_aau u_rom_aau(
     .icall      ( icall     ),
     .post_inc   ( post_inc  ),
     // instruction fields
-    .ifield     ( ifield    ),
+    .i_field    ( i_field   ),
     .con_result ( con_result),
     // Interruption
-    .ext_irq    ( ext_irq   ),
+    .ext_irq    ( 1'b0      ),
     .shadow     ( shadow    ),
     // ROM request
     .rom_addr   ( rom_addr  )

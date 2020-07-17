@@ -30,7 +30,7 @@ module jtdsp16_rom_aau(
     input           icall,
     input           post_inc,
     // instruction fields
-    input    [11:0] ifield,
+    input    [11:0] i_field,
     input           con_result,
     // IRQ
     input           ext_irq,
@@ -53,7 +53,7 @@ wire        ret, iret, goto_pt, call_pt;
 
 assign      next_pc  = pc+1'd1;
 assign      i_ext    = { {4{i[11]}}, i };
-assign      b_field  = ifield[10:8];
+assign      b_field  = i_field[10:8];
 
 assign      ret      = goto_b && b_field==3'b00;
 assign      iret     = goto_b && b_field==3'b01;
@@ -75,7 +75,7 @@ always @(posedge clk, posedge rst ) begin
         pc <= 
             ext_irq ? 16'd0 : (
             icall   ? 16'd1 : (
-            (goto_ja || call_ja) ? { pc[15:12], ifield } : (
+            (goto_ja || call_ja) ? { pc[15:12], i_field } : (
             (goto_pt || call_pt) ? pt : (
             ret   ? pr  : (
             iret  ? pi  : next_pc )))));

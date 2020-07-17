@@ -53,8 +53,7 @@ module jtdsp16_ctrl(
     output reg        icall,
     output reg        post_inc,
     // instruction fields
-    output reg [11:0] ifield,
-    output reg        con_result,
+    output reg [11:0] i_field,
     // IRQ
     output reg        ext_irq,
     output reg        shadow,     // normal execution or inside IRQ
@@ -83,11 +82,21 @@ always @(posedge clk, posedge rst) begin
         ram_load   <= 0;
         double     <= 0;
         post_load  <= 0;
+        acc_load   <= 0;
+        // ROM AAU
+        goto_ja    <= 0;
+        goto_b     <= 0;
+        call_ja    <= 0;
+        icall      <= 0;
+        post_inc   <= 0;
+        ext_irq    <= 0;
+        shadow     <= 1;
     end else begin
         t_field   <= rom_dout[15:11];
         d_field   <= rom_dout[   10];
         s_field   <= rom_dout[    9];
         f1_field  <= rom_dout[ 8: 5];
+        i_field   <= rom_dout[10: 0];
         x_field   <= rom_dout[    4];
         short_imm <= rom_dout[ 8: 0];
 
@@ -102,11 +111,11 @@ always @(posedge clk, posedge rst) begin
             casez( rom_dout[15:11] ) // T
                 5'b0001?: begin // short imm j, k, rb, re
                     short_load <= 1;
-                    r_field    <= { ~rom_dout[6], rom_dout[5:4] };
+                    r_field    <= rom_dout[11:9]^3'b100;
                 end
                 5'b01010: begin // long imm
                     long_load <= rom_dout[ 9:7]==3'b0; // YAAU register as destination
-                    r_field   <= rom_dout[11:9];
+                    r_field   <= rom_dout[ 9:4];
                     double    <= 1;
                 end
                 5'b01111: begin

@@ -77,7 +77,7 @@ void assemble( ifstream& fin, Bin& bin ) {
                 if( aux < 512 && aux>=-257 && rfield<8 && rfield>=0 ) {
                     // Short immediate
                     opcode = 1<<12;
-                    opcode |= (rfield&7)<<9;
+                    opcode |= ((rfield&7)^4)<<9;
                     opcode |= aux&0x1ff;
                     bin.push(opcode);
                 } else {
