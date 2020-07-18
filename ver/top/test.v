@@ -30,7 +30,22 @@ end
 initial begin
     prog_addr = 0;
     prog_we   = 1;
-    #50_000 $finish;
+    #50_000;
+    // YAAU
+    $display("r0=0x%4X", UUT.u_ram_aau.r0);
+    $display("r1=0x%4X", UUT.u_ram_aau.r1);
+    $display("r2=0x%4X", UUT.u_ram_aau.r2);
+    $display("r3=0x%4X", UUT.u_ram_aau.r3);
+    $display("rb=0x%4X", UUT.u_ram_aau.rb);
+    $display("re=0x%4X", UUT.u_ram_aau.re);
+    $display("j =0x%4X", UUT.u_ram_aau.j);
+    $display("k =0x%4X", UUT.u_ram_aau.k);
+    // XAUU
+    $display("pc=0x%4X", UUT.u_rom_aau.pc);
+    $display("pr=0x%4X", UUT.u_rom_aau.pr);
+    $display("pi=0x%4X", UUT.u_rom_aau.pi);
+    $display("pt=0x%4X", UUT.u_rom_aau.pt);
+    $finish;
 end
 
 always @(posedge clk) begin

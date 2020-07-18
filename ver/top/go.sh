@@ -36,10 +36,51 @@ function add_dir {
     done
 }
 
-# Update Assembler file
+# Update assembler tool
 pushd .
 cd ../../cc
 make || exit $?
 popd
 
-iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim -s test -DSIMULATION && sim -lxt
+TESTNAME=tests/rloads.asm
+TESTSET=0
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h)
+            cat <<EOF
+    Usage: go.sh path-to-asm file
+EOF
+            exit 0;;
+        *) 
+            if [ $TESTSET != 0 ]; then
+                echo "Test name had already been set to " $TESTNAME
+                exit 1
+            else
+                TESTNAME=$1
+                TESTSET=1          
+            fi;;
+    esac
+    shift
+done
+echo $TESTNAME
+../../cc/dsp16as $TESTNAME || exit $?
+CHECKFILE=${TESTNAME%.asm}.out
+
+if [ ! -e $CHECKFILE ]; then
+    echo "Warning: check file for simulation " $CHECKFILE " not found"
+fi
+
+iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim -s test -DSIMULATION && sim -lxt | tee log.out
+
+# Deletes the LXT info line
+sed -i 1d log.out
+
+if [ -e $CHECKFILE ]; then
+    if diff log.out $CHECKFILE; then
+        figlet PASS
+    fi
+else
+    echo "No check file, use this to copy the current results file."
+    echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
+fi

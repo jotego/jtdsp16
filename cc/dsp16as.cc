@@ -23,7 +23,19 @@ bool is_imm(const char *s, int& val);
 bool is_ram( const char *s, int& val );
 
 int main(int argc, char* argv[]) {
-    ifstream asm_file("test.asm");
+    // Get input file
+    if( argc!=2 ) {
+        cout << "ERROR: missing assembler input file\n";
+        return 1;
+    }
+    const char *asmname = argv[1];
+    ifstream asm_file(asmname);
+    if( !asm_file.good() ) {
+        cout << "ERROR: cannot open file " << asmname << '\n';
+        return 2;
+    }
+    
+    // Assemble
     Bin bin;
     assemble( asm_file, bin );
     bin.dump("test.bin");
