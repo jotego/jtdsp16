@@ -41,6 +41,7 @@ module jtdsp16_ctrl(
     output reg        acc_load,
     output reg        ram_load,
     output reg        post_load,
+    output reg        ram_we,
     // register load inputs
     output reg [ 8:0] short_imm,
     output     [15:0] long_imm,
@@ -52,6 +53,7 @@ module jtdsp16_ctrl(
     output reg        call_ja,
     output reg        icall,
     output reg        post_inc,
+    output reg        pc_halt,
     // instruction fields
     output reg [11:0] i_field,
     // IRQ
@@ -91,6 +93,13 @@ always @(posedge clk, posedge rst) begin
         post_inc   <= 0;
         ext_irq    <= 0;
         shadow     <= 1;
+        ram_we     <= 0;
+        pc_halt    <= 0;
+        // *r++ control lines:
+        y_field    <= 2'b0;
+        step_sel   <= 0;
+        ksel       <= 0;
+        inc_sel    <= 2'b0;
     end else begin
         t_field   <= rom_dout[15:11];
         d_field   <= rom_dout[   10];
@@ -104,8 +113,10 @@ always @(posedge clk, posedge rst) begin
         short_load <= 0;
         long_load  <= 0;
         ram_load   <= 0;
+        ram_we     <= 0;
         double     <= 0;
         post_load  <= 0;
+        pc_halt    <= 0;
         // XAAU
         if(!double) begin
             casez( rom_dout[15:11] ) // T
@@ -118,22 +129,36 @@ always @(posedge clk, posedge rst) begin
                     r_field   <= rom_dout[ 9:4];
                     double    <= 1;
                 end
-                5'b01111: begin
-                    ram_load  <= rom_dout[ 9:7]==3'b0; // YAAU register as destination
-                    r_field   <= rom_dout[11:9];
+                5'b01111, // RAM load to r0-r3
+                5'b01100  // r0-r3 storage to RAM
+                : begin 
+                    ram_load  <= 
+                        rom_dout[15:11] == 5'b01111 &&
+                        rom_dout[ 9:7]==3'b0; // YAAU register as destination
+                    if( rom_dout[15:11] == 5'b01100 ) begin
+                        ram_we  <= 1;
+                        pc_halt <= 1;
+                    end else begin
+                        ram_we  <= 0;
+                        pc_halt <= 0;
+                    end
+                    r_field   <= rom_dout[ 6:4];
                     y_field   <= rom_dout[ 3:2];
                     post_load <= 1;
                     case( rom_dout[1:0] )
-                        default: begin
+                        2'd0: begin // *rN
                             inc_sel <= 2'd1;
                             step_sel<= 0;
-                            ksel    <= 0;
                         end
-                        2'd2: begin
+                        2'd1: begin // *rN++
+                            inc_sel <= 2'd2;
+                            step_sel<= 0;
+                        end
+                        2'd2: begin // *rN--
                             inc_sel  <= 2'd0;
                             step_sel <= 0;
                         end
-                        2'd3: begin
+                        2'd3: begin // *rN++j
                             step_sel <= 1;
                             ksel     <= 0;
                         end

@@ -55,6 +55,7 @@ wire [ 2:0] reg_sel_field;
 wire        imm_type; // 0 for short, 1 for long
 wire        imm_en;
 wire        acc_en;
+wire        pc_halt;
 
 // DAU
 wire [ 4:0] t_field;
@@ -63,6 +64,7 @@ wire [ 3:0] f2_field;
 wire        s_field;  // source
 wire        d_field;  // destination
 wire [ 4:0] c_field;  // condition
+wire [ 1:0] y_field;
 
 wire [15:0] cache_dout;
 wire [15:0] dau_dout;
@@ -75,7 +77,6 @@ wire        up_xcache;
 
 // RAM
 wire [10:0] ram_addr;
-wire [15:0] ram_din;
 wire [15:0] ram_dout, rom_dout;
 wire        ram_we;
 
@@ -94,6 +95,7 @@ jtdsp16_ctrl u_ctrl(
     .post_inc       ( post_inc      ),
     .i_field        ( i_field       ),
     .shadow         ( shadow        ),
+    .pc_halt        ( pc_halt       ),
     // X load control
     .up_xram        ( up_xram       ),
     .up_xrom        ( up_xrom       ),
@@ -101,6 +103,8 @@ jtdsp16_ctrl u_ctrl(
     .up_xcache      ( up_xcache     ),
     // Y load control
     .r_field        ( r_field       ),
+    .y_field        ( y_field       ),
+    .ram_we         ( ram_we        ),
     // Increment selecction
     .inc_sel        ( inc_sel       ),
     .ksel           ( ksel          ),
@@ -140,6 +144,7 @@ jtdsp16_rom_aau u_rom_aau(
     .call_ja    ( call_ja   ),
     .icall      ( icall     ),
     .post_inc   ( post_inc  ),
+    .pc_halt    ( pc_halt   ),
     // instruction fields
     .i_field    ( i_field   ),
     .con_result ( con_result),
@@ -152,7 +157,7 @@ jtdsp16_rom_aau u_rom_aau(
 
 jtdsp16_ram u_ram(
     .addr       ( ram_addr  ),
-    .din        ( ram_din   ),
+    .din        ( reg_dout  ),
     .dout       ( ram_dout  ),
     .we         ( ram_we    )
 );
@@ -162,6 +167,7 @@ jtdsp16_ram_aau u_ram_aau(
     .clk        ( clk           ),
     .cen        ( cen           ),
     .r_field    ( r_field       ),
+    .y_field    ( y_field       ),
     // Increment selecction
     .inc_sel    ( inc_sel       ),
     .ksel       ( ksel          ),

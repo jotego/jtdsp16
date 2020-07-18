@@ -52,7 +52,7 @@ jtdsp16 UUT(
     .prog_we    ( prog_we   )
 );
 
-initial begin
+always @(negedge prog_we) begin
     $dumpfile("test.lxt");  
     $dumpvars;  
 end

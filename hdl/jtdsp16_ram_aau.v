@@ -50,7 +50,7 @@ reg  [15:0] re, // end   - virtual shift register
             j,
             k,
             r0, r1, r2, r3, rin, rsum, rnext,
-            jk_mux, unit_mux, step_mux, rmux,
+            jk_mux, unit_mux, step_mux, rind,
             post;
 reg         post_sel;
 reg         load_j,
@@ -74,17 +74,17 @@ assign      short_sign = short_imm[8];
 assign      imm_ext    = long_load ? long_imm : { {7{short_imm[8]}}, short_imm };
 assign      imm_load   = short_load || long_load;
 assign      reg_dout   = rin;
-assign      ram_addr   = rmux[10:0];
+assign      ram_addr   = rind[10:0];
 
 always @(*) begin
     load_j  = (imm_load || acc_load ) && r_field==3'd4;
     load_k  = (imm_load || acc_load ) && r_field==3'd5;
     load_rb = (imm_load || acc_load ) && r_field==3'd6;
     load_re = (imm_load || acc_load ) && r_field==3'd7;
-    load_r0 = (imm_load || acc_load || ram_load || post_load ) && r_field==3'd0;
-    load_r1 = (imm_load || acc_load || ram_load || post_load ) && r_field==3'd1;
-    load_r2 = (imm_load || acc_load || ram_load || post_load ) && r_field==3'd2;
-    load_r3 = (imm_load || acc_load || ram_load || post_load ) && r_field==3'd3;
+    load_r0 = ((imm_load || acc_load || ram_load) && r_field==3'd0) || (post_load && y_field==2'd0);
+    load_r1 = ((imm_load || acc_load || ram_load) && r_field==3'd1) || (post_load && y_field==2'd1);
+    load_r2 = ((imm_load || acc_load || ram_load) && r_field==3'd2) || (post_load && y_field==2'd2);
+    load_r3 = ((imm_load || acc_load || ram_load) && r_field==3'd3) || (post_load && y_field==2'd3);
 end
 
 function [15:0] load_reg;
@@ -107,10 +107,10 @@ always @(*) begin
         2'd3: rin = r3;
     endcase
     case( y_field )
-        2'd0: rmux = r0;
-        2'd1: rmux = r1;
-        2'd2: rmux = r2;
-        2'd3: rmux = r3;
+        2'd0: rind = r0;
+        2'd1: rind = r1;
+        2'd2: rind = r2;
+        2'd3: rind = r3;
     endcase
 end
 
@@ -124,7 +124,7 @@ always @(*) begin
         2'd3: unit_mux =  16'd2;
     endcase
     step_mux = step_sel ? jk_mux : unit_mux;
-    rsum     = rin + step_mux;
+    rsum     = rind + step_mux;
     rnext    = imm_load ? imm_ext  : (
                acc_load ? acc      : (
                ram_load ? ram_dout : (

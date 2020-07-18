@@ -62,15 +62,21 @@ void Bin::dump( const char *name ) {
 
 void assemble( ifstream& fin, Bin& bin ) {
     char    line[512];
-    int     opcode=0;
+    char    line_cpy[512];
+    int     opcode=0, linecnt=1;
 
     while( fin.getline(line, 512).good() ) {
+        strcpy( line_cpy, line );
         if( strchr(line,'=') ) {
             char *dest, *orig;
             int  aux;
             dest = strtok(line, " \t=");
+
             if( strcmp(dest,"move")==0 )
                 dest = strtok( NULL," \t=");
+            if( dest[0]=='#' || dest[0]=='\n' )
+                continue;
+
             orig = strtok( NULL," \t=");
             int rfield=make_rfield(dest);
             if( is_imm(orig, aux) ) {
@@ -88,13 +94,24 @@ void assemble( ifstream& fin, Bin& bin ) {
                     bin.push(aux);
                 }
             } else
-            if( is_ram(orig, aux) ) {
+            if( is_ram(orig, aux) ) { // Read from RAM
                 opcode = 0x1E << 10;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
                 bin.push(opcode);
+            } else
+            if( is_ram(dest, aux) ) { // Write to RAM
+                rfield=make_rfield(orig);
+                opcode = 0xC << 11;
+                opcode |= (rfield)<<4;
+                opcode |= aux;
+                bin.push(opcode);
+            } else {
+                cout << "ERROR: cannot process line " << linecnt << '\n' << line_cpy << '\n';
+                return;
             }
         }
+        linecnt++;
     }
 }
 

@@ -29,6 +29,7 @@ module jtdsp16_rom_aau(
     input           call_ja,
     input           icall,
     input           post_inc,
+    input           pc_halt,
     // instruction fields
     input    [11:0] i_field,
     input           con_result,
@@ -77,8 +78,9 @@ always @(posedge clk, posedge rst ) begin
             icall   ? 16'd1 : (
             (goto_ja || call_ja) ? { pc[15:12], i_field } : (
             (goto_pt || call_pt) ? pt : (
-            ret   ? pr  : (
-            iret  ? pi  : next_pc )))));
+            ret                  ? pr : (
+            iret                 ? pi : (
+            pc_halt              ? pc : next_pc ))))));
     end
 end
 
