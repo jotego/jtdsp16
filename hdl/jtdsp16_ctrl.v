@@ -133,14 +133,13 @@ always @(posedge clk, posedge rst) begin
                 5'b01100  // r0-r3 storage to RAM
                 : begin 
                     ram_load  <= 
-                        rom_dout[15:11] == 5'b01111 &&
+                        rom_dout[15:10] == 6'b011110 &&
                         rom_dout[ 9:7]==3'b0; // YAAU register as destination
+                    pc_halt <= 1;
                     if( rom_dout[15:11] == 5'b01100 ) begin
-                        ram_we  <= 1;
-                        pc_halt <= 1;
+                        ram_we  <= 1; // RAM write
                     end else begin
-                        ram_we  <= 0;
-                        pc_halt <= 0;
+                        ram_we  <= 0; // RAM load
                     end
                     r_field   <= rom_dout[ 6:4];
                     y_field   <= rom_dout[ 3:2];

@@ -68,13 +68,16 @@ void assemble( ifstream& fin, Bin& bin ) {
     while( fin.getline(line, 512).good() ) {
         strcpy( line_cpy, line );
         if( strchr(line,'=') ) {
-            char *dest, *orig;
+            char *dest, *orig, *paux;
             int  aux;
+            paux = strchr(line, '#');
+            if( paux!= NULL ) *paux = 0; // remove the comment
+
             dest = strtok(line, " \t=");
 
             if( strcmp(dest,"move")==0 )
                 dest = strtok( NULL," \t=");
-            if( dest[0]=='#' || dest[0]=='\n' )
+            if( dest[0]==0 || dest[0]=='\n' ) // blank line
                 continue;
 
             orig = strtok( NULL," \t=");

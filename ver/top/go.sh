@@ -36,5 +36,10 @@ function add_dir {
     done
 }
 
+# Update Assembler file
+pushd .
+cd ../../cc
+make || exit $?
+popd
 
 iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim -s test -DSIMULATION && sim -lxt

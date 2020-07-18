@@ -51,16 +51,16 @@ reg  [15:0] re, // end   - virtual shift register
             k,
             r0, r1, r2, r3, rin, rsum, rnext,
             jk_mux, unit_mux, step_mux, rind,
-            post;
+            post, ind_next;
 reg         post_sel;
 reg         load_j,
             load_k,
             load_rb,
             load_re,
-            load_r0,
-            load_r1,
-            load_r2,
-            load_r3;
+            load_r0, post_r0,
+            load_r1, post_r1,
+            load_r2, post_r2,
+            load_r3, post_r3;
 
 wire        vsr_en;
 wire        vsr_loop;
@@ -70,8 +70,8 @@ wire        imm_load;
 
 assign      vsr_en     = |re;   // virtual shift register enable
 assign      vsr_loop   = rin==re && vsr_en;
-assign      short_sign = short_imm[8];
-assign      imm_ext    = long_load ? long_imm : { {7{short_imm[8]}}, short_imm };
+assign      short_sign = (rin == 3'd6 || rin == 3'd7) ? 1'b0 : short_imm[8];
+assign      imm_ext    = long_load ? long_imm : { {7{short_sign}}, short_imm };
 assign      imm_load   = short_load || long_load;
 assign      reg_dout   = rin;
 assign      ram_addr   = rind[10:0];
@@ -81,10 +81,14 @@ always @(*) begin
     load_k  = (imm_load || acc_load ) && r_field==3'd5;
     load_rb = (imm_load || acc_load ) && r_field==3'd6;
     load_re = (imm_load || acc_load ) && r_field==3'd7;
-    load_r0 = ((imm_load || acc_load || ram_load) && r_field==3'd0) || (post_load && y_field==2'd0);
-    load_r1 = ((imm_load || acc_load || ram_load) && r_field==3'd1) || (post_load && y_field==2'd1);
-    load_r2 = ((imm_load || acc_load || ram_load) && r_field==3'd2) || (post_load && y_field==2'd2);
-    load_r3 = ((imm_load || acc_load || ram_load) && r_field==3'd3) || (post_load && y_field==2'd3);
+    load_r0 = ((imm_load || acc_load || ram_load) && r_field==3'd0);
+    load_r1 = ((imm_load || acc_load || ram_load) && r_field==3'd1);
+    load_r2 = ((imm_load || acc_load || ram_load) && r_field==3'd2);
+    load_r3 = ((imm_load || acc_load || ram_load) && r_field==3'd3);
+    post_r0 = post_load && y_field==2'd0;
+    post_r1 = post_load && y_field==2'd1;
+    post_r2 = post_load && y_field==2'd2;
+    post_r3 = post_load && y_field==2'd3;
 end
 
 function [15:0] load_reg;
@@ -100,13 +104,13 @@ function [15:0] load_reg;
 endfunction        
 
 always @(*) begin
-    case( r_field[1:0] )
+    case( r_field[1:0] ) // register to load to
         2'd0: rin = r0;
         2'd1: rin = r1;
         2'd2: rin = r2;
         2'd3: rin = r3;
     endcase
-    case( y_field )
+    case( y_field ) // register used for RAM indexing
         2'd0: rind = r0;
         2'd1: rind = r1;
         2'd2: rind = r2;
@@ -125,10 +129,10 @@ always @(*) begin
     endcase
     step_mux = step_sel ? jk_mux : unit_mux;
     rsum     = rind + step_mux;
-    rnext    = imm_load ? imm_ext  : (
-               acc_load ? acc      : (
-               ram_load ? ram_dout : (
-               vsr_loop ? rb       : rsum )));
+    rnext    = imm_load  ? imm_ext  : (
+               acc_load  ? acc      : 
+                           ram_dout   );
+    ind_next = vsr_loop  ? rb : rsum;
 end
 
 always @(posedge clk, posedge rst ) begin
@@ -142,14 +146,14 @@ always @(posedge clk, posedge rst ) begin
         r2 <= 16'd0;
         r3 <= 16'd0;
     end else if(cen) begin
-        if( load_j  ) j  <= load_reg( acc_load, short_load, long_load, acc, long_imm, short_sign, short_imm );
-        if( load_k  ) k  <= load_reg( acc_load, short_load, long_load, acc, long_imm, short_sign, short_imm );
-        if( load_rb ) rb <= load_reg( acc_load, short_load, long_load, acc, long_imm,       1'b0, short_imm );
-        if( load_re ) re <= load_reg( acc_load, short_load, long_load, acc, long_imm,       1'b0, short_imm );
-        if( load_r0 ) r0 <= rnext;
-        if( load_r1 ) r1 <= rnext;
-        if( load_r2 ) r2 <= rnext;
-        if( load_r3 ) r3 <= rnext;
+        if( load_j  ) j  <= rnext;
+        if( load_k  ) k  <= rnext;
+        if( load_rb ) rb <= rnext;
+        if( load_re ) re <= rnext;
+        if( load_r0 || post_r0 ) r0 <= load_r0 ? rnext : ind_next;
+        if( load_r1 || post_r1 ) r1 <= load_r1 ? rnext : ind_next;
+        if( load_r2 || post_r2 ) r2 <= load_r2 ? rnext : ind_next;
+        if( load_r3 || post_r3 ) r3 <= load_r3 ? rnext : ind_next;
     end
 end
 
