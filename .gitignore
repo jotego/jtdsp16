@@ -1,0 +1,7 @@
+log.out
+sim
+test.lxt
+*.bin
+dsp16as
+syn/*
+history
