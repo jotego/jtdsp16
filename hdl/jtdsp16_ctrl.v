@@ -100,7 +100,7 @@ always @(posedge clk, posedge rst) begin
         step_sel   <= 0;
         ksel       <= 0;
         inc_sel    <= 2'b0;
-    end else begin
+    end else if(cen) begin
         t_field   <= rom_dout[15:11];
         d_field   <= rom_dout[   10];
         s_field   <= rom_dout[    9];

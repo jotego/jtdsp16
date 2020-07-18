@@ -69,7 +69,7 @@ always @(posedge clk, posedge rst ) begin
         pr <= 16'd0;
         pi <= 16'd0;
         pt <= 16'd0;
-    end else begin
+    end else if(cen) begin
         if( shadow ) pi <= next_pc;
         if( call_pt || call_ja ) pr <= next_pc;
         if( post_inc  ) pt <= pt + i_ext;

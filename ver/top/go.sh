@@ -37,4 +37,4 @@ function add_dir {
 }
 
 
-iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim -s test && sim -lxt
+iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim -s test -DSIMULATION && sim -lxt

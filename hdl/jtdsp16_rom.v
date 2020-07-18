@@ -19,6 +19,7 @@
 // ROM. Not clocked
 
 module jtdsp16_rom(
+    input             clk,
     input      [11:0] addr,
     output reg [15:0] dout,
     // ROM programming interface
@@ -29,12 +30,9 @@ module jtdsp16_rom(
 
 reg [15:0] rom[0:4095];
 
-always @(*) begin
-    if(prog_we) rom[ prog_addr ] = prog_data;
-end
-
-always @(*) begin
-    dout = rom[ addr ];
+always @(posedge clk) begin
+    if(prog_we) rom[ prog_addr ] <= prog_data;
+    dout <= rom[ addr ];
 end
 
 endmodule

@@ -16,19 +16,30 @@
     Version: 1.0
     Date: 15-7-2020 */
 
-module jtdsp16_ram(
-    input             clk,
-    input      [10:0] addr,
-    input      [15:0] din,
-    output reg [15:0] dout,
-    input             we
+// WE-DSP16A had an internal divider by 2
+// This is also used to make RAM synchronous and ease synthesis
+
+module jtdsp16_div(
+    input      clk,
+    input      cen,
+    output reg cen2
 );
 
-reg [15:0] ram[0:2047];
+reg toggle;
+
+`ifdef SIMULATION
+initial begin
+    cen2   = 0;
+    toggle = 0;
+end
+`endif
 
 always @(posedge clk) begin
-    if(we) ram[ addr ] <= din;
-    dout <= ram[ addr ];
+    cen2 <= 0;
+    if( cen ) begin
+        toggle <= ~toggle;
+        cen2   <= toggle;
+    end
 end
 
 endmodule

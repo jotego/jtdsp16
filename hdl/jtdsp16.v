@@ -29,6 +29,8 @@ module jtdsp16(
     input             prog_we
 );
 
+wire        cen2;   // cen divided by 2
+
 wire [15:0] rom_data, ram_data, cache_data;
 wire [15:0] rom_addr;
 
@@ -82,11 +84,16 @@ wire        ram_we;
 
 assign      ext_addr = rom_addr;
 
+jtdsp16_div u_div(
+    .clk            ( clk           ),
+    .cen            ( cen           ),
+    .cen2           ( cen2          )
+);
 
 jtdsp16_ctrl u_ctrl(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen           ),
+    .cen            ( cen2          ),
     // ROM AAU
     .goto_ja        ( goto_ja       ),
     .goto_b         ( goto_b        ),
@@ -125,6 +132,7 @@ jtdsp16_ctrl u_ctrl(
 );
 
 jtdsp16_rom u_rom(
+    .clk        ( clk             ),
     .addr       ( rom_addr[11:0]  ),
     .dout       ( rom_dout        ),
     // ROM programming interface
@@ -137,7 +145,7 @@ jtdsp16_rom u_rom(
 jtdsp16_rom_aau u_rom_aau(
     .rst        ( rst       ),
     .clk        ( clk       ),
-    .cen        ( cen       ),
+    .cen        ( cen2      ),
     // instruction types
     .goto_ja    ( goto_ja   ),
     .goto_b     ( goto_b    ),
@@ -156,16 +164,17 @@ jtdsp16_rom_aau u_rom_aau(
 );
 
 jtdsp16_ram u_ram(
-    .addr       ( ram_addr  ),
-    .din        ( reg_dout  ),
-    .dout       ( ram_dout  ),
-    .we         ( ram_we    )
+    .clk        ( clk           ),
+    .addr       ( ram_addr      ),
+    .din        ( reg_dout      ),
+    .dout       ( ram_dout      ),
+    .we         ( ram_we        )
 );
 
 jtdsp16_ram_aau u_ram_aau(
     .rst        ( rst           ),
     .clk        ( clk           ),
-    .cen        ( cen           ),
+    .cen        ( cen2          ),
     .r_field    ( r_field       ),
     .y_field    ( y_field       ),
     // Increment selecction
@@ -191,7 +200,7 @@ jtdsp16_ram_aau u_ram_aau(
 jtdsp16_dau u_dau(
     .rst        ( rst       ),
     .clk        ( clk       ),
-    .cen        ( cen       ),
+    .cen        ( cen2      ),
     .t_field    ( t_field   ),
     .f1_field   ( f1_field  ),
     .f2_field   ( f2_field  ),
