@@ -44,6 +44,7 @@ popd  > /dev/null
 
 TESTNAME=tests/rloads.asm
 TESTSET=0
+CLOBBER=0
 QUIET=0
 
 while [ $# -gt 0 ]; do
@@ -55,12 +56,18 @@ EOF
             exit 0;;
         -q | --quiet)
             QUIET=1;;
+        -c | --clobber)
+            CLOBBER=1;;
         *) 
             if [ $TESTSET != 0 ]; then
                 echo "Test name had already been set to " $TESTNAME
                 exit 1
             else
-                TESTNAME=$1
+                if [ -e $1 ]; then
+                    TESTNAME=$1                
+                else
+                    TESTNAME=tests/$1
+                fi
                 TESTSET=1          
             fi;;
     esac
@@ -86,6 +93,12 @@ fi
 sed -i 1d log.out
 sed -i /pc=/d\;/pi=/d *.out
 
+function clobber {
+    if [ $CLOBBER = 1 ]; then
+        mv -v log.out $CHECKFILE
+        git add $CHECKFILE $TESTNAME
+    fi
+}
 
 if [ -e $CHECKFILE ]; then
     if diff --brief log.out $CHECKFILE > /dev/null ; then
@@ -95,15 +108,20 @@ if [ -e $CHECKFILE ]; then
             figlet PASS
         fi
     else
-        figlet FAIL
-        if [ $QUIET = 0 ]; then
-            diff --side-by-side log.out $CHECKFILE
+        if [ $CLOBBER = 1 ]; then
+            clobber
+        else
+            figlet FAIL
+            if [ $QUIET = 0 ]; then
+                diff --side-by-side log.out $CHECKFILE
+            fi
+            echo "Use this to copy the current results file:"
+            echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
+            exit 1
         fi
-        echo "Use this to copy the current results file:"
-        echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
-        exit 1
     fi
 else
+    clobber
     echo "No check file, use this to copy the current results file:"
     echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
 fi
