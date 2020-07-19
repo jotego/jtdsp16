@@ -3,21 +3,29 @@
 #include <string>
 #include <cstring>
 #include <cstdio>
+#include <map>
 
 using namespace std;
+
+typedef map<string,int> Labels;
 
 class Bin {
     int16_t *buf;
     int pt;    
+    Labels labels;
 public:
     const int max=8192;
     Bin();
     ~Bin();
+    void restart() {pt=0;}
+    int  len() { return pt; }
     void push(int v);
     void dump( const char *name );
+    void add_label( const char *name );
+    int get_label( const char *name, bool fallback=true );
 };
 
-void assemble( ifstream& fin, Bin& bin );
+int  assemble( ifstream& fin, Bin& bin );
 int  make_rfield(const char *reg);
 bool is_imm(const char *s, int& val);
 bool is_ram( const char *s, int& val );
@@ -34,10 +42,24 @@ int main(int argc, char* argv[]) {
         cout << "ERROR: cannot open file " << asmname << '\n';
         return 2;
     }
-    
+
     // Assemble
     Bin bin;
-    assemble( asm_file, bin );
+    for( int k=0; k<2; k++ ) {
+        asm_file.clear();
+        asm_file.seekg(0, ios_base::beg);
+        if( !asm_file.good() ) {
+            cout << "Error: cannot rewind on pass " << (k+1) << "\n";
+            return 1;
+        }
+        bin.restart();
+        int bad_line = assemble( asm_file, bin );
+        if( bad_line ) {
+            cout << "dsp16as error at line " << bad_line << '\n';
+            return bad_line;
+        }
+        // cout << "Len = " << bin.len() <<'\n';
+    }
     bin.dump("test.bin");
     return 0;
 }
@@ -50,6 +72,23 @@ Bin::Bin() {
 Bin::~Bin() {
     delete[] buf;
     pt=0;
+}
+
+void Bin::add_label( const char *name ) {
+    // cout << "Label '" << name << "' = " << pt << '\n';
+    labels[string(name)] = pt;
+}
+
+int Bin::get_label( const char *name, bool fallback ) {
+    Labels::iterator k = labels.find(name);
+    if( k!=labels.end() )
+        return k->second;
+    else {
+        if( fallback )
+            return strtol( name, NULL, 0);
+        else
+            return -1;
+    }
 }
 
 void Bin::push(int v) {
@@ -72,29 +111,48 @@ void Bin::dump( const char *name ) {
     }
 }
 
-void assemble( ifstream& fin, Bin& bin ) {
-    char    line[512];
+#define BAD_LINE(str) { cout << "ERROR: " << str << " at line " << linecnt << "\n\t> " << line_cpy << '\n'; return linecnt; }
+
+int assemble( ifstream& fin, Bin& bin ) {
+    char    line_in[512];
     char    line_cpy[512];
     int     opcode=0, linecnt=1;
 
-    while( fin.getline(line, 512).good() ) {
-        strcpy( line_cpy, line );
+    while( fin.getline(line_in, 512).good() ) {
+        char *paux, *line;
+        int  aux;
+        strcpy( line_cpy, line_in );
+        line = line_in;
+        // remove comments
+        paux = strchr(line, '#');            
+        if( paux!= NULL ) *paux = 0;
+        // strip all initial blanks
+        while( *line==' ' || *line=='\t' ) line++;
+        // strip all final blanks
+        paux=line;
+        while( *paux++ );
+        do {
+            paux--;
+            if( *paux==' ' || *paux=='\t' ) *paux=0;
+        }while( paux>line );
+        if( line[0]==0 || line[0]=='\n' ) // blank line
+            continue;
+
+        // parse line
         if( strchr(line,'=') ) {
-            char *dest, *orig, *paux;
-            int  aux;
-            paux = strchr(line, '#');
-            if( paux!= NULL ) *paux = 0; // remove the comment
+            char *dest, *orig;
 
             dest = strtok(line, " \t=");
+            if( dest==NULL ) continue;
 
             if( strcmp(dest,"move")==0 )
                 dest = strtok( NULL," \t=");
-            if( dest[0]==0 || dest[0]=='\n' ) // blank line
-                continue;
 
             orig = strtok( NULL," \t=");
             int rfield=make_rfield(dest);
+            //cout << "DEST=" << dest << '\n';
             if( is_imm(orig, aux) ) {
+                if( rfield==-1 ) BAD_LINE("Bad register name");
                 if( aux < 512 && aux>=-257 && rfield<8 && rfield>=0 ) {
                     // Short immediate
                     opcode = 1<<12;
@@ -110,6 +168,7 @@ void assemble( ifstream& fin, Bin& bin ) {
                 }
             } else
             if( is_ram(orig, aux) ) { // Read from RAM
+                if( rfield==-1 ) BAD_LINE("Bad register name");
                 opcode = 0x1E << 10;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
@@ -117,17 +176,55 @@ void assemble( ifstream& fin, Bin& bin ) {
             } else
             if( is_ram(dest, aux) ) { // Write to RAM
                 rfield=make_rfield(orig);
+                if( rfield==-1 ) BAD_LINE("Bad register name");
                 opcode = 0xC << 11;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
                 bin.push(opcode);
             } else {
-                cout << "ERROR: cannot process line " << linecnt << '\n' << line_cpy << '\n';
-                return;
+                BAD_LINE("bad syntax");
+            }
+        } else
+        // Labels
+        if( paux = strchr(line,':') ) {
+            *paux = 0;
+            bin.add_label( line );
+            continue;
+        } else {
+            char *cmd = strtok( line, " \t" );
+            if( cmd == NULL ) {
+                BAD_LINE("Cannot break up in words")
+            }
+            char *rest = cmd + strlen(cmd) + 1;
+            if( strcmp(cmd,"goto")==0 ) {
+                aux = bin.get_label( rest );
+                opcode = aux&0xFFF;
+                bin.push(opcode);
+            } else
+            if( strcmp(cmd,"return")==0 ) {
+                opcode  = 0x18<<11;
+                bin.push(opcode);
+            } else
+            if( strcmp(cmd,"ireturn")==0 ) {
+                opcode  = 0x18<<11;
+                opcode |= 1 << 8;
+                bin.push(opcode);
+            } else
+            if( strcmp(cmd,"call")==0 ) {
+                if( strcmp(cmd,"pt")==0 ) {
+                    opcode  = 0x18<<11;
+                    opcode |= 3 << 8;                    
+                } else {
+                    aux = bin.get_label( rest );
+                    opcode  = 8<<12;
+                    opcode |= (aux&0xfff);
+                }
+                bin.push(opcode);
             }
         }
         linecnt++;
     }
+    return 0;
 }
 
 #define MATCH(a,b) if(strcmp(reg,a)==0) return b;

@@ -54,6 +54,8 @@ module jtdsp16_ctrl(
     output reg        icall,
     output reg        post_inc,
     output reg        pc_halt,
+    output reg        xaau_ram_load,
+    output reg        xaau_imm_load,
     // instruction fields
     output reg [11:0] i_field,
     // IRQ
@@ -79,27 +81,29 @@ assign    long_imm = rom_dout;
 // Decode instruction
 always @(posedge clk, posedge rst) begin
     if(rst) begin
-        short_load <= 0;
-        long_load  <= 0;
-        ram_load   <= 0;
-        double     <= 0;
-        post_load  <= 0;
-        acc_load   <= 0;
+        short_load    <= 0;
+        long_load     <= 0;
+        ram_load      <= 0;
+        double        <= 0;
+        post_load     <= 0;
+        acc_load      <= 0;
         // ROM AAU
-        goto_ja    <= 0;
-        goto_b     <= 0;
-        call_ja    <= 0;
-        icall      <= 0;
-        post_inc   <= 0;
-        ext_irq    <= 0;
-        shadow     <= 1;
-        ram_we     <= 0;
-        pc_halt    <= 0;
+        goto_ja       <= 0;
+        goto_b        <= 0;
+        call_ja       <= 0;
+        icall         <= 0;
+        post_inc      <= 0;
+        ext_irq       <= 0;
+        shadow        <= 1;
+        ram_we        <= 0;
+        pc_halt       <= 0;
+        xaau_ram_load <= 0;
+        xaau_imm_load <= 0;
         // *r++ control lines:
-        y_field    <= 2'b0;
-        step_sel   <= 0;
-        ksel       <= 0;
-        inc_sel    <= 2'b0;
+        y_field       <= 2'b0;
+        step_sel      <= 0;
+        ksel          <= 0;
+        inc_sel       <= 2'b0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
         d_field   <= rom_dout[   10];
@@ -110,31 +114,53 @@ always @(posedge clk, posedge rst) begin
         short_imm <= rom_dout[ 8: 0];
 
         // disable all control signals
-        short_load <= 0;
-        long_load  <= 0;
-        ram_load   <= 0;
-        ram_we     <= 0;
-        double     <= 0;
-        post_load  <= 0;
-        pc_halt    <= 0;
+        short_load    <= 0;
+        long_load     <= 0;
+        ram_load      <= 0;
+        ram_we        <= 0;
+        double        <= 0;
+        post_load     <= 0;
+        pc_halt       <= 0;
+
+        goto_ja       <= 0;
+        goto_b        <= 0;
+        call_ja       <= 0;
+        xaau_ram_load <= 0;
+        xaau_imm_load <= 0;
         // XAAU
         if(!double) begin
             casez( rom_dout[15:11] ) // T
+                5'b0000?: begin // goto JA
+                    goto_ja <= 1;
+                    double  <= 1;
+                end
+                5'b1000?: begin // call JA
+                    call_ja <= 1;
+                    double  <= 1;
+                end
+                5'b11000: begin // goto B
+                    goto_b  <= 1;
+                    double  <= 1;
+                end
                 5'b0001?: begin // short imm j, k, rb, re
                     short_load <= 1;
                     r_field    <= rom_dout[11:9]^3'b100;
                 end
                 5'b01010: begin // long imm
-                    long_load <= rom_dout[ 9:7]==3'b0; // YAAU register as destination
-                    r_field   <= rom_dout[ 9:4];
-                    double    <= 1;
+                    long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
+                    xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
+                    r_field       <= rom_dout[9:4];
+                    double        <= 1;
                 end
                 5'b01111, // RAM load to r0-r3
                 5'b01100  // r0-r3 storage to RAM
                 : begin 
                     ram_load  <= 
                         rom_dout[15:10] == 6'b011110 &&
-                        rom_dout[ 9:7]==3'b0; // YAAU register as destination
+                        rom_dout[ 9:7]==3'b000; // YAAU register as destination
+                    xaau_ram_load <=
+                        rom_dout[15:10] == 6'b011110 &&
+                        rom_dout[ 9:7]==3'b001; // YAAU register as destination
                     pc_halt <= 1;
                     if( rom_dout[15:11] == 5'b01100 ) begin
                         ram_we  <= 1; // RAM write

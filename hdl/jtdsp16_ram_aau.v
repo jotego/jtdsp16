@@ -67,6 +67,7 @@ wire        vsr_loop;
 wire        short_sign;
 wire [15:0] imm_ext;
 wire        imm_load;
+wire        reg_load;
 
 assign      vsr_en     = |re;   // virtual shift register enable
 assign      vsr_loop   = rin==re && vsr_en;
@@ -75,16 +76,17 @@ assign      imm_ext    = long_load ? long_imm : { {7{short_sign}}, short_imm };
 assign      imm_load   = short_load || long_load;
 assign      reg_dout   = rin;
 assign      ram_addr   = rind[10:0];
+assign      reg_load   = imm_load || acc_load || ram_load;
 
 always @(*) begin
-    load_j  = (imm_load || acc_load ) && r_field==3'd4;
-    load_k  = (imm_load || acc_load ) && r_field==3'd5;
-    load_rb = (imm_load || acc_load ) && r_field==3'd6;
-    load_re = (imm_load || acc_load ) && r_field==3'd7;
-    load_r0 = ((imm_load || acc_load || ram_load) && r_field==3'd0);
-    load_r1 = ((imm_load || acc_load || ram_load) && r_field==3'd1);
-    load_r2 = ((imm_load || acc_load || ram_load) && r_field==3'd2);
-    load_r3 = ((imm_load || acc_load || ram_load) && r_field==3'd3);
+    load_j  = reg_load  && r_field==3'd4;
+    load_k  = reg_load  && r_field==3'd5;
+    load_rb = reg_load  && r_field==3'd6;
+    load_re = reg_load  && r_field==3'd7;
+    load_r0 = reg_load  && r_field==3'd0;
+    load_r1 = reg_load  && r_field==3'd1;
+    load_r2 = reg_load  && r_field==3'd2;
+    load_r3 = reg_load  && r_field==3'd3;
     post_r0 = post_load && y_field==2'd0;
     post_r1 = post_load && y_field==2'd1;
     post_r2 = post_load && y_field==2'd2;

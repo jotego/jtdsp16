@@ -7,7 +7,7 @@ function add_dir {
         exit 1
     fi
     processF=no
-    echo "Adding dir $1 $2" >&2
+    # echo "Adding dir $1 $2" >&2
     for i in $(cat $1/$2); do
         if [ "$i" = "-sv" ]; then 
             # ignore statements that iVerilog cannot understand
@@ -37,10 +37,10 @@ function add_dir {
 }
 
 # Update assembler tool
-pushd .
+pushd . > /dev/null
 cd ../../cc
 make || exit $?
-popd
+popd  > /dev/null
 
 TESTNAME=tests/rloads.asm
 TESTSET=0
@@ -79,6 +79,10 @@ sed -i 1d log.out
 if [ -e $CHECKFILE ]; then
     if diff log.out $CHECKFILE; then
         figlet PASS
+    else
+        figlet FAIL
+    echo "Use this to copy the current results file."
+    echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
     fi
 else
     echo "No check file, use this to copy the current results file."

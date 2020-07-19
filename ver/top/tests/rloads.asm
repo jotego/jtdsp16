@@ -13,3 +13,9 @@ move j = 0x4004
 move k = 0x5005
 move rb= 0x6006
 move re= 0x7007
+
+# pt, pr, pi, i
+#pt = 0xbeef
+#pr = 0xcade
+#pi = 0x7a1a
+#i  = 0xae00

@@ -30,12 +30,18 @@ module jtdsp16_rom_aau(
     input           icall,
     input           post_inc,
     input           pc_halt,
+    input           ram_load,
+    input           imm_load,
     // instruction fields
+    input    [ 2:0] r_field,
     input    [11:0] i_field,
     input           con_result,
     // IRQ
     input           ext_irq,
     input           shadow,     // normal execution or inside IRQ
+    // Data buses
+    input    [15:0] rom_dout,
+    input    [15:0] ram_dout,
     // ROM request
     output   [15:0] rom_addr
 );
@@ -44,11 +50,15 @@ reg  [11:0] i;
 reg  [15:0] pc,     // Program Counter
             pr,     // Program Return
             pi,     // Program Interrupt
-            pt;     // Table Pointer
+            pt,     // Table Pointer
+            rnext;
 
 wire [15:0] next_pc;
 wire [15:0] i_ext;
 wire [ 2:0] b_field;
+wire        copy_pc;
+wire        load_pt, load_pi, load_pr ,load_i;
+wire        any_load;
 
 wire        ret, iret, goto_pt, call_pt;
 
@@ -60,8 +70,22 @@ assign      ret      = goto_b && b_field==3'b00;
 assign      iret     = goto_b && b_field==3'b01;
 assign      goto_pt  = goto_b && b_field==3'b10;
 assign      call_pt  = goto_b && b_field==3'b11;
+assign      copy_pc  = call_pt || call_ja;
+assign      any_load = ram_load || imm_load;
+assign      load_pt  =  any_load && r_field==3'd0;
+assign      load_pr  = (any_load && r_field==3'd1) || copy_pc;
+assign      load_pi  =  any_load && r_field==3'd2;
+assign      load_i   =  any_load && r_field==3'd3;
 
 assign      rom_addr = pc;
+
+always @(*) begin
+    rnext = 
+        imm_load ? rom_dout : (
+        ram_load ? ram_dout : (
+        copy_pc  ? pc       : (
+                   pt+i_ext    )));
+end
 
 always @(posedge clk, posedge rst ) begin
     if( rst ) begin
@@ -70,9 +94,10 @@ always @(posedge clk, posedge rst ) begin
         pi <= 16'd0;
         pt <= 16'd0;
     end else if(cen) begin
-        if( shadow ) pi <= next_pc;
-        if( call_pt || call_ja ) pr <= next_pc;
-        if( post_inc  ) pt <= pt + i_ext;
+        if( load_pt  ) pt <= rnext;
+        if( shadow  || load_pi ) pi <= load_pi ? rnext : next_pc;
+        if( load_pr ) pr <= rnext;
+        if( load_i  ) i  <= rnext;
         pc <= 
             ext_irq ? 16'd0 : (
             icall   ? 16'd1 : (

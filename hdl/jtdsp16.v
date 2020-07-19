@@ -48,6 +48,7 @@ wire [11:0] i_field;
 wire        con_result;
 wire        ext_irq;
 wire        shadow;
+wire        xaau_ram_load, xaau_imm_load;
 
 // Y-AAU
 wire [ 8:0] short_imm;
@@ -94,7 +95,7 @@ jtdsp16_ctrl u_ctrl(
     .rst            ( rst           ),
     .clk            ( clk           ),
     .cen            ( cen2          ),
-    // ROM AAU
+    // ROM AAU - XAAU
     .goto_ja        ( goto_ja       ),
     .goto_b         ( goto_b        ),
     .call_ja        ( call_ja       ),
@@ -103,6 +104,8 @@ jtdsp16_ctrl u_ctrl(
     .i_field        ( i_field       ),
     .shadow         ( shadow        ),
     .pc_halt        ( pc_halt       ),
+    .xaau_ram_load  ( xaau_ram_load ),
+    .xaau_imm_load  ( xaau_imm_load ),
     // X load control
     .up_xram        ( up_xram       ),
     .up_xrom        ( up_xrom       ),
@@ -143,24 +146,30 @@ jtdsp16_rom u_rom(
 
 // ROM address arithmetic unit - XAAU
 jtdsp16_rom_aau u_rom_aau(
-    .rst        ( rst       ),
-    .clk        ( clk       ),
-    .cen        ( cen2      ),
+    .rst        ( rst           ),
+    .clk        ( clk           ),
+    .cen        ( cen2          ),
     // instruction types
-    .goto_ja    ( goto_ja   ),
-    .goto_b     ( goto_b    ),
-    .call_ja    ( call_ja   ),
-    .icall      ( icall     ),
-    .post_inc   ( post_inc  ),
-    .pc_halt    ( pc_halt   ),
+    .goto_ja    ( goto_ja       ),
+    .goto_b     ( goto_b        ),
+    .call_ja    ( call_ja       ),
+    .icall      ( icall         ),
+    .post_inc   ( post_inc      ),
+    .pc_halt    ( pc_halt       ),
+    .ram_load   ( xaau_ram_load ),
+    .imm_load   ( xaau_imm_load ),
     // instruction fields
-    .i_field    ( i_field   ),
-    .con_result ( con_result),
+    .r_field    ( r_field       ),
+    .i_field    ( i_field       ),
+    .con_result ( con_result    ),
     // Interruption
-    .ext_irq    ( 1'b0      ),
-    .shadow     ( shadow    ),
+    .ext_irq    ( 1'b0          ),
+    .shadow     ( shadow        ),
+    // Data buses
+    .rom_dout   ( rom_dout      ),
+    .ram_dout   ( ram_dout      ),
     // ROM request
-    .rom_addr   ( rom_addr  )
+    .rom_addr   ( rom_addr      )
 );
 
 jtdsp16_ram u_ram(
