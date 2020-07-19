@@ -30,7 +30,7 @@ end
 initial begin
     prog_addr = 0;
     prog_we   = 1;
-    #50_000;
+    #45_000;
     // YAAU
     $display("r0=0x%4X", UUT.u_ram_aau.r0);
     $display("r1=0x%4X", UUT.u_ram_aau.r1);

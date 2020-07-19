@@ -93,11 +93,12 @@ always @(posedge clk, posedge rst ) begin
         pr <= 16'd0;
         pi <= 16'd0;
         pt <= 16'd0;
+        i  <= 12'd0;
     end else if(cen) begin
         if( load_pt  ) pt <= rnext;
         if( shadow  || load_pi ) pi <= load_pi ? rnext : next_pc;
         if( load_pr ) pr <= rnext;
-        if( load_i  ) i  <= rnext;
+        if( load_i  ) i  <= rnext[11:0];
         pc <= 
             ext_irq ? 16'd0 : (
             icall   ? 16'd1 : (

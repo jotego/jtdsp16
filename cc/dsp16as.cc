@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <string>
 #include <cstring>
@@ -130,10 +131,13 @@ int assemble( ifstream& fin, Bin& bin ) {
         while( *line==' ' || *line=='\t' ) line++;
         // strip all final blanks
         paux=line;
-        while( *paux++ );
+        while( *paux ) paux++;
         do {
             paux--;
-            if( *paux==' ' || *paux=='\t' ) *paux=0;
+            if( *paux==' ' || *paux=='\t' )
+                *paux=0;
+            else
+                break;
         }while( paux>line );
         if( line[0]==0 || line[0]=='\n' ) // blank line
             continue;
@@ -141,7 +145,6 @@ int assemble( ifstream& fin, Bin& bin ) {
         // parse line
         if( strchr(line,'=') ) {
             char *dest, *orig;
-
             dest = strtok(line, " \t=");
             if( dest==NULL ) continue;
 
@@ -149,6 +152,8 @@ int assemble( ifstream& fin, Bin& bin ) {
                 dest = strtok( NULL," \t=");
 
             orig = strtok( NULL," \t=");
+            // cout << setw(3) << linecnt << "> " << line_cpy << " - ";
+            // cout << "Orig = " << orig << " Dest = " << dest << '\n';
             int rfield=make_rfield(dest);
             //cout << "DEST=" << dest << '\n';
             if( is_imm(orig, aux) ) {
@@ -229,7 +234,7 @@ int assemble( ifstream& fin, Bin& bin ) {
 
 #define MATCH(a,b) if(strcmp(reg,a)==0) return b;
 
-int  make_rfield(const char *reg) {
+int make_rfield(const char *reg) {
     MATCH("r0",0);
     MATCH("r1",1);
     MATCH("r2",2);

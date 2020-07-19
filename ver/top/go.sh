@@ -39,11 +39,12 @@ function add_dir {
 # Update assembler tool
 pushd . > /dev/null
 cd ../../cc
-make || exit $?
+make dsp16as || exit $?
 popd  > /dev/null
 
 TESTNAME=tests/rloads.asm
 TESTSET=0
+QUIET=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -52,6 +53,8 @@ while [ $# -gt 0 ]; do
     Usage: go.sh path-to-asm file
 EOF
             exit 0;;
+        -q | --quiet)
+            QUIET=1;;
         *) 
             if [ $TESTSET != 0 ]; then
                 echo "Test name had already been set to " $TESTNAME
@@ -71,20 +74,36 @@ if [ ! -e $CHECKFILE ]; then
     echo "Warning: check file for simulation " $CHECKFILE " not found"
 fi
 
-iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim -s test -DSIMULATION && sim -lxt | tee log.out
+iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim -s test -DSIMULATION || exit $?
+if [ $QUIET = 0 ]; then
+    sim -lxt | tee log.out
+else
+    sim -lxt > log.out
+fi
+
 
 # Deletes the LXT info line
 sed -i 1d log.out
+sed -i /pc=/d\;/pi=/d *.out
+
 
 if [ -e $CHECKFILE ]; then
-    if diff log.out $CHECKFILE; then
-        figlet PASS
+    if diff --brief log.out $CHECKFILE > /dev/null ; then
+        if [ $QUIET = 1 ]; then
+            echo PASS
+        else
+            figlet PASS
+        fi
     else
         figlet FAIL
-    echo "Use this to copy the current results file."
-    echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
+        if [ $QUIET = 0 ]; then
+            diff --side-by-side log.out $CHECKFILE
+        fi
+        echo "Use this to copy the current results file:"
+        echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
+        exit 1
     fi
 else
-    echo "No check file, use this to copy the current results file."
+    echo "No check file, use this to copy the current results file:"
     echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
 fi
