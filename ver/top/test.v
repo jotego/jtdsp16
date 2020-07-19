@@ -46,6 +46,9 @@ initial begin
     $display("i =0x%04X", UUT.u_rom_aau.i);
     $display("pi=0x%04X", UUT.u_rom_aau.pi);
     $display("pc=0x%04X", UUT.u_rom_aau.pc);
+    // DAU
+    $display("a0=0x%04X", UUT.u_dau.a0);
+    $display("a1=0x%04X", UUT.u_dau.a1);
     $finish;
 end
 
@@ -63,14 +66,15 @@ jtdsp16 UUT(
     .cen        ( cen       ),
     .ext_addr   ( ext_addr  ),
     .ext_data   ( ext_data  ),
+    .ext_mode   ( 1'b0      ),
     .prog_addr  ( prog_addr ),
     .prog_data  ( prog_data ),
     .prog_we    ( prog_we   )
 );
 
 always @(negedge prog_we) begin
-    $dumpfile("test.lxt");  
-    $dumpvars;  
+    $dumpfile("test.lxt");
+    $dumpvars;
 end
 
 endmodule

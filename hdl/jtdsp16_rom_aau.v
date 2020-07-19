@@ -20,30 +20,31 @@
 // This is caled XAAU in the block diagram
 
 module jtdsp16_rom_aau(
-    input           rst,
-    input           clk,
-    input           cen,
+    input             rst,
+    input             clk,
+    input             cen,
     // instruction types
-    input           goto_ja,
-    input           goto_b,
-    input           call_ja,
-    input           icall,
-    input           post_inc,
-    input           pc_halt,
-    input           ram_load,
-    input           imm_load,
+    input             goto_ja,
+    input             goto_b,
+    input             call_ja,
+    input             icall,
+    input             post_inc,
+    input             pc_halt,
+    input             ram_load,
+    input             imm_load,
     // instruction fields
-    input    [ 2:0] r_field,
-    input    [11:0] i_field,
-    input           con_result,
+    input      [ 2:0] r_field,
+    input      [11:0] i_field,
+    input             con_result,
     // IRQ
-    input           ext_irq,
-    input           shadow,     // normal execution or inside IRQ
+    input             ext_irq,
+    input             shadow,     // normal execution or inside IRQ
     // Data buses
-    input    [15:0] rom_dout,
-    input    [15:0] ram_dout,
+    input      [15:0] rom_dout,
+    input      [15:0] ram_dout,
     // ROM request
-    output   [15:0] rom_addr
+    output reg [15:0] reg_dout,
+    output     [15:0] rom_addr
 );
 
 reg  [11:0] i;
@@ -80,11 +81,20 @@ assign      load_i   =  any_load && r_field==3'd3;
 assign      rom_addr = pc;
 
 always @(*) begin
-    rnext = 
+    rnext =
         imm_load ? rom_dout : (
         ram_load ? ram_dout : (
         copy_pc  ? pc       : (
                    pt+i_ext    )));
+end
+
+always @(*) begin
+    case( r_field[1:0] )
+        2'd0: reg_dout = pt;
+        2'd1: reg_dout = pr;
+        2'd2: reg_dout = pi;
+        2'd3: reg_dout = i;
+    endcase
 end
 
 always @(posedge clk, posedge rst ) begin
@@ -99,7 +109,7 @@ always @(posedge clk, posedge rst ) begin
         if( shadow  || load_pi ) pi <= load_pi ? rnext : next_pc;
         if( load_pr ) pr <= rnext;
         if( load_i  ) i  <= rnext[11:0];
-        pc <= 
+        pc <=
             ext_irq ? 16'd0 : (
             icall   ? 16'd1 : (
             (goto_ja || call_ja) ? { pc[15:12], i_field } : (

@@ -17,26 +17,37 @@
     Date: 12-7-2020 */
 
 module jtdsp16_dau(
-    input         rst,
-    input         clk,
-    input         cen,
-    input  [ 4:0] t_field,
-    input  [ 3:0] f1_field,
-    input  [ 3:0] f2_field,
-    input         s_field,  // source
-    input         d_field,  // destination
-    input  [ 4:0] c_field,  // condition
+    input             rst,
+    input             clk,
+    input             cen,
+    input      [ 2:0] r_field,
+    input      [ 4:0] t_field,
+    input      [ 3:0] f1_field,
+    input      [ 3:0] f2_field,
+    input             s_field,  // source
+    input             d_field,  // destination
+    input             at_sel,
+    input      [ 4:0] c_field,  // condition
+    input             rmux_load,
     // X load control
-    input         up_xram,
-    input         up_xrom,
-    input         up_xext,
-    input         up_xcache,
+    input             up_xram,
+    input             up_xrom,
+    input             up_xcache,
+    // ALU control
+    input             alu_sel,
+    input             st_a0h,
+    input             st_a1h,
+    input             st_a0l,
+    input             st_a1l,
     // Data buses
-    input  [15:0] ram_dout,
-    input  [15:0] rom_dout,
-    input  [15:0] cache_dout,
-    input  [15:0] ext_dout,
-    output [15:0] dau_dout
+    input      [15:0] ram_dout,
+    input      [15:0] rom_dout,
+    input      [15:0] rmux,
+    input      [15:0] cache_dout,
+
+    output     [15:0] dau_dout,
+    output     [15:0] acc_dout,
+    output reg [15:0] reg_dout
 );
 
 reg  [15:0] x, yh, yl;
@@ -48,15 +59,17 @@ wire [35:0] alu_in;
 
 // Control registers
 reg  [ 7:0] c0, c1, c2;
-reg  [ 6:0] auc;
+reg  [ 6:0] auc;        // arithmetic unit control
 reg         lmi, leq, llv, lmv;
-wire [15:0] psw;
+wire [15:0] psw;        // processor status word
 reg         ov1, ov0;   // overflow
 
 wire [31:0] y;
 wire [35:0] as;
 wire [35:0] y_ext;
 wire [35:0] ram_ext;
+wire [19:0] rmux_ext, acc_in;
+wire [ 3:0] flags;
 wire        up_p;
 wire        up_y;
 wire        ad_sel;
@@ -86,6 +99,7 @@ wire        c1lt;   // counter1 <0  (and counter gets incremented)
 wire        heads;  // pseudorandom sequence bit set
 wire        tails;  // pseudorandom sequence bit clear
 
+assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
 assign up_p        = f1_field[3:2]==2'b0;
 assign up_y        = load_ay0 | load_ay1 | load_y | load_yl;
@@ -96,13 +110,16 @@ assign as          = s_field ? a1 : a0;
 assign y_ext       = { {4{y[31]}}, y };
 assign sel_special = t_field == 5'h12 || t_field == 5'h13;
 assign psw         = { flags, 2'b0, ov1, ov0, a1[35:32], a0[35:32] };
-assign clr_yl      = aux[6];
-assign clr_a1l     = aux[5];
-assign clr_a0l     = aux[4];
-assign sat_a1      = aux[3];
-assign sat_a0      = aux[2];
+assign clr_yl      = auc[6];
+assign clr_a1l     = auc[5];
+assign clr_a0l     = auc[4];
+assign sat_a1      = auc[3];
+assign sat_a0      = auc[2];
 assign ram_ext     = { {4{ram_dout[15]}}, ram_dout, 16'd0 };
+assign rmux_ext    = { {4{rmux[15]}}, rmux };
 assign alu_in      = alu_sel ? ram_ext : p_ext;
+assign acc_dout    = at_sel ? a1[15:0] : a0[15:0];
+assign acc_in      = rmux_load ? rmux_ext : alu_out[35:16];
 
 function [35:0] round;
     input [35:0] a;
@@ -115,12 +132,14 @@ always @(posedge clk, posedge rst) begin
         x  <= 16'd0;
         yh <= 16'd0;
         yl <= 16'd0;
+        a0 <= 36'd0;
+        a1 <= 36'd0;
     end else if(cen) begin
         if( up_p ) p  <= x*yh;
         x <= up_xram   ? ram_dout   : (
              up_xrom   ? rom_dout   : (
              up_xcache ? cache_dout : (
-             up_xext   ? ext_dout   : x )));
+                         x             )));
         if( up_y ) begin
             if( !load_yl ) begin
                 yh <= load_ay1 ? a1[31:16] : (load_ay0 ? a1[15:0] : ram_dout);
@@ -129,8 +148,8 @@ always @(posedge clk, posedge rst) begin
                 yl <= ram_dout[7:0];
             end
         end
-        if( st_a0h ) a0[35:16] <= alu_out[35:16];
-        if( st_a1h ) a1[35:16] <= alu_out[35:16];
+        if( st_a0h ) a0[35:16] <= acc_in;
+        if( st_a1h ) a1[35:16] <= acc_in;
         a0[15: 0] <= st_a0h ? (clr_a0l ? 16'd0 : alu_out[15:0]) :
                     (st_a0l ? alu_out[15:0] : a0[15:0]);
         a1[15: 0] <= st_a1h ? (clr_a1l ? 16'd0 : alu_out[15:0]) :
@@ -183,14 +202,27 @@ end
 
 always @(*) begin
     case( auc[1:0] )
-        2'd0: p_ext = { 4{p[31]}, p };
-        2'd1, 2'd3: p_ext = { 6{p[31]}, p[31:2] }; // Makes reserved case 3 same as 1
-        2'd2: p_ext = { 2{p[31]}, p, 2'd0 };        
+        2'd0: p_ext = { {4{p[31]}}, p };
+        2'd1, 2'd3: p_ext = { {6{p[31]}}, p[31:2] }; // Makes reserved case 3 same as 1
+        2'd2: p_ext = { {2{p[31]}}, p, 2'd0 };
     endcase
 end
 
 always @(*) begin
     alu_out = sel_special ? alu_special : alu_arith;
+end
+
+always @(*) begin
+    case( r_field )
+        3'd0: reg_dout = x;
+        3'd1: reg_dout = y[31:16];
+        3'd2: reg_dout = yl;
+        3'd3: reg_dout = { 10'd0, auc };
+        3'd4: reg_dout = psw;
+        3'd5: reg_dout = {8'd0, c0};
+        3'd6: reg_dout = {8'd0, c1};
+        3'd7: reg_dout = {8'd0, c2};
+    endcase
 end
 
 endmodule

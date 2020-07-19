@@ -9,9 +9,9 @@ function add_dir {
     processF=no
     # echo "Adding dir $1 $2" >&2
     for i in $(cat $1/$2); do
-        if [ "$i" = "-sv" ]; then 
+        if [ "$i" = "-sv" ]; then
             # ignore statements that iVerilog cannot understand
-            continue; 
+            continue;
         fi
         if [ "$processF" = yes ]; then
             processF=no
@@ -58,17 +58,17 @@ EOF
             QUIET=1;;
         -c | --clobber)
             CLOBBER=1;;
-        *) 
+        *)
             if [ $TESTSET != 0 ]; then
                 echo "Test name had already been set to " $TESTNAME
                 exit 1
             else
                 if [ -e $1 ]; then
-                    TESTNAME=$1                
+                    TESTNAME=$1
                 else
                     TESTNAME=tests/$1
                 fi
-                TESTSET=1          
+                TESTSET=1
             fi;;
     esac
     shift
@@ -111,9 +111,11 @@ if [ -e $CHECKFILE ]; then
         if [ $CLOBBER = 1 ]; then
             clobber
         else
-            figlet FAIL
             if [ $QUIET = 0 ]; then
                 diff --side-by-side log.out $CHECKFILE
+                figlet FAIL
+            else
+                echo FAIL
             fi
             echo "Use this to copy the current results file:"
             echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
@@ -124,4 +126,5 @@ else
     clobber
     echo "No check file, use this to copy the current results file:"
     echo "mv log.out $CHECKFILE; git add $CHECKFILE $TESTNAME"
+    exit 1
 fi

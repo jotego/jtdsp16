@@ -7,6 +7,9 @@ for i in tests/*.asm; do
 done
 
 if [ ! -z "$FAILS" ]; then
+    figlet FAIL
     echo "Failed tests:"
     echo $FAILS
+else
+    figlet PASS
 fi

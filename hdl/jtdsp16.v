@@ -23,6 +23,7 @@ module jtdsp16(
 
     output     [15:0] ext_addr,
     input      [15:0] ext_data,
+    input             ext_mode,     // EXM pin, when high internal ROM is disabled
     // ROM programming interface
     input      [11:0] prog_addr,
     input      [15:0] prog_data,
@@ -36,7 +37,6 @@ wire [15:0] rom_addr;
 
 wire [ 2:0] r_field;
 wire [ 1:0] inc_sel;
-wire [15:0] reg_dout;
 
 // X-AAU
 wire        goto_ja;
@@ -53,7 +53,7 @@ wire        xaau_ram_load, xaau_imm_load;
 // Y-AAU
 wire [ 8:0] short_imm;
 wire [15:0] long_imm;
-wire [15:0] acc;
+wire [15:0] acc_dout;
 wire [ 2:0] reg_sel_field;
 wire        imm_type; // 0 for short, 1 for long
 wire        imm_en;
@@ -68,6 +68,8 @@ wire        s_field;  // source
 wire        d_field;  // destination
 wire [ 4:0] c_field;  // condition
 wire [ 1:0] y_field;
+wire        at_sel, dau_acc_load;
+wire        st_a0h, st_a1h;
 
 wire [15:0] cache_dout;
 wire [15:0] dau_dout;
@@ -83,12 +85,23 @@ wire [10:0] ram_addr;
 wire [15:0] ram_dout, rom_dout;
 wire        ram_we;
 
-assign      ext_addr = rom_addr;
+// Register mux
+wire [15:0] r_xaau, r_yaau, r_dau, rmux;
+wire [ 2:0] rsel;
 
 jtdsp16_div u_div(
     .clk            ( clk           ),
     .cen            ( cen           ),
     .cen2           ( cen2          )
+);
+
+jtdsp16_rsel u_rsel(
+    .r_xaau  ( r_xaau    ),
+    .r_yaau  ( r_yaau    ),
+    .r_dau   ( r_dau     ),
+    .r_if    ( 16'd0     ),
+    .rsel    ( rsel      ),
+    .rmux    ( rmux      )
 );
 
 jtdsp16_ctrl u_ctrl(
@@ -106,6 +119,11 @@ jtdsp16_ctrl u_ctrl(
     .pc_halt        ( pc_halt       ),
     .xaau_ram_load  ( xaau_ram_load ),
     .xaau_imm_load  ( xaau_imm_load ),
+    // DAU
+    .at_sel         ( at_sel        ),
+    .dau_rmux_load  ( dau_rmux_load ),
+    .st_a0h         ( st_a0h        ),
+    .st_a1h         ( st_a1h        ),
     // X load control
     .up_xram        ( up_xram       ),
     .up_xrom        ( up_xrom       ),
@@ -113,6 +131,7 @@ jtdsp16_ctrl u_ctrl(
     .up_xcache      ( up_xcache     ),
     // Y load control
     .r_field        ( r_field       ),
+    .rsel           ( rsel          ),
     .y_field        ( y_field       ),
     .ram_we         ( ram_we        ),
     // Increment selecction
@@ -136,8 +155,11 @@ jtdsp16_ctrl u_ctrl(
 
 jtdsp16_rom u_rom(
     .clk        ( clk             ),
-    .addr       ( rom_addr[11:0]  ),
+    .addr       ( rom_addr        ),
     .dout       ( rom_dout        ),
+    .ext_mode   ( ext_mode        ),
+    .ext_data   ( ext_data        ),
+    .ext_addr   ( ext_addr        ),
     // ROM programming interface
     .prog_addr  ( prog_addr       ),
     .prog_data  ( prog_data       ),
@@ -169,13 +191,14 @@ jtdsp16_rom_aau u_rom_aau(
     .rom_dout   ( rom_dout      ),
     .ram_dout   ( ram_dout      ),
     // ROM request
-    .rom_addr   ( rom_addr      )
+    .rom_addr   ( rom_addr      ),
+    .reg_dout   ( r_xaau        )
 );
 
 jtdsp16_ram u_ram(
     .clk        ( clk           ),
     .addr       ( ram_addr      ),
-    .din        ( reg_dout      ),
+    .din        ( rmux          ),
     .dout       ( ram_dout      ),
     .we         ( ram_we        )
 );
@@ -199,34 +222,41 @@ jtdsp16_ram_aau u_ram_aau(
     // register load inputs
     .short_imm  ( short_imm     ),
     .long_imm   ( long_imm      ),
-    .acc        ( acc           ),
+    .acc        ( acc_dout      ),
     .ram_dout   ( ram_dout      ),
     // outputs
     .ram_addr   ( ram_addr      ),
-    .reg_dout   ( reg_dout      )
+    .reg_dout   ( r_yaau        )
 );
-/*
+
 jtdsp16_dau u_dau(
-    .rst        ( rst       ),
-    .clk        ( clk       ),
-    .cen        ( cen2      ),
-    .t_field    ( t_field   ),
-    .f1_field   ( f1_field  ),
-    .f2_field   ( f2_field  ),
-    .s_field    ( s_field   ),  // source
-    .d_field    ( d_field   ),  // destination
-    .c_field    ( c_field   ),  // condition
+    .rst            ( rst           ),
+    .clk            ( clk           ),
+    .cen            ( cen2          ),
+    .r_field        ( r_field       ),
+    .t_field        ( t_field       ),
+    .f1_field       ( f1_field      ),
+    .f2_field       ( f2_field      ),
+    .s_field        ( s_field       ),  // source
+    .d_field        ( d_field       ),  // destination
+    .at_sel         ( at_sel        ),
+    .c_field        ( c_field       ),  // condition
+    // Acc control
+    .rmux_load      ( dau_rmux_load ),
+    .rmux           ( rmux          ),
+    .st_a0h         ( st_a0h        ),
+    .st_a1h         ( st_a1h        ),
     // X load control
     .up_xram        ( up_xram       ),
     .up_xrom        ( up_xrom       ),
-    .up_xext        ( up_xext       ),
     .up_xcache      ( up_xcache     ),
     // Data buses
     .ram_dout       ( ram_dout      ),
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
-    .ext_dout       ( ext_dout      ),
-    .dau_dout       ( dau_dout      )
+    .dau_dout       ( dau_dout      ),
+    .acc_dout       ( acc_dout      ),
+    .reg_dout       ( r_dau         )
 );
-*/
+
 endmodule

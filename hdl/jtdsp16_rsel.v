@@ -14,34 +14,20 @@
 
     Author: Jose Tejada Gomez. Twitter: @topapate
     Version: 1.0
-    Date: 15-7-2020 */
+    Date: 12-7-2020 */
 
-// ROM. Not clocked
-
-module jtdsp16_rom(
-    input             clk,
-    input      [15:0] addr,
-    output     [15:0] dout,
-    // External ROM
-    input             ext_mode,
-    input      [15:0] ext_data,
-    output     [15:0] ext_addr,
-    // ROM programming interface
-    input      [11:0] prog_addr,
-    input      [15:0] prog_data,
-    input             prog_we
+module jtdsp16_rsel(
+    input   [15:0] r_xaau,
+    input   [15:0] r_yaau,
+    input   [15:0] r_dau,
+    input   [15:0] r_if,
+    input   [ 2:0] rsel,
+    output  [15:0] rmux
 );
 
-reg [15:0] rom[0:4095];
-reg [15:0] rom_dout;
-
-assign     ext_addr = addr;
-assign     dout     = ext_mode ? ext_data : (addr[15:12]==4'd0? rom_dout : ext_data);
-
-always @(posedge clk) begin
-    if(prog_we) rom[ prog_addr ] <= prog_data;
-    rom_dout <= rom[ addr[11:0] ];
-end
-
+assign rmux = rsel==3'd0 ? r_yaau : (
+              rsel==3'd1 ? r_xaau : (
+              rsel==3'd2 ? r_dau  : (
+                           r_if     )));
 
 endmodule

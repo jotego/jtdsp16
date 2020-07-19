@@ -12,7 +12,7 @@ typedef map<string,int> Labels;
 
 class Bin {
     int16_t *buf;
-    int pt;    
+    int pt;
     Labels labels;
 public:
     const int max=8192;
@@ -30,6 +30,7 @@ int  assemble( ifstream& fin, Bin& bin );
 int  make_rfield(const char *reg);
 bool is_imm(const char *s, int& val);
 bool is_ram( const char *s, int& val );
+bool is_aTR( const char *s, int& val );
 
 int main(int argc, char* argv[]) {
     // Get input file
@@ -125,7 +126,7 @@ int assemble( ifstream& fin, Bin& bin ) {
         strcpy( line_cpy, line_in );
         line = line_in;
         // remove comments
-        paux = strchr(line, '#');            
+        paux = strchr(line, '#');
         if( paux!= NULL ) *paux = 0;
         // strip all initial blanks
         while( *line==' ' || *line=='\t' ) line++;
@@ -173,7 +174,7 @@ int assemble( ifstream& fin, Bin& bin ) {
                 }
             } else
             if( is_ram(orig, aux) ) { // Read from RAM
-                if( rfield==-1 ) BAD_LINE("Bad register name");
+                if( rfield==-1 ) BAD_LINE("Bad register name")
                 opcode = 0x1E << 10;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
@@ -181,13 +182,21 @@ int assemble( ifstream& fin, Bin& bin ) {
             } else
             if( is_ram(dest, aux) ) { // Write to RAM
                 rfield=make_rfield(orig);
-                if( rfield==-1 ) BAD_LINE("Bad register name");
+                if( rfield==-1 ) BAD_LINE("Bad register name")
                 opcode = 0xC << 11;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
                 bin.push(opcode);
+            } else
+            if( is_aTR(dest, aux)) {
+                rfield=make_rfield(orig);
+                if( rfield==-1 ) BAD_LINE("Bad register name")
+                opcode = 4<<11;
+                opcode |= aux << 10;
+                opcode |= rfield <<4;
+                bin.push(opcode);
             } else {
-                BAD_LINE("bad syntax");
+                BAD_LINE("bad syntax")
             }
         } else
         // Labels
@@ -218,7 +227,7 @@ int assemble( ifstream& fin, Bin& bin ) {
             if( strcmp(cmd,"call")==0 ) {
                 if( strcmp(cmd,"pt")==0 ) {
                     opcode  = 0x18<<11;
-                    opcode |= 3 << 8;                    
+                    opcode |= 3 << 8;
                 } else {
                     aux = bin.get_label( rest );
                     opcode  = 8<<12;
@@ -284,4 +293,10 @@ bool is_ram( const char *s, int& val ) {
     if( strcmp(rest,"++j")==0 ) post=3;
     val = (r<<2) | post;
     return true;
+}
+
+bool is_aTR( const char *s, int& val ) {
+    if( strcmp(s,"a0")==0 ) { val=0; return true; }
+    if( strcmp(s,"a1")==0 ) { val=1; return true; }
+    return false;
 }

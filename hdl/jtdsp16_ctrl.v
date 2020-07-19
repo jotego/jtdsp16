@@ -28,6 +28,7 @@ module jtdsp16_ctrl(
     output reg        s_field,  // source
     output     [ 4:0] c_field,  // condition
     output reg [ 2:0] r_field,
+    output reg [ 2:0] rsel,
     output reg [ 1:0] y_field,
 
     // YAAU control
@@ -35,6 +36,11 @@ module jtdsp16_ctrl(
     output reg [ 1:0] inc_sel,
     output reg        ksel,
     output reg        step_sel,
+    // DAU
+    output reg        at_sel,
+    output reg        dau_rmux_load,
+    output reg        st_a0h,
+    output reg        st_a1h,
     // Load control
     output reg        short_load,
     output reg        long_load,
@@ -104,6 +110,12 @@ always @(posedge clk, posedge rst) begin
         step_sel      <= 0;
         ksel          <= 0;
         inc_sel       <= 2'b0;
+        // DAU
+        at_sel        <= 0;
+        dau_rmux_load <= 0;
+        rsel          <= 3'd0;
+        st_a0h        <= 0;
+        st_a1h        <= 0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
         d_field   <= rom_dout[   10];
@@ -122,12 +134,18 @@ always @(posedge clk, posedge rst) begin
         post_load     <= 0;
         pc_halt       <= 0;
 
+        // XAAU
         goto_ja       <= 0;
         goto_b        <= 0;
         call_ja       <= 0;
         xaau_ram_load <= 0;
         xaau_imm_load <= 0;
-        // XAAU
+
+        // DAU
+        dau_rmux_load  <= 0;
+        st_a0h        <= 0;
+        st_a1h        <= 0;
+
         if(!double) begin
             casez( rom_dout[15:11] ) // T
                 5'b0000?: begin // goto JA
@@ -146,16 +164,25 @@ always @(posedge clk, posedge rst) begin
                     short_load <= 1;
                     r_field    <= rom_dout[11:9]^3'b100;
                 end
+                5'b01000: begin // aT=R
+                    r_field      <=  rom_dout[6:4];
+                    rsel         <=  rom_dout[9:7];
+                    dau_rmux_load<= 1;
+                    at_sel       <=  rom_dout[10];
+                    st_a0h       <=  rom_dout[10];
+                    st_a1h       <= ~rom_dout[10];
+                    double       <= 1;
+                end
                 5'b01010: begin // long imm
                     long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
                     xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
-                    r_field       <= rom_dout[9:4];
+                    r_field       <= rom_dout[6:4];
                     double        <= 1;
                 end
                 5'b01111, // RAM load to r0-r3
                 5'b01100  // r0-r3 storage to RAM
-                : begin 
-                    ram_load  <= 
+                : begin
+                    ram_load  <=
                         rom_dout[15:10] == 6'b011110 &&
                         rom_dout[ 9:7]==3'b000; // YAAU register as destination
                     xaau_ram_load <=

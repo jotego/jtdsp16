@@ -40,9 +40,10 @@ module jtdsp16_ram_aau(
     input    [15:0] long_imm,
     input    [15:0] acc,
     input    [15:0] ram_dout,
+    input    [15:0] rmux,
     // outputs
-    output   [10:0] ram_addr,
-    output   [15:0] reg_dout
+    output   [15:0] reg_dout,
+    output   [10:0] ram_addr
 );
 
 reg  [15:0] re, // end   - virtual shift register
@@ -74,9 +75,9 @@ assign      vsr_loop   = rin==re && vsr_en;
 assign      short_sign = (rin == 3'd6 || rin == 3'd7) ? 1'b0 : short_imm[8];
 assign      imm_ext    = long_load ? long_imm : { {7{short_sign}}, short_imm };
 assign      imm_load   = short_load || long_load;
-assign      reg_dout   = rin;
 assign      ram_addr   = rind[10:0];
 assign      reg_load   = imm_load || acc_load || ram_load;
+assign      reg_dout   = rin;
 
 always @(*) begin
     load_j  = reg_load  && r_field==3'd4;
@@ -103,7 +104,7 @@ function [15:0] load_reg;
     input    [ 8:0] short;
     load_reg = load_acc   ? acc  : (
                load_long  ? long : { {7{sign}}, short});
-endfunction        
+endfunction
 
 always @(*) begin
     case( r_field[1:0] ) // register to load to
@@ -132,7 +133,7 @@ always @(*) begin
     step_mux = step_sel ? jk_mux : unit_mux;
     rsum     = rind + step_mux;
     rnext    = imm_load  ? imm_ext  : (
-               acc_load  ? acc      : 
+               acc_load  ? acc      :
                            ram_dout   );
     ind_next = vsr_loop  ? rb : rsum;
 end
