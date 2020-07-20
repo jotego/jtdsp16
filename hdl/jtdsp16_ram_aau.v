@@ -107,11 +107,15 @@ function [15:0] load_reg;
 endfunction
 
 always @(*) begin
-    case( r_field[1:0] ) // register to load to
-        2'd0: rin = r0;
-        2'd1: rin = r1;
-        2'd2: rin = r2;
-        2'd3: rin = r3;
+    case( r_field ) // register to load from
+        3'd0: rin = r0;
+        3'd1: rin = r1;
+        3'd2: rin = r2;
+        3'd3: rin = r3;
+        3'd4: rin = j;
+        3'd5: rin = k;
+        3'd6: rin = rb;
+        3'd7: rin = re;
     endcase
     case( y_field ) // register used for RAM indexing
         2'd0: rind = r0;
