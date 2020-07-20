@@ -172,6 +172,7 @@ always @(posedge clk, posedge rst) begin
                     st_a0h       <=  rom_dout[10];
                     st_a1h       <= ~rom_dout[10];
                     double       <= 1;
+                    pc_halt      <= 1;
                 end
                 5'b01010: begin // long imm
                     long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination

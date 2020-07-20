@@ -191,8 +191,8 @@ int assemble( ifstream& fin, Bin& bin ) {
             if( is_aTR(dest, aux)) {
                 rfield=make_rfield(orig);
                 if( rfield==-1 ) BAD_LINE("Bad register name")
-                opcode = 4<<11;
-                opcode |= aux << 10;
+                opcode = 8<<11;
+                opcode |= (1-aux) << 10;
                 opcode |= rfield <<4;
                 bin.push(opcode);
             } else {
