@@ -49,6 +49,13 @@ initial begin
     // DAU
     $display("a0=0x%04X", UUT.u_dau.a0);
     $display("a1=0x%04X", UUT.u_dau.a1);
+    $display("x=0x%04X", UUT.u_dau.x);
+    $display("y=0x%04X", UUT.u_dau.y);
+    $display("c0=0x%04X", UUT.u_dau.c0);
+    $display("c1=0x%04X", UUT.u_dau.c1);
+    $display("c2=0x%04X", UUT.u_dau.c2);
+    $display("auc=0x%04X", UUT.u_dau.auc);
+    //$display("psw=0x%04X", UUT.u_dau.psw);
     $finish;
 end
 

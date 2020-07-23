@@ -8,6 +8,8 @@ rb=0xcafe
 goto loop
 
 change:
+a0=pr
+a1=pi
 r0=4
 r2=5
 r3=6

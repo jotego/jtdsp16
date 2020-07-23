@@ -31,6 +31,8 @@ int  make_rfield(const char *reg);
 bool is_imm(const char *s, int& val);
 bool is_ram( const char *s, int& val );
 bool is_aTR( const char *s, int& val );
+bool is_alu( char *str, int& op );
+void strip_blanks( char *s );
 
 int main(int argc, char* argv[]) {
     // Get input file
@@ -113,37 +115,29 @@ void Bin::dump( const char *name ) {
     }
 }
 
-#define BAD_LINE(str) { cout << "ERROR: " << str << " at line " << linecnt << "\n\t> " << line_cpy << '\n'; return linecnt; }
+#define BAD_LINE(str) { cout << "ERROR: " << str << " at line " << linecnt << '\n'; return linecnt; }
 
 int assemble( ifstream& fin, Bin& bin ) {
     char    line_in[512];
     char    line_cpy[512];
-    int     opcode=0, linecnt=1;
+    int     opcode=0, linecnt=0;
 
     while( fin.getline(line_in, 512).good() ) {
         char *paux, *line;
         int  aux;
         strcpy( line_cpy, line_in );
+        linecnt++;
         line = line_in;
-        // remove comments
-        paux = strchr(line, '#');
-        if( paux!= NULL ) *paux = 0;
-        // strip all initial blanks
-        while( *line==' ' || *line=='\t' ) line++;
-        // strip all final blanks
-        paux=line;
-        while( *paux ) paux++;
-        do {
-            paux--;
-            if( *paux==' ' || *paux=='\t' )
-                *paux=0;
-            else
-                break;
-        }while( paux>line );
+        strip_blanks(line);
+
         if( line[0]==0 || line[0]=='\n' ) // blank line
             continue;
 
         // parse line
+        if( is_alu(line, aux) ) {
+            cout << "ALU\n";
+            bin.push(aux);
+        } else
         if( strchr(line,'=') ) {
             char *dest, *orig;
             dest = strtok(line, " \t=");
@@ -158,7 +152,7 @@ int assemble( ifstream& fin, Bin& bin ) {
             int rfield=make_rfield(dest);
             //cout << "DEST=" << dest << '\n';
             if( is_imm(orig, aux) ) {
-                if( rfield==-1 ) BAD_LINE("Bad register name");
+                if( rfield==-1 ) BAD_LINE(("(imm) Bad register name "+string(dest)))
                 if( aux < 512 && aux>=-257 && rfield<8 && rfield>=0 ) {
                     // Short immediate
                     opcode = 1<<12;
@@ -174,7 +168,7 @@ int assemble( ifstream& fin, Bin& bin ) {
                 }
             } else
             if( is_ram(orig, aux) ) { // Read from RAM
-                if( rfield==-1 ) BAD_LINE("Bad register name")
+                if( rfield==-1 ) BAD_LINE(("(ram read) Bad register name "+string(dest)))
                 opcode = 0x1E << 10;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
@@ -182,7 +176,7 @@ int assemble( ifstream& fin, Bin& bin ) {
             } else
             if( is_ram(dest, aux) ) { // Write to RAM
                 rfield=make_rfield(orig);
-                if( rfield==-1 ) BAD_LINE("Bad register name")
+                if( rfield==-1 ) BAD_LINE(("(ram write) Bad register name "+string(orig)))
                 opcode = 0xC << 11;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
@@ -190,7 +184,7 @@ int assemble( ifstream& fin, Bin& bin ) {
             } else
             if( is_aTR(dest, aux)) {
                 rfield=make_rfield(orig);
-                if( rfield==-1 ) BAD_LINE("Bad register name")
+                if( rfield==-1 ) BAD_LINE(("(aT=R) Bad register name "+string(orig)))
                 opcode = 8<<11;
                 opcode |= (1-aux) << 10;
                 opcode |= rfield <<4;
@@ -236,7 +230,6 @@ int assemble( ifstream& fin, Bin& bin ) {
                 bin.push(opcode);
             }
         }
-        linecnt++;
     }
     return 0;
 }
@@ -275,8 +268,8 @@ int make_rfield(const char *reg) {
 }
 
 bool is_imm(const char *s, int& val) {
+    if( make_rfield(s)!=-1 ) return false;
     if( strchr(s, '*') ) return false;
-    if( strchr(s, 'r') ) return false;
     val = strtol( s, NULL, 0);
     return true;
 }
@@ -299,4 +292,108 @@ bool is_aTR( const char *s, int& val ) {
     if( strcmp(s,"a0")==0 ) { val=0; return true; }
     if( strcmp(s,"a1")==0 ) { val=1; return true; }
     return false;
+}
+
+void strip_blanks( char *s ) {
+    const int len = strlen(s);
+    if( len<= 0 ) return;
+
+    char *buf = new char[ len ];
+    char *aux = buf;
+    while( *s && *s != '#') { // ignores comments too
+        if( *s != ' ' && *s != '\t' ) *aux++=*s;
+        s++;
+    }
+    *aux=0;
+    strcpy( s, aux );
+    delete []buf;
+}
+
+#define AUXCMP(a) (strcmp(aux,a)==0)
+
+class strcopy {
+    char *buf;
+public:
+    strcopy( const char *s ) {
+        buf=new char[strlen(s)];
+        strcpy(buf,s);
+    }
+    ~strcopy() { delete[] buf;}
+    char *get_buf() { return buf; }
+};
+
+bool is_alu( char *str, int& op ) {
+    strcopy copy(str);
+    char *aux=strtok(copy.get_buf(),",");
+    int d=-1, s=-1,at=-1;
+    int pre_f1=-1;
+    int y_field = -1;
+
+    if( AUXCMP("p=x*y") ){
+        pre_f1 = 2;
+        aux = strtok(NULL,","); // get the *r0++ part
+    } else {
+        if( aux[1]=='0' || aux[1]=='1')
+            { d=aux[1]-'0'; aux[1]='x'; }
+        else
+            if( aux[1]!='o' && d==-1 ) return false;
+        if( strlen(aux)>=5 ) {
+            if(aux[4]=='0' || aux[4]=='1') {
+                s=aux[4]-'0';
+                aux[4]='x';
+            }
+        }
+        if( AUXCMP("ax=p")    ) pre_f1 = 0;
+        if( AUXCMP("ax=ax+p") ) pre_f1 = 1;
+        if( AUXCMP("ax=ax-p") ) pre_f1 = 3;
+        if( AUXCMP("nop")     ) pre_f1 = 6;
+        if( AUXCMP("ax=ax|y") ) pre_f1 = 8;
+        if( AUXCMP("ax=ax^y") ) pre_f1 = 9;
+        if( AUXCMP("ax&y")    ) { s=d; d=0; pre_f1 = 10; }
+        if( AUXCMP("ax-y")    ) { s=d; d=0; pre_f1 = 11; }
+        if( AUXCMP("ax=y")    ) pre_f1 = 12;
+        if( AUXCMP("ax=ax+y") ) pre_f1 = 13;
+        if( AUXCMP("ax=ax&y") ) pre_f1 = 14;
+        if( AUXCMP("ax=ax-y") ) pre_f1 = 15;
+        aux = strtok(NULL,",");
+        if( aux ) {
+            if( strcmp(aux,"p=x*y")==0 ) {
+                if( pre_f1<4)
+                    pre_f1+=4;
+                else
+                    return false;
+                aux = strtok(NULL,","); // get the *r0++ part
+            }
+        }
+        if(s==-1) s=0;
+        if(d==-1) d=0;
+        if(pre_f1==-1) return false;
+    }
+    if( aux ) {
+        char* equpos= strchr(aux,'=');
+        if( equpos ) { // picks the a0= optional part
+            if( aux[0]!='a') return false;
+            at = aux[1]-'0';
+            aux=equpos+1;
+        }
+        if( aux[2]>='0' || aux[2] <='3' ) y_field = aux[2]-'0';
+        else return false;
+        aux[2]='x';
+        if( AUXCMP("*rx")    ) y_field |= 0;
+        if( AUXCMP("*rx++")  ) y_field |= 1;
+        if( AUXCMP("*rx--")  ) y_field |= 2;
+        if( AUXCMP("*rx++j") ) y_field |= 3;
+        if( y_field==-1 ) return false;
+    } else {
+        y_field = 0;
+    }
+    // makes OP
+    op=0;
+    if( at!=-1 ) {
+        if( at==d ) return false;
+        op |= 1<<11;
+    }
+    op = (d<<10) | (s<<9) | (pre_f1<<5) | (y_field);
+    op |= 3<<12;
+    return true;
 }

@@ -29,10 +29,7 @@ module jtdsp16_dau(
     input             at_sel,
     input      [ 4:0] c_field,  // condition
     input             rmux_load,
-    // X load control
-    input             up_xram,
-    input             up_xrom,
-    input             up_xcache,
+    input             imm_load,
     // ALU control
     input             alu_sel,
     input             st_a0h,
@@ -43,6 +40,7 @@ module jtdsp16_dau(
     input      [15:0] ram_dout,
     input      [15:0] rom_dout,
     input      [15:0] rmux,
+    input      [15:0] long_imm,
     input      [15:0] cache_dout,
 
     output     [15:0] dau_dout,
@@ -78,8 +76,9 @@ wire        store;
 wire        sel_special;
 wire        clr_yl, clr_a1l, clr_a0l;
 wire        sat_a1, sat_a0;
-reg         load_ay1, load_ay0;
-reg         load_y, load_yl;
+wire        load_ay1, load_ay0;
+wire        load_y, load_yl;
+wire        load_x;
 
 // Conditions
 wire        pl;     // nonnegative
@@ -121,6 +120,12 @@ assign alu_in      = alu_sel ? ram_ext : p_ext;
 assign acc_dout    = at_sel ? a1[15:0] : a0[15:0];
 assign acc_in      = rmux_load ? rmux_ext : alu_out[35:16];
 
+assign load_x      = imm_load && r_field==3'd0;
+assign load_y      = imm_load && r_field==3'd1;
+assign load_yl     = imm_load && r_field==3'd2;
+assign load_ay0    = 0;
+assign load_ay1    = 0;
+
 function [35:0] round;
     input [35:0] a;
     round = { a[35:16] + a[15] , 16'd0 };
@@ -128,24 +133,30 @@ endfunction
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
-        p  <= 32'd0;
-        x  <= 16'd0;
-        yh <= 16'd0;
-        yl <= 16'd0;
-        a0 <= 36'd0;
-        a1 <= 36'd0;
+        p   <= 32'd0;
+        x   <= 16'd0;
+        yh  <= 16'd0;
+        yl  <= 16'd0;
+        a0  <= 36'd0;
+        a1  <= 36'd0;
+        auc <=  7'd0;
+        c0  <=  8'd0;
+        c1  <=  8'd0;
+        c2  <=  8'd0;
     end else if(cen) begin
         if( up_p ) p  <= x*yh;
-        x <= up_xram   ? ram_dout   : (
-             up_xrom   ? rom_dout   : (
-             up_xcache ? cache_dout : (
-                         x             )));
+        if( load_x ) x <= long_imm;
+        //x <= up_xram   ? ram_dout   : (
+        //     up_xrom   ? rom_dout   : (
+        //     up_xcache ? cache_dout : (
+        //                 x             )));
         if( up_y ) begin
             if( !load_yl ) begin
-                yh <= load_ay1 ? a1[31:16] : (load_ay0 ? a1[15:0] : ram_dout);
+                yh <= load_ay1 ? a1[31:16] : (load_ay0 ? a1[15:0] :
+                                             (imm_load ? long_imm : ram_dout));
                 if( clr_yl ) yl <= 16'd0;
             end else begin
-                yl <= ram_dout[7:0];
+                yl <= imm_load ? long_imm : ram_dout[7:0];
             end
         end
         if( st_a0h ) a0[35:16] <= acc_in;

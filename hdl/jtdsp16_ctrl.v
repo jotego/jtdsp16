@@ -39,6 +39,7 @@ module jtdsp16_ctrl(
     // DAU
     output reg        at_sel,
     output reg        dau_rmux_load,
+    output reg        dau_imm_load,
     output reg        st_a0h,
     output reg        st_a1h,
     // Load control
@@ -113,6 +114,7 @@ always @(posedge clk, posedge rst) begin
         // DAU
         at_sel        <= 0;
         dau_rmux_load <= 0;
+        dau_imm_load  <= 0;
         rsel          <= 3'd0;
         st_a0h        <= 0;
         st_a1h        <= 0;
@@ -142,7 +144,8 @@ always @(posedge clk, posedge rst) begin
         xaau_imm_load <= 0;
 
         // DAU
-        dau_rmux_load  <= 0;
+        dau_rmux_load <= 0;
+        dau_imm_load  <= 0;
         st_a0h        <= 0;
         st_a1h        <= 0;
 
@@ -177,6 +180,7 @@ always @(posedge clk, posedge rst) begin
                 5'b01010: begin // long imm
                     long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
                     xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
+                    dau_imm_load  <= rom_dout[9:7]==3'b010; // DAU register as destination
                     r_field       <= rom_dout[6:4];
                     double        <= 1;
                 end
