@@ -135,7 +135,7 @@ int assemble( ifstream& fin, Bin& bin ) {
 
         // parse line
         if( is_alu(line, aux) ) {
-            cout << "ALU\n";
+            //cout << "ALU\n";
             bin.push(aux);
         } else
         if( strchr(line,'=') ) {
@@ -345,6 +345,7 @@ bool is_alu( char *str, int& op ) {
                 aux[4]='x';
             }
         }
+        //cout << "AUX=" << aux << endl;
         if( AUXCMP("ax=p")    ) pre_f1 = 4;
         if( AUXCMP("ax=ax+p") ) pre_f1 = 5;
         if( AUXCMP("nop")     ) pre_f1 = 6;

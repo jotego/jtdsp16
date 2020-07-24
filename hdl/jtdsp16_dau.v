@@ -207,9 +207,9 @@ always @(*) begin
         4'd0, 4'd4: alu_arith = p_ext;
         4'd1, 4'd5: alu_arith = as+p_ext;
         4'd3, 4'd7, 4'd11: alu_arith = as-p_ext;
-        4'd8:       alu_arith = as | p_ext;
-        4'd9:       alu_arith = as ^ p_ext;
-        4'd10:      alu_arith = as & p_ext;
+        4'd8:       alu_arith = as | y_ext;
+        4'd9:       alu_arith = as ^ y_ext;
+        4'd10:      alu_arith = as & y_ext;
         4'd12:      alu_arith = y_ext;
         4'd13:      alu_arith = as + y_ext;
         4'd14:      alu_arith = as & y_ext;
