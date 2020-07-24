@@ -33,6 +33,7 @@ bool is_ram( const char *s, int& val );
 bool is_aTR( const char *s, int& val );
 bool is_alu( char *str, int& op );
 void strip_blanks( char *s );
+void simplify( char *s );
 
 int main(int argc, char* argv[]) {
     // Get input file
@@ -140,11 +141,13 @@ int assemble( ifstream& fin, Bin& bin ) {
         } else
         if( strchr(line,'=') ) {
             char *dest, *orig;
+
+            if( strncmp(line,"move",4)==0 )
+                line+=4; // "move" is simply ignored
+
             dest = strtok(line, " \t=");
             if( dest==NULL ) continue;
 
-            if( strcmp(dest,"move")==0 )
-                dest = strtok( NULL," \t=");
 
             orig = strtok( NULL," \t=");
             // cout << setw(3) << linecnt << "> " << line_cpy << " - ";
@@ -192,42 +195,48 @@ int assemble( ifstream& fin, Bin& bin ) {
             } else {
                 BAD_LINE("bad syntax")
             }
-        } else
-        // Labels
-        if( paux = strchr(line,':') ) {
-            *paux = 0;
-            bin.add_label( line );
-            continue;
         } else {
-            char *cmd = strtok( line, " \t" );
-            if( cmd == NULL ) {
-                BAD_LINE("Cannot break up in words")
-            }
-            char *rest = cmd + strlen(cmd) + 1;
-            if( strcmp(cmd,"goto")==0 ) {
-                aux = bin.get_label( rest );
-                opcode = aux&0xFFF;
-                bin.push(opcode);
-            } else
-            if( strcmp(cmd,"return")==0 ) {
-                opcode  = 0x18<<11;
-                bin.push(opcode);
-            } else
-            if( strcmp(cmd,"ireturn")==0 ) {
-                opcode  = 0x18<<11;
-                opcode |= 1 << 8;
-                bin.push(opcode);
-            } else
-            if( strcmp(cmd,"call")==0 ) {
-                if( strcmp(cmd,"pt")==0 ) {
-                    opcode  = 0x18<<11;
-                    opcode |= 3 << 8;
-                } else {
-                    aux = bin.get_label( rest );
-                    opcode  = 8<<12;
-                    opcode |= (aux&0xfff);
+            // Restores the blanks in the line
+            strcpy( line, line_cpy);
+            simplify( line );
+            // Labels
+            if( paux = strchr(line,':') ) {
+                *paux = 0;
+                bin.add_label( line );
+                continue;
+            } else {
+                char *cmd = strtok( line, " \t" );
+                if( cmd == NULL ) {
+                    BAD_LINE("Cannot break up in words")
                 }
-                bin.push(opcode);
+                char *rest = cmd + strlen(cmd) + 1;
+                if( strcmp(cmd,"goto")==0 ) {
+                    aux = bin.get_label( rest );
+                    opcode = aux&0xFFF;
+                    bin.push(opcode);
+                } else
+                if( strcmp(cmd,"return")==0 ) {
+                    opcode  = 0x18<<11;
+                    bin.push(opcode);
+                } else
+                if( strcmp(cmd,"ireturn")==0 ) {
+                    opcode  = 0x18<<11;
+                    opcode |= 1 << 8;
+                    bin.push(opcode);
+                } else
+                if( strcmp(cmd,"call")==0 ) {
+                    if( strcmp(cmd,"pt")==0 ) {
+                        opcode  = 0x18<<11;
+                        opcode |= 3 << 8;
+                    } else {
+                        aux = bin.get_label( rest );
+                        opcode  = 8<<12;
+                        opcode |= (aux&0xfff);
+                    }
+                    bin.push(opcode);
+                } else {
+                    BAD_LINE("Syntax error")
+                }
             }
         }
     }
@@ -311,6 +320,36 @@ void strip_blanks( char *s ) {
     delete []buf;
 }
 
+// Simplify is similar to strip blanks but it only removes:
+// initial blanks
+// duplicated blanks
+// comments
+void simplify( char *s ) {
+    const int len = strlen(s);
+    char *scan=s;
+    if( len<= 0 ) return;
+    bool first=true;
+
+    char *buf = new char[ len ];
+    char *aux = buf;
+    while( *scan && *scan != '#') { // ignores comments too
+        if( *scan != ' ' && *scan != '\t' ) {
+            *aux++=*scan;
+            first = true;
+        }
+        else {
+            if( first ) *aux++=' ';
+            first = false;
+
+        }
+        scan++;
+    }
+    *aux=0;
+    //cout << "From " << s << " to " << buf << endl;
+    strcpy( s, buf );
+    delete []buf;
+}
+
 #define AUXCMP(a) (strcmp(aux,a)==0)
 
 class strcopy {
@@ -330,7 +369,7 @@ bool is_alu( char *str, int& op ) {
     int d=-1, s=-1,at=-1;
     int pre_f1=-1;
     int y_field = -1;
-
+    //cout << "is_alu: aux=>  " << aux << endl;
     if( AUXCMP("p=x*y") ){
         pre_f1 = 2;
         aux = strtok(NULL,","); // get the *r0++ part
@@ -396,6 +435,8 @@ bool is_alu( char *str, int& op ) {
         if( at==d ) return false;
         op |= 1<<11;
     }
+    if( d==-1 ) d=0;
+    if( s==-1 ) s=0;
     op = (d<<10) | (s<<9) | (pre_f1<<5) | (y_field);
     op |= 3<<12;
     return true;

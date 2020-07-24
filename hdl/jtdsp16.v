@@ -65,7 +65,7 @@ wire [ 4:0] t_field;
 wire [ 5:0] dau_op_fields;
 wire [ 4:0] c_field;  // condition
 wire [ 1:0] y_field;
-wire        dau_acc_load, dau_imm_load;
+wire        dau_acc_load, dau_imm_load, dau_ram_load;
 wire        st_a0h, st_a1h;
 wire        dau_dec_en;
 
@@ -123,6 +123,7 @@ jtdsp16_ctrl u_ctrl(
     .at_sel         ( at_sel        ),
     .dau_rmux_load  ( dau_rmux_load ),
     .dau_imm_load   ( dau_imm_load  ),
+    .dau_ram_load   ( dau_ram_load  ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     // X load control
@@ -243,6 +244,7 @@ jtdsp16_dau u_dau(
     // Acc control
     .rmux_load      ( dau_rmux_load ),
     .imm_load       ( dau_imm_load  ),
+    .ram_load       ( dau_ram_load  ),
     .rmux           ( rmux          ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
@@ -251,7 +253,6 @@ jtdsp16_dau u_dau(
     .rom_dout       ( rom_dout      ),
     .long_imm       ( long_imm      ),
     .cache_dout     ( cache_dout    ),
-    .dau_dout       ( dau_dout      ),
     .acc_dout       ( acc_dout      ),
     .reg_dout       ( r_dau         )
 );

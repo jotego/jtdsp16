@@ -25,6 +25,7 @@ module jtdsp16_dau(
     input      [ 4:0] t_field,
     input      [ 5:0] op_fields,
     input      [ 4:0] c_field,  // condition
+    input             ram_load,
     input             rmux_load,
     input             imm_load,
     // ALU control
@@ -38,7 +39,6 @@ module jtdsp16_dau(
     input      [15:0] long_imm,
     input      [15:0] cache_dout,
 
-    output     [15:0] dau_dout,
     output     [15:0] acc_dout,
     output reg [15:0] reg_dout
 );
@@ -79,7 +79,6 @@ wire        store;
 wire        sel_special;
 wire        clr_yl, clr_a1l, clr_a0l;
 wire        sat_a1, sat_a0;
-wire        load_ay1, load_ay0;
 wire        load_y, load_yl;
 wire        load_x, load_auc;
 wire        load_c0, load_c1, load_c2;
@@ -107,7 +106,7 @@ wire        f1_st;  // F1 store operation
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
 assign up_p        = dec_en && f1_field[3:2]==2'b0;
-assign up_y        = load_ay0 | load_ay1 | load_y | load_yl;
+assign up_y        = load_y | load_yl;
 assign st_a1l      = 0;
 assign st_a0l      = 0;
 assign store       = dec_en && f1_field != 4'b10 && f1_field != 4'b110 && f1_field[3:1] != 3'b101;
@@ -128,18 +127,15 @@ assign acc_in      = rmux_load ? rmux_ext : alu_out[35:16];
 
 assign f1_st       = dec_en && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
 
-assign load_x      = imm_load && r_field==3'd0;
-assign load_y      = imm_load && r_field==3'd1;
-assign load_yl     = imm_load && r_field==3'd2;
-assign load_auc    = imm_load && r_field==3'd3;
-assign load_c0     = imm_load && r_field==3'd5;
-assign load_c1     = imm_load && r_field==3'd6;
-assign load_c2     = imm_load && r_field==3'd7;
+assign load_x      = (imm_load || ram_load) && r_field==3'd0;
+assign load_y      = (imm_load || ram_load) && r_field==3'd1;
+assign load_yl     = (imm_load || ram_load) && r_field==3'd2;
+assign load_auc    = (imm_load || ram_load) && r_field==3'd3;
+assign load_c0     = (imm_load || ram_load) && r_field==3'd5;
+assign load_c1     = (imm_load || ram_load) && r_field==3'd6;
+assign load_c2     = (imm_load || ram_load) && r_field==3'd7;
 assign load_a0     = f1_st && !d_field;
 assign load_a1     = f1_st &&  d_field;
-assign load_ay0    = 0;
-assign load_ay1    = 0;
-
 
 assign { d_field, s_field, f1_field } = op_fields;
 
@@ -162,15 +158,15 @@ always @(posedge clk, posedge rst) begin
         c2  <=  8'd0;
     end else if(cen) begin
         if( up_p ) p  <= x*yh;
-        if( load_x ) x <= long_imm;
+        if( load_x ) x <= imm_load ? long_imm : ram_dout;
         //x <= up_xram   ? ram_dout   : (
         //     up_xrom   ? rom_dout   : (
         //     up_xcache ? cache_dout : (
         //                 x             )));
         if( up_y ) begin
             if( !load_yl ) begin
-                yh <= load_ay1 ? a1[31:16] : (load_ay0 ? a1[15:0] :
-                                             (imm_load ? long_imm : ram_dout));
+                yh <= /*load_ay1 ? a1[31:16] : (load_ay0 ? a0[15:0] :*/
+                                             (imm_load ? long_imm : ram_dout);
                 if( clr_yl ) yl <= 16'd0;
             end else begin
                 yl <= imm_load ? long_imm : ram_dout[7:0];
@@ -189,11 +185,11 @@ always @(posedge clk, posedge rst) begin
         //a1[15: 0] <= st_a1h ? (clr_a1l ? 16'd0 : alu_out[15:0]) :
         //            (st_a1l ? alu_out[15:0] : a1[15:0]);
         // Counters
-        if( load_c0 ) c0 <= long_imm[7:0];
-        if( load_c1 ) c1 <= long_imm[7:0];
-        if( load_c2 ) c2 <= long_imm[7:0];
+        if( load_c0 ) c0 <= imm_load ? long_imm[7:0] : ram_dout[7:0];
+        if( load_c1 ) c1 <= imm_load ? long_imm[7:0] : ram_dout[7:0];
+        if( load_c2 ) c2 <= imm_load ? long_imm[7:0] : ram_dout[7:0];
         // special registers
-        if( load_auc ) auc <= long_imm[6:0];
+        if( load_auc ) auc <= imm_load ? long_imm[6:0] : ram_dout[6:0];
         // Flags
         lmi <= alu_out[35];
         leq <= ~|alu_out;
