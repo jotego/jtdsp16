@@ -296,16 +296,18 @@ bool is_aTR( const char *s, int& val ) {
 
 void strip_blanks( char *s ) {
     const int len = strlen(s);
+    char *scan=s;
     if( len<= 0 ) return;
 
     char *buf = new char[ len ];
     char *aux = buf;
-    while( *s && *s != '#') { // ignores comments too
-        if( *s != ' ' && *s != '\t' ) *aux++=*s;
-        s++;
+    while( *scan && *scan != '#') { // ignores comments too
+        if( *scan != ' ' && *scan != '\t' ) *aux++=*scan;
+        scan++;
     }
     *aux=0;
-    strcpy( s, aux );
+    //cout << "From " << s << " to " << buf << endl;
+    strcpy( s, buf );
     delete []buf;
 }
 
