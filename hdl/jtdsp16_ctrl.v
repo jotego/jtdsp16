@@ -21,11 +21,9 @@ module jtdsp16_ctrl(
     input             clk,
     input             cen,
     // Instruction fields
+    output reg        dau_dec_en,
     output reg [ 4:0] t_field,
-    output reg [ 3:0] f1_field,
-    output     [ 3:0] f2_field,
-    output reg        d_field,  // destination
-    output reg        s_field,  // source
+    output reg [ 5:0] dau_op_fields,
     output     [ 4:0] c_field,  // condition
     output reg [ 2:0] r_field,
     output reg [ 2:0] rsel,
@@ -112,6 +110,7 @@ always @(posedge clk, posedge rst) begin
         ksel          <= 0;
         inc_sel       <= 2'b0;
         // DAU
+        dau_dec_en    <= 0;
         at_sel        <= 0;
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
@@ -120,9 +119,6 @@ always @(posedge clk, posedge rst) begin
         st_a1h        <= 0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
-        d_field   <= rom_dout[   10];
-        s_field   <= rom_dout[    9];
-        f1_field  <= rom_dout[ 8: 5];
         i_field   <= rom_dout[10: 0];
         x_field   <= rom_dout[    4];
         short_imm <= rom_dout[ 8: 0];
@@ -144,6 +140,8 @@ always @(posedge clk, posedge rst) begin
         xaau_imm_load <= 0;
 
         // DAU
+        dau_op_fields <= 6'd0;
+        dau_dec_en    <= 0;
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
         st_a0h        <= 0;
@@ -221,6 +219,11 @@ always @(posedge clk, posedge rst) begin
                         end
                     endcase
                     double   <= 1;
+                end
+                5'b0011?: begin // F1 Y
+                    dau_dec_en    <= 1;
+                    dau_op_fields <= rom_dout[10:5];
+                    //mul_en
                 end
             endcase
         end

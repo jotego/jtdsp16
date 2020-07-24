@@ -343,10 +343,10 @@ bool is_alu( char *str, int& op ) {
                 aux[4]='x';
             }
         }
-        if( AUXCMP("ax=p")    ) pre_f1 = 0;
-        if( AUXCMP("ax=ax+p") ) pre_f1 = 1;
-        if( AUXCMP("ax=ax-p") ) pre_f1 = 3;
+        if( AUXCMP("ax=p")    ) pre_f1 = 4;
+        if( AUXCMP("ax=ax+p") ) pre_f1 = 5;
         if( AUXCMP("nop")     ) pre_f1 = 6;
+        if( AUXCMP("ax=ax-p") ) pre_f1 = 7;
         if( AUXCMP("ax=ax|y") ) pre_f1 = 8;
         if( AUXCMP("ax=ax^y") ) pre_f1 = 9;
         if( AUXCMP("ax&y")    ) { s=d; d=0; pre_f1 = 10; }
@@ -358,8 +358,8 @@ bool is_alu( char *str, int& op ) {
         aux = strtok(NULL,",");
         if( aux ) {
             if( strcmp(aux,"p=x*y")==0 ) {
-                if( pre_f1<4)
-                    pre_f1+=4;
+                if( pre_f1>=4 && pre_f1<=7)
+                    pre_f1-=4;
                 else
                     return false;
                 aux = strtok(NULL,","); // get the *r0++ part
