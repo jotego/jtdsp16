@@ -26,6 +26,17 @@ public:
     int get_label( const char *name, bool fallback=true );
 };
 
+class strcopy {
+    char *buf;
+public:
+    strcopy( const char *s ) {
+        buf=new char[strlen(s)];
+        strcpy(buf,s);
+    }
+    ~strcopy() { delete[] buf;}
+    char *get_buf() { return buf; }
+};
+
 int  assemble( ifstream& fin, Bin& bin );
 int  make_rfield(const char *reg);
 bool is_imm(const char *s, int& val);
@@ -118,12 +129,102 @@ void Bin::dump( const char *name ) {
 }
 
 #define BAD_LINE(str) { cout << "ERROR: " << str << " at line " << linecnt << '\n'; return linecnt; }
+#define NOTINCACHE    if(cache.incache()) { cout << "ERROR: instruction not cacheable at line " << linecnt << '\n'; return linecnt; }
+
+class CacheLoop {
+    bool inloop;
+    int  ni, k;
+    int cache_mem[127];
+    char *msg;
+    Bin& bin;
+public:
+    CacheLoop( Bin& _bin) : bin(_bin) {
+        inloop=false; ni=0; k=0;
+        msg = new char[512];
+        *msg=0;
+    }
+    ~CacheLoop() {
+        delete[] msg;
+        msg=0;
+    }
+    void push(int op);
+    void dump();
+    const char *get_msg() const { return msg; }
+    bool parse( char *line );
+    bool error() { return *msg!=0; }
+    bool incache() { return inloop; }
+};
+
+void CacheLoop::push(int op) {
+    if( inloop ) {
+        if(ni>126 && *msg==0) {
+            strcpy(msg,"Cache only has room for 127 instructions");
+        }
+        else
+            cache_mem[ni++] = op;
+    } else {
+        bin.push(op);
+    }
+}
+
+void CacheLoop::dump() {
+    int op = 7<<12;
+    op |= ni<<7;
+    op |= k;
+    bin.push(op);
+    for( int k=0; k<ni; k++ ) {
+        bin.push( cache_mem[k] );
+    }
+}
+
+bool CacheLoop::parse( char *line ) {
+    strcopy cpy( line );
+
+    //cout << "Parsing " << cpy.get_buf() << endl;
+    char *tok = strtok( cpy.get_buf()," ");
+
+    if(strcmp(tok,"do")==0) { // do start
+        if( inloop ) {
+            strcpy(msg,"cannot nest do loops");
+            return true;
+        }
+        tok=strtok(NULL," ");
+        if(strchr(tok,'{')!=NULL) {
+            strcpy(msg,"A space must exist between do K and {");
+            return true;
+        }
+        k = strtol(tok,NULL,0);
+        tok=strtok(NULL,"");
+        if(strcmp(tok,"{")!=0) {
+            strcpy(msg,"A new line must come after { in 'do K {' statements");
+            return true;
+        }
+        ni=0;
+        inloop = true;
+        return true;
+    }
+    if( strchr(tok,'}') ) {
+        if(!inloop ) {
+            strcpy(msg,"Unexpecte loop end }");
+            return true;
+        }
+        if(strcmp(tok,"}")!=0) {
+            strcpy(msg,"The loop end } must be in its own line");
+            return true;
+        }
+        dump();
+        inloop = false;
+        return true;
+    }
+    return *msg==0 ? false : true; // force a true to parse error messages
+}
 
 int assemble( ifstream& fin, Bin& bin ) {
-    char    line_in[512];
-    char    line_cpy[512];
-    char    err_msg[512];
-    int     opcode=0, linecnt=0;
+    char      line_in[512];
+    char      line_cpy[512];
+    char      err_msg[512];
+    int       opcode=0, linecnt=0;
+    CacheLoop cache(bin);
 
     while( fin.getline(line_in, 512).good() ) {
         char *paux, *line;
@@ -132,15 +233,21 @@ int assemble( ifstream& fin, Bin& bin ) {
         strcpy( line_cpy, line_in );
         linecnt++;
         line = line_in;
-        strip_blanks(line);
+        simplify(line);
 
         if( line[0]==0 || line[0]=='\n' ) // blank line
             continue;
 
         // parse line
+        if( cache.parse(line) ) {
+            if( cache.error() )
+                BAD_LINE( cache.get_msg() )
+            else continue;
+        }
+        strip_blanks(line);
         if( is_alu(line, aux) ) {
             //cout << "ALU\n";
-            bin.push(aux);
+            cache.push(aux);
         } else
         if( strchr(line,'=') ) {
             char *dest, *orig;
@@ -164,13 +271,13 @@ int assemble( ifstream& fin, Bin& bin ) {
                     opcode = 1<<12;
                     opcode |= ((rfield&7)^4)<<9;
                     opcode |= aux&0x1ff;
-                    bin.push(opcode);
+                    cache.push(opcode);
                 } else {
                     // long immediate
                     opcode  = 0x14 << 10;
                     opcode |= (rfield&0x3f)<<4;
-                    bin.push(opcode);
-                    bin.push(aux);
+                    cache.push(opcode);
+                    cache.push(aux);
                 }
             } else
             if( is_ram(orig, aux) ) { // Read from RAM
@@ -178,7 +285,7 @@ int assemble( ifstream& fin, Bin& bin ) {
                 opcode = 0x1E << 10;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
-                bin.push(opcode);
+                cache.push(opcode);
             } else
             if( is_ram(dest, aux) ) { // Write to RAM
                 rfield=make_rfield(orig);
@@ -186,7 +293,7 @@ int assemble( ifstream& fin, Bin& bin ) {
                 opcode = 0xC << 11;
                 opcode |= (rfield)<<4;
                 opcode |= aux;
-                bin.push(opcode);
+                cache.push(opcode);
             } else
             if( is_aTR(dest, aux)) {
                 rfield=make_rfield(orig);
@@ -194,7 +301,7 @@ int assemble( ifstream& fin, Bin& bin ) {
                 opcode = 8<<11;
                 opcode |= (1-aux) << 10;
                 opcode |= rfield <<4;
-                bin.push(opcode);
+                cache.push(opcode);
             } else {
                 BAD_LINE("bad syntax")
             }
@@ -220,15 +327,18 @@ int assemble( ifstream& fin, Bin& bin ) {
                     rest=strtok(NULL,"");
                 } // note there is no else here
                 if( strcmp(cmd,"goto")==0 ) {
+                    NOTINCACHE
                     aux = bin.get_label( rest );
                     opcode = aux&0xFFF;
                     bin.push(opcode);
                 } else
                 if( strcmp(cmd,"return")==0 ) {
+                    NOTINCACHE
                     opcode  = 0x18<<11;
                     bin.push(opcode);
                 } else
                 if( strcmp(cmd,"call")==0 ) {
+                    NOTINCACHE
                     if( strcmp(cmd,"pt")==0 ) {
                         opcode  = 0x18<<11;
                         opcode |= 3 << 8;
@@ -240,6 +350,7 @@ int assemble( ifstream& fin, Bin& bin ) {
                     bin.push(opcode);
                 } else
                 if( strcmp(cmd,"ireturn")==0 ) {
+                    NOTINCACHE
                     if(gotoif) {
                         BAD_LINE("ireturn cannot be part of an if expression")
                     }
@@ -367,17 +478,6 @@ void simplify( char *s ) {
 }
 
 #define AUXCMP(a) (strcmp(aux,a)==0)
-
-class strcopy {
-    char *buf;
-public:
-    strcopy( const char *s ) {
-        buf=new char[strlen(s)];
-        strcpy(buf,s);
-    }
-    ~strcopy() { delete[] buf;}
-    char *get_buf() { return buf; }
-};
 
 bool is_alu( char *str, int& op ) {
     strcopy copy(str);

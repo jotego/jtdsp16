@@ -146,10 +146,10 @@ always @(*) begin
         5'd7: con_result = ~lmv;
         //5'd8: con_result = heads;
         //5'd9: con_result = ~heads;
-        5'd10: con_result = c0>=0;
-        5'd11: con_result = c0< 0;
-        5'd12: con_result = c1>=0;
-        5'd13: con_result = c1< 0;
+        5'd10: con_result = ~c0[7]; // >=0
+        5'd11: con_result =  c0[7]; // < 0
+        5'd12: con_result = ~c1[7]; // >=0
+        5'd13: con_result =  c1[7]; // < 0
         5'd14: con_result = 1;
         5'd15: con_result = 0;
         5'd16: con_result = ~lmi & ~leq;
