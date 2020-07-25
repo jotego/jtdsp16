@@ -80,9 +80,11 @@ jtdsp16 UUT(
     .prog_we    ( prog_we   )
 );
 
+`ifndef NODUMP
 always @(negedge prog_we) begin
     $dumpfile("test.lxt");
     $dumpvars;
 end
+`endif
 
 endmodule

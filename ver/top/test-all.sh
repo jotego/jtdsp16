@@ -5,7 +5,7 @@ FAILS=
 for i in tests/*.asm; do
     i=$(basename $i)
     noasm=$(basename $i .asm)
-    go.sh $i --quiet $* > tests/${noasm}.log
+    go.sh $i --quiet $* --nodump > tests/${noasm}.log
     if [ $? = 0 ]; then
         printf "%-12s PASS\n" $noasm
     else

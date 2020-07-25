@@ -46,6 +46,8 @@ TESTNAME=tests/rloads.asm
 TESTSET=0
 CLOBBER=0
 QUIET=0
+MACROS=
+NODUMP=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -58,6 +60,9 @@ EOF
             QUIET=1;;
         -c | --clobber)
             CLOBBER=1;;
+        --nodump)
+            MACROS="$MACROS -DNODUMP"
+            NODUMP=1;;
         *)
             if [ $TESTSET != 0 ]; then
                 echo "Test name had already been set to " $TESTNAME
@@ -82,16 +87,19 @@ if [ ! -e $CHECKFILE ]; then
     echo "Warning: check file for simulation " $CHECKFILE " not found"
 fi
 
-iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim -s test -DSIMULATION || exit $?
+iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim \
+    -s test -DSIMULATION $MACROS || exit $?
+
 if [ $QUIET = 0 ]; then
     sim -lxt | tee log.out
 else
     sim -lxt > log.out
 fi
 
-
 # Deletes the LXT info line
-sed -i 1d log.out
+if [ $NODUMP = 0 ]; then
+    sed -i 1d log.out
+fi
 sed -i /pc=/d\;/pi=/d *.out
 
 function clobber {
@@ -113,6 +121,7 @@ if [ -e $CHECKFILE ]; then
             clobber
         else
             if [ $QUIET = 0 ]; then
+                echo ---------- comparison --------------
                 diff --side-by-side log.out $CHECKFILE
                 figlet FAIL
             else
