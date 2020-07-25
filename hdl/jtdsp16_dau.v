@@ -20,11 +20,11 @@ module jtdsp16_dau(
     input             rst,
     input             clk,
     input             cen,
-    input             dec_en,
+    input             dec_en,   // F1 decoder enable
+    input             con_en,   // condition check enable
     input      [ 2:0] r_field,
     input      [ 4:0] t_field,
     input      [ 5:0] op_fields,
-    input      [ 4:0] c_field,  // condition
     input             ram_load,
     input             rmux_load,
     input             imm_load,
@@ -40,15 +40,16 @@ module jtdsp16_dau(
     input      [15:0] cache_dout,
 
     output     [15:0] acc_dout,
-    output reg [15:0] reg_dout
+    output reg [15:0] reg_dout,
+    output reg        con_true
 );
 
 reg  [15:0] x, yh, yl;
 reg  [31:0] p;
 reg  [35:0] a1, a0;
-reg  [35:0] alu_out, alu_arith, alu_special;
-reg  [35:0] p_ext;
-wire [35:0] alu_in;
+reg  [35:0] alu_out;
+reg  [36:0] alu_arith, alu_special, p_ext;
+wire [36:0] alu_in;
 wire        st_a0l;
 wire        st_a1l;
 
@@ -61,16 +62,17 @@ wire        at_sel;
 // Control registers
 reg  [ 7:0] c0, c1, c2;
 reg  [ 6:0] auc;        // arithmetic unit control
-reg         lmi, leq, llv, lmv;
+reg         lmi, leq, llv, lmv, alu_llv;
 wire [15:0] psw;        // processor status word
 reg         ov1, ov0;   // overflow
 
 wire [31:0] y;
-wire [35:0] as;
-wire [35:0] y_ext;
+wire [36:0] as, y_ext;
 wire [35:0] ram_ext;
 wire [19:0] rmux_ext, acc_in;
 wire [ 3:0] flags;
+wire [ 4:0] c_field;
+wire        pre_ov;
 wire        up_p;
 wire        up_y;
 wire        ad_sel;
@@ -83,26 +85,17 @@ wire        load_y, load_yl;
 wire        load_x, load_auc;
 wire        load_c0, load_c1, load_c2;
 wire        load_a0, load_a1;
-
-// Conditions
-wire        pl;     // nonnegative
-wire        mi;     // negative
-wire        peq;    // equal to zero
-wire        ne;     // not equal to zero
-wire        gt;     // greater than zero
-wire        le;     // less than zero
-wire        lvs;    // logical overflow set
-wire        lvc;    // logical overflow clear
-wire        mvs;    // mathematical overflow set
-wire        mvc;    // mathematical overflow clear
-wire        c0ge;   // counter0 >=0 (and counter gets incremented)
-wire        c0lt;   // counter0 <0  (and counter gets incremented)
-wire        c1ge;   // counter1 >=0 (and counter gets incremented)
-wire        c1lt;   // counter1 <0  (and counter gets incremented)
-wire        heads;  // pseudorandom sequence bit set
-wire        tails;  // pseudorandom sequence bit clear
 wire        f1_st;  // F1 store operation
 
+// Conditions
+reg         c0ge;   // counter0 >=0 (and counter gets incremented)
+reg         c0lt;   // counter0 <0  (and counter gets incremented)
+reg         c1ge;   // counter1 >=0 (and counter gets incremented)
+reg         c1lt;   // counter1 <0  (and counter gets incremented)
+wire        heads;  // pseudorandom sequence bit set
+wire        tails;  // pseudorandom sequence bit clear
+
+assign c_field     = op_fields[4:0];
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
 assign up_p        = dec_en && f1_field[3:2]==2'b0;
@@ -110,8 +103,8 @@ assign up_y        = load_y | load_yl;
 assign st_a1l      = 0;
 assign st_a0l      = 0;
 assign store       = dec_en && f1_field != 4'b10 && f1_field != 4'b110 && f1_field[3:1] != 3'b101;
-assign as          = s_field ? a1 : a0;
-assign y_ext       = { {4{y[31]}}, y };
+assign as          = s_field ? {a1[35],a1} : {a0[35],a0};
+assign y_ext       = { {5{y[31]}}, y };
 assign sel_special = 0; //t_field == 5'h12 || t_field == 5'h13;
 assign psw         = { flags, 2'b0, ov1, ov0, a1[35:32], a0[35:32] };
 assign clr_yl      = auc[6];
@@ -121,9 +114,10 @@ assign sat_a1      = auc[3];
 assign sat_a0      = auc[2];
 assign ram_ext     = { {4{ram_dout[15]}}, ram_dout, 16'd0 };
 assign rmux_ext    = { {4{rmux[15]}}, rmux };
-assign alu_in      = alu_sel ? ram_ext : p_ext;
+assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
 assign acc_dout    = at_sel ? a1[15:0] : a0[15:0];
 assign acc_in      = rmux_load ? rmux_ext : alu_out[35:16];
+assign pre_ov      = ^{alu_llv, alu_out[35:31]};
 
 assign f1_st       = dec_en && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
 
@@ -139,6 +133,42 @@ assign load_a1     = f1_st &&  d_field;
 
 assign { d_field, s_field, f1_field } = op_fields;
 
+// Condition check
+always @(posedge clk, posedge rst) begin
+    if( rst ) begin
+        c0       <= 8'd0;
+        c1       <= 8'd0;
+        c2       <= 8'd0;
+        con_true <= 0;
+    end else if(cen) begin
+        if( con_en ) begin
+            case(c_field)
+                5'd0: con_true <=  lmi;
+                5'd1: con_true <= ~lmi;
+                5'd2: con_true <=  leq;
+                5'd3: con_true <= ~leq;
+                5'd4: con_true <=  llv;
+                5'd5: con_true <= ~llv;
+                5'd6: con_true <=  lmv;
+                5'd7: con_true <= ~lmv;
+                //5'd8: con_true <= heads;
+                //5'd9: con_true <= ~heads;
+                5'd10: con_true <= c0>=0;
+                5'd11: con_true <= c0< 0;
+                5'd12: con_true <= c1>=0;
+                5'd13: con_true <= c1< 0;
+                5'd14: con_true <= 1;
+                5'd15: con_true <= 0;
+                5'd16: con_true <= ~lmi & ~leq;
+                5'd17: con_true <=  lmi |  leq;
+                default: con_true <= 1; // should be 0?
+            endcase
+            if( c_field>=5'd10 && c_field<=5'd11 ) c0<=c0+9'd1;
+            if( c_field>=5'd12 && c_field<=5'd13 ) c1<=c1+9'd1;
+        end
+    end
+end
+
 function [35:0] round;
     input [35:0] a;
     round = { a[35:16] + a[15] , 16'd0 };
@@ -153,9 +183,10 @@ always @(posedge clk, posedge rst) begin
         a0  <= 36'd0;
         a1  <= 36'd0;
         auc <=  7'd0;
-        c0  <=  8'd0;
-        c1  <=  8'd0;
-        c2  <=  8'd0;
+        ov1 <=  0;
+        ov0 <=  0;
+        { lmi, leq, llv, lmv } <= 4'd0;
+
     end else if(cen) begin
         if( up_p ) p  <= x*yh;
         if( load_x ) x <= imm_load ? long_imm : ram_dout;
@@ -191,10 +222,15 @@ always @(posedge clk, posedge rst) begin
         // special registers
         if( load_auc ) auc <= imm_load ? long_imm[6:0] : ram_dout[6:0];
         // Flags
-        lmi <= alu_out[35];
-        leq <= ~|alu_out;
-        // llv <= // ??
-        lmv <= ^alu_out[35:31];
+        if(dec_en) begin
+            lmi <= alu_out[35];
+            leq <= ~|alu_out;
+            llv <= pre_ov;
+            lmv <= ^alu_out[35:31];
+            // Not sure whether these are always updated
+            ov0 <= ~d_field & pre_ov;
+            ov1 <=  d_field & pre_ov;
+        end
     end
 end
 
@@ -210,7 +246,7 @@ always @(*) begin
         4'd13:      alu_arith = as + y_ext;
         4'd14:      alu_arith = as & y_ext;
         4'd15:      alu_arith = as - y_ext;
-        default: alu_arith = 36'd0;
+        default: alu_arith = 37'd0;
     endcase
 end
 
@@ -218,34 +254,34 @@ end
 always @(*) begin
     case( f2_field )
         4'd0: alu_special = as >>> 1;
-        4'd1: alu_special = { as[30], as[30:0], 1'd0 }; // shift by 1
+        4'd1: alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift by 1
         4'd2: alu_special = as >>> 4;
-        4'd3: alu_special = { {4{as[27]}}, as[27:0], 4'd0 }; // shift by 4
+        4'd3: alu_special = { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
         4'd4: alu_special = as >>> 8;
-        4'd5: alu_special = { {8{as[23]}}, as[23:0], 8'd0 }; // shift by 8
+        4'd5: alu_special = { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
         4'd6: alu_special = as >>> 16;
-        4'd7: alu_special = { {16{as[15]}}, as[15:0], 16'd0 }; // shift by 16
+        4'd7: alu_special = { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
         4'd8: alu_special = p_ext;
-        4'd9: alu_special = as + 36'h10000;
+        4'd9: alu_special = as + 37'h10000;
         4'd11: alu_special = round(as);
         4'd12: alu_special = y_ext;
-        4'd13: alu_special = as + 1'd1;
+        4'd13: alu_special = as + 37'd1;
         4'd14: alu_special = as;
         4'd15: alu_special = -as;
-        default: alu_special = 36'd0;
+        default: alu_special = 37'd0;
     endcase
 end
 
 always @(*) begin
     case( auc[1:0] )
-        2'd0: p_ext = { {4{p[31]}}, p };
-        2'd1, 2'd3: p_ext = { {6{p[31]}}, p[31:2] }; // Makes reserved case 3 same as 1
-        2'd2: p_ext = { {2{p[31]}}, p, 2'd0 };
+        2'd0: p_ext = { {5{p[31]}}, p };
+        2'd1, 2'd3: p_ext = { {7{p[31]}}, p[31:2] }; // Makes reserved case 3 same as 1
+        2'd2: p_ext = { {3{p[31]}}, p, 2'd0 };
     endcase
 end
 
 always @(*) begin
-    alu_out = sel_special ? alu_special : alu_arith;
+    {alu_llv, alu_out} = sel_special ? alu_special : alu_arith;
 end
 
 always @(*) begin

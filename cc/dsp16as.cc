@@ -32,6 +32,7 @@ bool is_imm(const char *s, int& val);
 bool is_ram( const char *s, int& val );
 bool is_aTR( const char *s, int& val );
 bool is_alu( char *str, int& op );
+bool parse_if( char **str, int& op, char* err_msg);
 void strip_blanks( char *s );
 void simplify( char *s );
 
@@ -121,11 +122,13 @@ void Bin::dump( const char *name ) {
 int assemble( ifstream& fin, Bin& bin ) {
     char    line_in[512];
     char    line_cpy[512];
+    char    err_msg[512];
     int     opcode=0, linecnt=0;
 
     while( fin.getline(line_in, 512).good() ) {
         char *paux, *line;
         int  aux;
+        bool gotoif=false;
         strcpy( line_cpy, line_in );
         linecnt++;
         line = line_in;
@@ -210,6 +213,11 @@ int assemble( ifstream& fin, Bin& bin ) {
                     BAD_LINE("Cannot break up in words")
                 }
                 char *rest = cmd + strlen(cmd) + 1;
+                if( parse_if( &cmd, opcode, err_msg ) ) {
+                    if(strlen(err_msg)>0) BAD_LINE(err_msg)
+                    gotoif=true;
+                    bin.push(opcode);
+                } // note there is no else here
                 if( strcmp(cmd,"goto")==0 ) {
                     aux = bin.get_label( rest );
                     opcode = aux&0xFFF;
@@ -217,11 +225,6 @@ int assemble( ifstream& fin, Bin& bin ) {
                 } else
                 if( strcmp(cmd,"return")==0 ) {
                     opcode  = 0x18<<11;
-                    bin.push(opcode);
-                } else
-                if( strcmp(cmd,"ireturn")==0 ) {
-                    opcode  = 0x18<<11;
-                    opcode |= 1 << 8;
                     bin.push(opcode);
                 } else
                 if( strcmp(cmd,"call")==0 ) {
@@ -234,7 +237,19 @@ int assemble( ifstream& fin, Bin& bin ) {
                         opcode |= (aux&0xfff);
                     }
                     bin.push(opcode);
-                } else {
+                } else
+                if( strcmp(cmd,"ireturn")==0 ) {
+                    if(gotoif) {
+                        BAD_LINE("ireturn cannot be part of an if expression")
+                    }
+                    opcode  = 0x18<<11;
+                    opcode |= 1 << 8;
+                    bin.push(opcode);
+                } else
+                if(gotoif) {
+                    BAD_LINE("no statement after if expression")
+                } else
+                {
                     BAD_LINE("Syntax error")
                 }
             }
@@ -439,5 +454,46 @@ bool is_alu( char *str, int& op ) {
     if( s==-1 ) s=0;
     op = (d<<10) | (s<<9) | (pre_f1<<5) | (y_field);
     op |= 3<<12;
+    return true;
+}
+
+bool parse_if( char **str, int& op, char* err_msg) {
+    *err_msg = 0;
+    if(strcmp(*str,"if")!=0) return false;
+    *str=strtok(NULL," ");
+    if( *str==NULL ) {
+        strcpy(err_msg,"line incomplete after if keyword");
+        return true;
+    }
+    int con=-1;
+    if( strcmp(*str,"mi")==0    ) con=0;
+    if( strcmp(*str,"pl")==0    ) con=1;
+    if( strcmp(*str,"eq")==0    ) con=2;
+    if( strcmp(*str,"ne")==0    ) con=3;
+    if( strcmp(*str,"lvs")==0   ) con=4;
+    if( strcmp(*str,"lvc")==0   ) con=5;
+    if( strcmp(*str,"mvs")==0   ) con=6;
+    if( strcmp(*str,"mvc")==0   ) con=7;
+    if( strcmp(*str,"heads")==0 ) con=8;
+    if( strcmp(*str,"tails")==0 ) con=9;
+    if( strcmp(*str,"c0ge")==0  ) con=10;
+    if( strcmp(*str,"c0lt")==0  ) con=11;
+    if( strcmp(*str,"c1ge")==0  ) con=12;
+    if( strcmp(*str,"c1lt")==0  ) con=13;
+    if( strcmp(*str,"true")==0  ) con=14;
+    if( strcmp(*str,"false")==0 ) con=15;
+    if( strcmp(*str,"gt")==0    ) con=16;
+    if( strcmp(*str,"le")==0    ) con=17;
+    if( con==-1 ) {
+        strcpy(err_msg,"Wrong condition expression");
+        return true;
+    }
+    *str=strtok(NULL, " ");
+    if( *str==NULL ) {
+        strcpy(err_msg,"line incomplete after if condition");
+        return true;
+    }
+    op=13<<12;
+    op|=con;
     return true;
 }

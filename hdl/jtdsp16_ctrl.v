@@ -22,12 +22,12 @@ module jtdsp16_ctrl(
     input             cen,
     // Instruction fields
     output reg        dau_dec_en,
+    output reg        dau_con_en,
     output reg [ 4:0] t_field,
-    output reg [ 5:0] dau_op_fields,
-    output     [ 4:0] c_field,  // condition
     output reg [ 2:0] r_field,
-    output reg [ 2:0] rsel,
     output reg [ 1:0] y_field,
+    output reg [ 5:0] dau_op_fields,
+    output reg [ 2:0] rsel,
 
     // YAAU control
     // Increment selecction
@@ -112,6 +112,7 @@ always @(posedge clk, posedge rst) begin
         inc_sel       <= 2'b0;
         // DAU
         dau_dec_en    <= 0;
+        dau_con_en    <= 0;
         at_sel        <= 0;
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
@@ -144,6 +145,7 @@ always @(posedge clk, posedge rst) begin
         // DAU
         dau_op_fields <= 6'd0;
         dau_dec_en    <= 0;
+        dau_con_en    <= 0;
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
@@ -231,6 +233,10 @@ always @(posedge clk, posedge rst) begin
                     dau_dec_en    <= 1;
                     dau_op_fields <= rom_dout[10:5];
                     //mul_en
+                end
+                5'b11010: begin
+                    dau_con_en    <= 1;
+                    dau_op_fields <= {1'b0, rom_dout[4:0]};
                 end
             endcase
         end

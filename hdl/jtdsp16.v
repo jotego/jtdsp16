@@ -63,11 +63,10 @@ wire        pc_halt;
 // DAU
 wire [ 4:0] t_field;
 wire [ 5:0] dau_op_fields;
-wire [ 4:0] c_field;  // condition
 wire [ 1:0] y_field;
 wire        dau_acc_load, dau_imm_load, dau_ram_load;
 wire        st_a0h, st_a1h;
-wire        dau_dec_en;
+wire        dau_dec_en, dau_con_en;
 
 wire [15:0] cache_dout;
 wire [15:0] dau_dout;
@@ -119,6 +118,7 @@ jtdsp16_ctrl u_ctrl(
     .xaau_imm_load  ( xaau_imm_load ),
     // DAU
     .dau_dec_en     ( dau_dec_en    ),
+    .dau_con_en     ( dau_con_en    ),
     .dau_op_fields  ( dau_op_fields ),
     .at_sel         ( at_sel        ),
     .dau_rmux_load  ( dau_rmux_load ),
@@ -237,10 +237,10 @@ jtdsp16_dau u_dau(
     .cen            ( cen2          ),
     // Decoder
     .dec_en         ( dau_dec_en    ),
+    .con_en         ( dau_con_en    ),
     .r_field        ( r_field       ),
     .t_field        ( t_field       ),
     .op_fields      ( dau_op_fields ),
-    .c_field        ( c_field       ),  // condition
     // Acc control
     .rmux_load      ( dau_rmux_load ),
     .imm_load       ( dau_imm_load  ),

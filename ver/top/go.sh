@@ -67,6 +67,7 @@ EOF
                     TESTNAME=$1
                 else
                     TESTNAME=tests/$1
+                    TESTNAME=${TESTNAME%.asm}.asm
                 fi
                 TESTSET=1
             fi;;
