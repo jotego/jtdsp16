@@ -217,6 +217,7 @@ int assemble( ifstream& fin, Bin& bin ) {
                     if(strlen(err_msg)>0) BAD_LINE(err_msg)
                     gotoif=true;
                     bin.push(opcode);
+                    rest=strtok(NULL,"");
                 } // note there is no else here
                 if( strcmp(cmd,"goto")==0 ) {
                     aux = bin.get_label( rest );

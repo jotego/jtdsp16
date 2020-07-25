@@ -35,7 +35,6 @@ module jtdsp16_rom_aau(
     // instruction fields
     input      [ 2:0] r_field,
     input      [11:0] i_field,
-    input             con_result,
     // IRQ
     input             ext_irq,
     input             shadow,     // normal execution or inside IRQ

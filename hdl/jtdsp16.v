@@ -126,6 +126,7 @@ jtdsp16_ctrl u_ctrl(
     .dau_ram_load   ( dau_ram_load  ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
+    .con_result     ( con_result    ),
     // X load control
     .up_xram        ( up_xram       ),
     .up_xrom        ( up_xrom       ),
@@ -185,7 +186,6 @@ jtdsp16_rom_aau u_rom_aau(
     // instruction fields
     .r_field    ( r_field       ),
     .i_field    ( i_field       ),
-    .con_result ( con_result    ),
     // Interruption
     .ext_irq    ( 1'b0          ),
     .shadow     ( shadow        ),
@@ -254,7 +254,8 @@ jtdsp16_dau u_dau(
     .long_imm       ( long_imm      ),
     .cache_dout     ( cache_dout    ),
     .acc_dout       ( acc_dout      ),
-    .reg_dout       ( r_dau         )
+    .reg_dout       ( r_dau         ),
+    .con_result     ( con_result    )
 );
 
 endmodule

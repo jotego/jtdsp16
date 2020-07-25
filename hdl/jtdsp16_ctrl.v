@@ -41,6 +41,7 @@ module jtdsp16_ctrl(
     output reg        dau_ram_load,
     output reg        st_a0h,
     output reg        st_a1h,
+    input             con_result,
     // Load control
     output reg        short_load,
     output reg        long_load,
@@ -81,8 +82,11 @@ module jtdsp16_ctrl(
 
 reg       x_field;
 reg       double;
+reg       con_check;
+wire      con_ok;
 
 assign    long_imm = rom_dout;
+assign    con_ok   = ~dau_con_en | con_result;
 
 // Decode instruction
 always @(posedge clk, posedge rst) begin
@@ -120,11 +124,14 @@ always @(posedge clk, posedge rst) begin
         rsel          <= 3'd0;
         st_a0h        <= 0;
         st_a1h        <= 0;
+        con_check     <= 0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
         i_field   <= rom_dout[10: 0];
         x_field   <= rom_dout[    4];
         short_imm <= rom_dout[ 8: 0];
+
+        con_check <= dau_con_en;
 
         // disable all control signals
         short_load    <= 0;
@@ -155,15 +162,18 @@ always @(posedge clk, posedge rst) begin
         if(!double) begin
             casez( rom_dout[15:11] ) // T
                 5'b0000?: begin // goto JA
-                    goto_ja <= 1;
+                    goto_ja <= con_ok;
+                    pc_halt <= ~con_ok;
                     double  <= 1;
                 end
                 5'b1000?: begin // call JA
-                    call_ja <= 1;
+                    call_ja <= con_ok;
+                    pc_halt <= ~con_ok;
                     double  <= 1;
                 end
-                5'b11000: begin // goto B
-                    goto_b  <= 1;
+                5'b11000: begin // goto B (ret, iret, goto pt, call pt)
+                    goto_b  <= con_ok || (rom_dout[10:8]==3'b1); // iret is always executed
+                    pc_halt <= ~con_ok;
                     double  <= 1;
                 end
                 5'b0001?: begin // short imm j, k, rb, re

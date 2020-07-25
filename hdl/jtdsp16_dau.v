@@ -41,7 +41,7 @@ module jtdsp16_dau(
 
     output     [15:0] acc_dout,
     output reg [15:0] reg_dout,
-    output reg        con_true
+    output reg        con_result
 );
 
 reg  [15:0] x, yh, yl;
@@ -134,35 +134,37 @@ assign load_a1     = f1_st &&  d_field;
 assign { d_field, s_field, f1_field } = op_fields;
 
 // Condition check
+always @(*) begin
+    case(c_field)
+        5'd0: con_result =  lmi;
+        5'd1: con_result = ~lmi;
+        5'd2: con_result =  leq;
+        5'd3: con_result = ~leq;
+        5'd4: con_result =  llv;
+        5'd5: con_result = ~llv;
+        5'd6: con_result =  lmv;
+        5'd7: con_result = ~lmv;
+        //5'd8: con_result = heads;
+        //5'd9: con_result = ~heads;
+        5'd10: con_result = c0>=0;
+        5'd11: con_result = c0< 0;
+        5'd12: con_result = c1>=0;
+        5'd13: con_result = c1< 0;
+        5'd14: con_result = 1;
+        5'd15: con_result = 0;
+        5'd16: con_result = ~lmi & ~leq;
+        5'd17: con_result =  lmi |  leq;
+        default: con_result = 1; // should be 0?
+    endcase
+end
+
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
         c0       <= 8'd0;
         c1       <= 8'd0;
         c2       <= 8'd0;
-        con_true <= 0;
     end else if(cen) begin
         if( con_en ) begin
-            case(c_field)
-                5'd0: con_true <=  lmi;
-                5'd1: con_true <= ~lmi;
-                5'd2: con_true <=  leq;
-                5'd3: con_true <= ~leq;
-                5'd4: con_true <=  llv;
-                5'd5: con_true <= ~llv;
-                5'd6: con_true <=  lmv;
-                5'd7: con_true <= ~lmv;
-                //5'd8: con_true <= heads;
-                //5'd9: con_true <= ~heads;
-                5'd10: con_true <= c0>=0;
-                5'd11: con_true <= c0< 0;
-                5'd12: con_true <= c1>=0;
-                5'd13: con_true <= c1< 0;
-                5'd14: con_true <= 1;
-                5'd15: con_true <= 0;
-                5'd16: con_true <= ~lmi & ~leq;
-                5'd17: con_true <=  lmi |  leq;
-                default: con_true <= 1; // should be 0?
-            endcase
             if( c_field>=5'd10 && c_field<=5'd11 ) c0<=c0+9'd1;
             if( c_field>=5'd12 && c_field<=5'd13 ) c1<=c1+9'd1;
         end
@@ -186,7 +188,6 @@ always @(posedge clk, posedge rst) begin
         ov1 <=  0;
         ov0 <=  0;
         { lmi, leq, llv, lmv } <= 4'd0;
-
     end else if(cen) begin
         if( up_p ) p  <= x*yh;
         if( load_x ) x <= imm_load ? long_imm : ram_dout;
