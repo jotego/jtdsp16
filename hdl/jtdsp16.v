@@ -49,6 +49,8 @@ wire        con_result;
 wire        ext_irq;
 wire        shadow;
 wire        xaau_ram_load, xaau_imm_load;
+wire        do_start;
+wire [10:0] do_data;
 
 // Y-AAU
 wire [ 8:0] short_imm;
@@ -116,6 +118,8 @@ jtdsp16_ctrl u_ctrl(
     .pc_halt        ( pc_halt       ),
     .xaau_ram_load  ( xaau_ram_load ),
     .xaau_imm_load  ( xaau_imm_load ),
+    .do_start       ( do_start      ),
+    .do_data        ( do_data       ),
     // DAU
     .dau_dec_en     ( dau_dec_en    ),
     .dau_con_en     ( dau_con_en    ),
@@ -183,6 +187,9 @@ jtdsp16_rom_aau u_rom_aau(
     .pc_halt    ( pc_halt       ),
     .ram_load   ( xaau_ram_load ),
     .imm_load   ( xaau_imm_load ),
+    // Do loop
+    .do_start   ( do_start      ),
+    .do_data    ( do_data       ),
     // instruction fields
     .r_field    ( r_field       ),
     .i_field    ( i_field       ),

@@ -68,6 +68,8 @@ module jtdsp16_ctrl(
     // IRQ
     output reg        ext_irq,
     output reg        shadow,     // normal execution or inside IRQ
+    output reg        do_start,
+    output reg [10:0] do_data,
 
     // X load control
     output            up_xram,
@@ -109,6 +111,8 @@ always @(posedge clk, posedge rst) begin
         pc_halt       <= 0;
         xaau_ram_load <= 0;
         xaau_imm_load <= 0;
+        do_data       <= 11'd0;
+        do_start      <= 0;
         // *r++ control lines:
         y_field       <= 2'b0;
         step_sel      <= 0;
@@ -148,6 +152,7 @@ always @(posedge clk, posedge rst) begin
         call_ja       <= 0;
         xaau_ram_load <= 0;
         xaau_imm_load <= 0;
+        do_start      <= 0;
 
         // DAU
         dau_op_fields <= 6'd0;
@@ -247,6 +252,10 @@ always @(posedge clk, posedge rst) begin
                 5'b11010: begin
                     dau_con_en    <= 1;
                     dau_op_fields <= {1'b0, rom_dout[4:0]};
+                end
+                5'b1110: begin // do
+                    do_data  <= rom_dout[10:0];
+                    do_start <= 1;
                 end
             endcase
         end

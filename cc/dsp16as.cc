@@ -194,6 +194,10 @@ bool CacheLoop::parse( char *line ) {
             return true;
         }
         k = strtol(tok,NULL,0);
+        if( k<2 || k>127 ) {
+            strcpy(msg,"K in 'do K' must be between 2 and 127");
+            return true;
+        }
         tok=strtok(NULL,"");
         if(strcmp(tok,"{")!=0) {
             strcpy(msg,"A new line must come after { in 'do K {' statements");
