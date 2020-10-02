@@ -21,12 +21,34 @@ module jtdsp16(
     input             clk,
     input             cen,
 
-    output     [15:0] ext_addr,
-    input      [15:0] ext_data,
+    output            cen_cko,      // clock output, interpret as clock enable signal
+    output     [15:0] ab,           // address bus
+    input      [15:0] rb_din,       // ROM data bus
     input             ext_mode,     // EXM pin, when high internal ROM is disabled
+    // Parallel I/O
+    input      [15:0] pbus_in,
+    output     [15:0] pbus_out,
+    output            pods_n,        // parallel output data strobe
+    output            pids_n,        // parallel input  data strobe
+    // Serial output
+    output            sdo,           // serial data output
+    output            ock,           // output clock
+    output            doen,          // data output enable
+    output            sadd,          // serial address
+    output            psel,          // peripheral select
+                                     // Unused by QSound firmware:
+    output            ose,           // output shift register empty
+    output            old,           // output load
+    output            ibf,           // input buffer full
+    input             di,            // serial data input
+    input             ick,           // serial data input clock
+    input             ild,           // serial data input load
+    // interrupts
+    input             irq,           // interrupt
+    output            iack,          // interrupt acknowledgement
     // ROM programming interface
-    input      [11:0] prog_addr,
-    input      [15:0] prog_data,
+    input      [12:0] prog_addr,
+    input      [ 7:0] prog_data,
     input             prog_we
 );
 
@@ -157,7 +179,7 @@ jtdsp16_ctrl u_ctrl(
     // Data buses
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
-    .ext_dout       ( ext_data      )
+    .ext_dout       ( rb_din        )
 );
 
 jtdsp16_rom u_rom(
@@ -165,8 +187,8 @@ jtdsp16_rom u_rom(
     .addr       ( rom_addr        ),
     .dout       ( rom_dout        ),
     .ext_mode   ( ext_mode        ),
-    .ext_data   ( ext_data        ),
-    .ext_addr   ( ext_addr        ),
+    .ext_data   ( rb_din          ),
+    .ext_addr   ( ab              ),
     // ROM programming interface
     .prog_addr  ( prog_addr       ),
     .prog_data  ( prog_data       ),

@@ -27,20 +27,22 @@ module jtdsp16_rom(
     input      [15:0] ext_data,
     output     [15:0] ext_addr,
     // ROM programming interface
-    input      [11:0] prog_addr,
-    input      [15:0] prog_data,
+    input      [12:0] prog_addr,
+    input      [ 7:0] prog_data,
     input             prog_we
 );
 
-reg [15:0] rom[0:4095];
+reg [ 7:0] rom_lsb[0:4095];
+reg [15:8] rom_msb[0:4095];
 reg [15:0] rom_dout;
 
 assign     ext_addr = addr;
 assign     dout     = ext_mode ? ext_data : (addr[15:12]==4'd0? rom_dout : ext_data);
 
 always @(posedge clk) begin
-    if(prog_we) rom[ prog_addr ] <= prog_data;
-    rom_dout <= rom[ addr[11:0] ];
+    if(prog_we && !prog_addr[0]) rom_lsb[ prog_addr[12:1] ] <= prog_data;
+    if(prog_we &&  prog_addr[0]) rom_msb[ prog_addr[12:1] ] <= prog_data;
+    rom_dout <= { rom_msb[ addr[11:0] ], rom_lsb[ addr[11:0] ] };
 end
 
 
