@@ -1,18 +1,20 @@
 module test;
 
 reg         clk;
-wire        rst, cen;
+wire        rst, cen, iack;
 
 wire [15:0] ext_addr;
 reg  [15:0] ext_data;
-reg  [11:0] prog_addr;
-wire [15:0] prog_data;
+reg  [12:0] prog_addr;
+wire [15:0] prog_data16;
+wire [ 7:0] prog_data;
 reg         prog_we;
 reg  [15:0] rom[0:8191];
 
 assign      cen = 1;
 assign      rst = prog_we;
-assign      prog_data = rom[ prog_addr ];
+assign      prog_data16 = rom[ prog_addr[12:1] ];
+assign      prog_data   = prog_addr[0] ? prog_data16[15:8] : prog_data16[7:0];
 
 integer f, fcnt;
 
@@ -61,7 +63,7 @@ initial begin
 end
 
 always @(posedge clk) begin
-    if( prog_addr < 12'd512 ) begin
+    if( prog_addr < 13'd512 ) begin
         prog_addr <= prog_addr + 1'd1;
     end else begin
         prog_we <= 0;
@@ -72,9 +74,11 @@ jtdsp16 UUT(
     .rst        ( rst       ),
     .clk        ( clk       ),
     .cen        ( cen       ),
-    .ext_addr   ( ext_addr  ),
-    .ext_data   ( ext_data  ),
     .ext_mode   ( 1'b0      ),
+    // interrupts
+    .irq        ( 1'b0      ),
+    .iack       ( iack      ),
+    // ROM programming interface
     .prog_addr  ( prog_addr ),
     .prog_data  ( prog_data ),
     .prog_we    ( prog_we   )

@@ -55,11 +55,11 @@ reg  [15:0] pc,     // Program Counter
             pi,     // Program Interrupt
             pt,     // Table Pointer
             rnext,
-            do_head;
-reg         do_en;
+            do_head, redo_out, do_end;
+reg         do_en, redo_en;
 reg  [ 6:0] do_left;
 
-wire [15:0] next_pc, do_end;
+wire [15:0] next_pc;
 wire [15:0] i_ext;
 wire [ 2:0] b_field;
 wire        copy_pc;
@@ -67,6 +67,7 @@ wire        load_pt, load_pi, load_pr ,load_i;
 wire        any_load;
 
 wire        ret, iret, goto_pt, call_pt;
+wire        do_endhit, redo;
 
 assign      next_pc  = pc+1'd1;
 assign      i_ext    = { {4{i[11]}}, i };
@@ -84,7 +85,8 @@ assign      load_pi  =  any_load && r_field==3'd2;
 assign      load_i   =  any_load && r_field==3'd3;
 
 assign      rom_addr = pc;
-assign      do_end   = do_head + {12'd0,do_data[10:7]};
+assign      do_endhit= do_en && next_pc==do_end;
+assign      redo     = do_start && do_data[10:7]==4'd0;
 
 always @(*) begin
     rnext =
@@ -110,7 +112,9 @@ always @(posedge clk, posedge rst ) begin
         pi      <= 16'd0;
         pt      <= 16'd0;
         i       <= 12'd0;
-        do_en <= 0;
+        do_en   <= 0;
+        redo_en <= 0;
+        redo_out<= 16'd0;
     end else if(cen) begin
         if( load_pt  ) pt <= rnext;
         if( shadow  || load_pi ) pi <= load_pi ? rnext : next_pc;
@@ -119,20 +123,29 @@ always @(posedge clk, posedge rst ) begin
         pc <=
             ext_irq ? 16'd0 : (
             icall   ? 16'd1 : (
-            (do_en && next_pc>=do_end) ? do_head : (
+            (do_endhit || redo ) ? do_head : (
+            (redo_en && next_pc==do_end ) ? redo_out :(
             (goto_ja || call_ja) ? { pc[15:12], i_field } : (
             (goto_pt || call_pt) ? pt : (
             ret                  ? pr : (
             iret                 ? pi : (
-            pc_halt              ? pc : next_pc )))))));
+            pc_halt              ? pc : next_pc ))))))));
         if( do_start ) begin
-            do_head  <= pc;
+            if(do_data[10:7]!=4'd0) begin
+                do_head  <= pc;
+                do_end   <= pc + {12'd0,do_data[10:7]};
+                redo_en  <= 0;
+            end else begin
+                redo_out <= pc;
+                redo_en  <= 1;
+            end
             do_left  <= do_data[6:0];
             do_en    <= 1;
         end
-        if( do_en && next_pc==do_end ) begin
+        if( do_endhit ) begin
             do_left <= do_left-7'd1;
             do_en   <= do_left>7'd2;
+            redo_en <= do_left>7'd2;
         end
     end
 end

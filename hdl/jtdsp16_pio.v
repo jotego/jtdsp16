@@ -37,8 +37,8 @@ module jtdsp16_pio(
     input             pio_rd,
     input      [ 1:0] cpu_addr,
     // Interrupts
-    input             serrd_full,
-    input             serwr_empty,
+    input             siord_full,
+    input             siowr_empty,
     output            ext_irq
 );
 
@@ -58,12 +58,12 @@ assign pods_n = pocnt[0];
 assign pids_n = picnt[0];
 
 assign ext_irq   = (irq & pioc[5]) |
-                   (serwr_empty & pioc[9]) |
-                   (serrd_full  & pioc[8]); // passive mode interrupts are not supported
+                   (siowr_empty & pioc[9]) |
+                   (siord_full  & pioc[8]); // passive mode interrupts are not supported
 
 assign pio_dout = cpu_addr==2'd0 ? {status[4], pioc[14:5],status} : (
                   cpu_addr[0] ? pdx1_rd : pdx0_rd );
-assign status   = {serwr_empty, serrd_full, 2'd0, irq&pioc[5]};
+assign status   = {siowr_empty, siord_full, 2'd0, irq&pioc[5]};
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin

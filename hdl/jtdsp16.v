@@ -30,13 +30,13 @@ module jtdsp16(
     output     [15:0] pbus_out,
     output            pods_n,        // parallel output data strobe
     output            pids_n,        // parallel input  data strobe
+    output            psel,          // peripheral select
+                                     // Unused by QSound firmware:
     // Serial output
     output            sdo,           // serial data output
     output            ock,           // output clock
     output            doen,          // data output enable
     output            sadd,          // serial address
-    output            psel,          // peripheral select
-                                     // Unused by QSound firmware:
     output            ose,           // output shift register empty
     output            old,           // output load
     output            ibf,           // input buffer full

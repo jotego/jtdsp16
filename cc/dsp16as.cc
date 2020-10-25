@@ -246,7 +246,14 @@ int assemble( ifstream& fin, Bin& bin ) {
         if( cache.parse(line) ) {
             if( cache.error() )
                 BAD_LINE( cache.get_msg() )
-            else continue;
+            continue;
+        }
+        if( strncmp(line,"redo ",5)==0 ) {
+            aux=strtol(line+5,NULL,0);
+            if(aux<2 || aux>127) BAD_LINE("1<K<128 for redo K")
+            aux|=7<<12;
+            bin.push(aux);
+            continue;
         }
         strip_blanks(line);
         if( is_alu(line, aux) ) {
