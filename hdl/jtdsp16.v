@@ -68,7 +68,7 @@ wire        icall;
 wire        post_inc;
 wire [11:0] i_field;
 wire        con_result;
-wire        ext_irq;
+wire        irq_latch;
 wire        shadow;
 wire        xaau_ram_load, xaau_imm_load;
 wire        do_start;
@@ -110,6 +110,13 @@ wire        ram_we;
 wire [15:0] r_xaau, r_yaau, r_dau, rmux;
 wire [ 2:0] rsel;
 
+// Serial I/O
+wire        siord_full, siowr_empty;
+
+// Parallel interface
+wire        pdx_read, pio_imm_load;
+wire [15:0] r_pio;
+
 jtdsp16_div u_div(
     .clk            ( clk           ),
     .cen            ( cen           ),
@@ -120,6 +127,7 @@ jtdsp16_rsel u_rsel(
     .r_xaau  ( r_xaau    ),
     .r_yaau  ( r_yaau    ),
     .r_dau   ( r_dau     ),
+    .r_pio   ( r_pio     ),
     .r_if    ( 16'd0     ),
     .rsel    ( rsel      ),
     .rmux    ( rmux      )
@@ -216,7 +224,7 @@ jtdsp16_rom_aau u_rom_aau(
     .r_field    ( r_field       ),
     .i_field    ( i_field       ),
     // Interruption
-    .ext_irq    ( 1'b0          ),
+    .ext_irq    ( irq_latch     ),
     .shadow     ( shadow        ),
     // Data buses
     .rom_dout   ( rom_dout      ),
@@ -286,5 +294,33 @@ jtdsp16_dau u_dau(
     .reg_dout       ( r_dau         ),
     .con_result     ( con_result    )
 );
+
+jtdsp16_pio u_pio(
+    .rst            ( rst           ),
+    .clk            ( clk           ),
+    .cen            ( cen2          ),
+    // Parallel I/O
+    .pbus_in        ( pbus_in       ),
+    .pbus_out       ( pbus_out      ),
+    .pods_n         ( pods_n        ),
+    .pids_n         ( pids_n        ),
+    .psel           ( psel          ),
+    // external interrupt request
+    .irq            ( irq           ),
+    // interface with CPU
+    .pdx_read       ( pdx_read      ),
+    .rom_dout       ( rom_dout      ),
+    .pio_imm_load   ( pio_imm_load  ),
+    .r_field        ( r_field       ),
+    .pio_dout       ( r_pio         ),
+    // Interrupts
+    .iack           ( iack          ),
+    .siord_full     ( siord_full    ),
+    .siowr_empty    ( siowr_empty   ),
+    .irq_latch      ( irq_latch     )
+);
+
+assign siord_full  = 0;
+assign siowr_empty = 0;
 
 endmodule

@@ -76,6 +76,10 @@ module jtdsp16_ctrl(
     output            up_xrom,
     output            up_xext,
     output            up_xcache,
+
+    // Parallel port
+    output reg        pio_imm_load,
+
     // Data buses
     input      [15:0] rom_dout,
     output     [15:0] cache_dout,
@@ -187,7 +191,7 @@ always @(posedge clk, posedge rst) begin
                 end
                 5'b01000: begin // aT=R
                     r_field      <=  rom_dout[6:4];
-                    rsel         <=  rom_dout[9:7];
+                    rsel         <=  rom_dout[8:6];
                     dau_rmux_load<= 1;
                     at_sel       <=  rom_dout[10];
                     st_a0h       <=  rom_dout[10];
@@ -199,6 +203,7 @@ always @(posedge clk, posedge rst) begin
                     long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
                     xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
                     dau_imm_load  <= rom_dout[9:7]==3'b010; // DAU register as destination
+                    pio_imm_load  <= rom_dout[9:6]==4'b0111; // Parallel I/O
                     r_field       <= rom_dout[6:4];
                     double        <= 1;
                 end
@@ -220,7 +225,7 @@ always @(posedge clk, posedge rst) begin
                     end else begin
                         ram_we  <= 0; // RAM load
                     end
-                    rsel      <=  rom_dout[9:7];
+                    rsel      <= rom_dout[ 8:6];
                     r_field   <= rom_dout[ 6:4];
                     y_field   <= rom_dout[ 3:2];
                     post_load <= 1;

@@ -6,4 +6,5 @@ jtdsp16_rom.v
 jtdsp16_div.v
 jtdsp16_dau.v
 jtdsp16_rsel.v
+jtdsp16_pio.v
 jtdsp16.v

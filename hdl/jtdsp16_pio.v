@@ -23,6 +23,7 @@
 module jtdsp16_pio(
     input             rst,
     input             clk,
+    input             cen,
     input      [15:0] pbus_in,
     output reg [15:0] pbus_out,
     output            pods_n,        // parallel output data strobe
@@ -31,18 +32,21 @@ module jtdsp16_pio(
                                      // Unused by QSound firmware:
     input             irq,           // external interrupt request
     // interface with CPU
-    input      [15:0] cpu_dout,
-    output     [15:0] pio_dout,
-    input             pio_we,
+    input             pdx_read,
+    input      [15:0] rom_dout,
+    input             pio_imm_load,
     input             pio_rd,
-    input      [ 1:0] cpu_addr,
+    input      [ 2:0] r_field,
+    output     [15:0] pio_dout,
     // Interrupts
     input             siord_full,
     input             siowr_empty,
-    output            ext_irq
+    input             iack,
+    output reg        irq_latch
 );
 
 reg  [14:5] pioc; // bit 15 is a copy of bit 4
+reg  [15:0] pdx_buffer;
 reg  [ 3:0] pocnt, picnt;
 reg  [15:0] pdx0_rd, pdx1_rd;
 wire [ 4:0] status;
@@ -54,39 +58,80 @@ wire        scmode  = pioc[10]; // when high, pbus_out[15:8] should be ignored
 wire [ 4:0] ien     = pioc[ 9: 5];
 wire [ 3:0] ststart = 4'he << stlen;
 
+wire        pioc_load, pdx0_load, pdx1_load, pdx_load, pdx_access;
+
+// interrupt latches
+reg         last_irq, last_siowr_empty, last_siord_full, last_iack;
+wire        iack_negedge, siowr_empty_posedge, siord_full_posedge, irq_posedge;
+
 assign pods_n = pocnt[0];
 assign pids_n = picnt[0];
 
-assign ext_irq   = (irq & pioc[5]) |
-                   (siowr_empty & pioc[9]) |
-                   (siord_full  & pioc[8]); // passive mode interrupts are not supported
+assign pioc_load  = pio_imm_load && r_field[1:0]==2'd0;
+assign pdx0_load  = pio_imm_load && r_field[1:0]==2'd1;
+assign pdx1_load  = pio_imm_load && r_field[1:0]==2'd2;
+assign pdx_load   = pdx0_load | pdx1_load;
+assign pdx_access = (pio_imm_load | pdx_read) && r_field[1:0]!=2'd0;
 
-assign pio_dout = cpu_addr==2'd0 ? {status[4], pioc[14:5],status} : (
-                  cpu_addr[0] ? pdx1_rd : pdx0_rd );
+// interrupt signals
+assign iack_negedge        = ~iack       &  last_iack;
+assign siord_full_posedge  = siord_full  & ~last_siord_full;
+assign siowr_empty_posedge = siowr_empty & ~last_siowr_empty;
+assign irq_posedge         = irq         & ~last_irq;
+
+assign pio_dout = r_field[1:0]==2'd0 ? {status[4], pioc[14:5],status} : (
+                  r_field[0] ? pdx1_rd : pdx0_rd );
 assign status   = {siowr_empty, siord_full, 2'd0, irq&pioc[5]};
+
+// interrupt control
+always @(posedge clk, posedge rst) begin
+    if( rst ) begin
+        last_irq         <= 0;
+        last_siord_full  <= 0;
+        last_siowr_empty <= 0;
+        irq_latch        <= 0;
+        last_iack        <= 0;
+        irq_latch        <= 0;
+    end else begin
+        last_iack        <= iack;
+        last_irq         <= ~iack_negedge & irq;
+        last_siowr_empty <= siowr_empty;
+        last_siord_full  <= siord_full;
+        irq_latch        <= ~iack_negedge & (
+                   (irq_posedge & pioc[5]) |
+                   (siowr_empty_posedge & pioc[9]) |
+                   (siord_full_posedge  & pioc[8]) ); // passive mode interrupts are not supported
+    end
+end
+
+// parallel port control
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
-        pocnt   <= 4'hf;
-        picnt   <= 4'hf;
-        psel    <= 0;
-        pdx0_rd <= 16'd0;
-        pdx1_rd <= 16'd0;
-    end else begin
-        pocnt <= pio_we ? ststart : {1'b1,pocnt[3:1]};
-        picnt <= pio_rd ? ststart : {1'b1,picnt[3:1]};
-        if( (pio_we || pio_rd) && cpu_addr!=2'd0 ) begin
-            psel <= cpu_addr[0];
-            if( pio_rd ) begin
-                if( cpu_addr[0] )
-                    pdx1_rd <= pbus_in;
-                else
-                    pdx0_rd <= pbus_in;
-            end else begin
-                pbus_out <= cpu_dout;
+        pocnt      <= 4'hf;
+        picnt      <= 4'hf;
+        psel       <= 0;
+        pdx0_rd    <= 16'd0;
+        pdx1_rd    <= 16'd0;
+        pdx_buffer <= 16'd0;
+    end else if(cen) begin
+        pocnt <= pdx_load ? ststart : {1'b1,pocnt[3:1]};
+        picnt <= pdx_read ? ststart : {1'b1,picnt[3:1]};
+
+        // Data is read in after the stablished period
+        if( !picnt[0] && picnt[1] )
+            pdx_buffer <= pbus_in;
+
+        if( pdx_access ) begin
+            psel <= r_field[0];
+            if( pio_imm_load ) begin
+                pbus_out <= rom_dout;
             end
+            if(r_field[0] && pdx_read ) pdx0_rd <= pdx_buffer;
+            if(r_field[1] && pdx_read ) pdx1_rd <= pdx_buffer;
         end
-        if( pio_we && cpu_addr==2'd0 ) pioc[14:5] <= cpu_dout[14:5];
+
+        if( pioc_load ) pioc[14:5] <= rom_dout[14:5];
     end
 end
 
