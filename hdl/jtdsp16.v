@@ -184,6 +184,9 @@ jtdsp16_ctrl u_ctrl(
     // register load inputs
     .short_imm      ( short_imm     ),
     .long_imm       ( long_imm      ),
+    // Parallel port
+    .pio_imm_load   ( pio_imm_load  ),
+    .pdx_read       ( pdx_read      ),
     // Data buses
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
@@ -320,7 +323,9 @@ jtdsp16_pio u_pio(
     .irq_latch      ( irq_latch     )
 );
 
+// unimplemented
 assign siord_full  = 0;
 assign siowr_empty = 0;
+assign iack        = 0;
 
 endmodule

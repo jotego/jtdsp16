@@ -11,6 +11,13 @@ wire [ 7:0] prog_data;
 reg         prog_we;
 reg  [15:0] rom[0:8191];
 
+reg  [15:0] pbus_in;
+wire [15:0] pbus_out;
+wire        pods_n;        // parallel output data strobe
+wire        pids_n;        // parallel input  data strobe
+wire        psel;          // peripheral select
+
+
 assign      cen = 1;
 assign      rst = prog_we;
 assign      prog_data16 = rom[ prog_addr[12:1] ];
@@ -70,11 +77,26 @@ always @(posedge clk) begin
     end
 end
 
+// Provide some input to the parallel port
+always @(posedge pids_n, posedge rst) begin
+    if( rst ) begin
+        pbus_in <= 16'hbeef;
+    end else begin
+        pbus_in <= pbus_in+1;
+    end
+end
+
 jtdsp16 UUT(
     .rst        ( rst       ),
     .clk        ( clk       ),
     .cen        ( cen       ),
     .ext_mode   ( 1'b0      ),
+    // Parallel I/O
+    .pbus_in    ( pbus_in   ),
+    .pbus_out   ( pbus_out  ),
+    .pods_n     ( pods_n    ),
+    .pids_n     ( pids_n    ),
+    .psel       ( psel      ),
     // interrupts
     .irq        ( 1'b0      ),
     .iack       ( iack      ),

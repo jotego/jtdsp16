@@ -80,7 +80,7 @@ assign siowr_empty_posedge = siowr_empty & ~last_siowr_empty;
 assign irq_posedge         = irq         & ~last_irq;
 
 assign pio_dout = r_field[1:0]==2'd0 ? {status[4], pioc[14:5],status} : (
-                  r_field[0] ? pdx1_rd : pdx0_rd );
+                  r_field[1] ? pdx1_rd : pdx0_rd );
 assign status   = {siowr_empty, siord_full, 2'd0, irq&pioc[5]};
 
 // interrupt control
@@ -105,7 +105,6 @@ always @(posedge clk, posedge rst) begin
 end
 
 // parallel port control
-
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
         pocnt      <= 4'hf;
@@ -114,21 +113,28 @@ always @(posedge clk, posedge rst) begin
         pdx0_rd    <= 16'd0;
         pdx1_rd    <= 16'd0;
         pdx_buffer <= 16'd0;
+        pioc       <= { 2'd0, 2'b11, 1'b0, 5'd0 };
+        pbus_out   <= 16'd0;
     end else if(cen) begin
         pocnt <= pdx_load ? ststart : {1'b1,pocnt[3:1]};
         picnt <= pdx_read ? ststart : {1'b1,picnt[3:1]};
 
         // Data is read in after the stablished period
-        if( !picnt[0] && picnt[1] )
-            pdx_buffer <= pbus_in;
+        if( !picnt[0] && picnt[1] ) begin
+            //pdx_buffer <= pbus_in;
+            if( psel )
+                pdx1_rd <= pbus_in;
+            else
+                pdx0_rd <= pbus_in;
+        end
 
         if( pdx_access ) begin
-            psel <= r_field[0];
+            psel <= r_field[1];
             if( pio_imm_load ) begin
                 pbus_out <= rom_dout;
             end
-            if(r_field[0] && pdx_read ) pdx0_rd <= pdx_buffer;
-            if(r_field[1] && pdx_read ) pdx1_rd <= pdx_buffer;
+            // if(r_field[0] && pdx_read ) pdx0_rd <= pdx_buffer;
+            // if(r_field[1] && pdx_read ) pdx1_rd <= pdx_buffer;
         end
 
         if( pioc_load ) pioc[14:5] <= rom_dout[14:5];

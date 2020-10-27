@@ -79,6 +79,7 @@ module jtdsp16_ctrl(
 
     // Parallel port
     output reg        pio_imm_load,
+    output reg        pdx_read,
 
     // Data buses
     input      [15:0] rom_dout,
@@ -133,6 +134,9 @@ always @(posedge clk, posedge rst) begin
         st_a0h        <= 0;
         st_a1h        <= 0;
         con_check     <= 0;
+        // Parallel port
+        pio_imm_load  <= 0;
+        pdx_read      <= 0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
         i_field   <= rom_dout[10: 0];
@@ -168,6 +172,10 @@ always @(posedge clk, posedge rst) begin
         st_a0h        <= 0;
         st_a1h        <= 0;
 
+        // Parallel port
+        pio_imm_load  <= 0;
+        pdx_read      <= 0;
+
         if(!double) begin
             casez( rom_dout[15:11] ) // T
                 5'b0000?: begin // goto JA
@@ -193,13 +201,14 @@ always @(posedge clk, posedge rst) begin
                     r_field      <=  rom_dout[6:4];
                     rsel         <=  rom_dout[8:6];
                     dau_rmux_load<= 1;
+                    pdx_read     <= 1;
                     at_sel       <=  rom_dout[10];
                     st_a0h       <=  rom_dout[10];
                     st_a1h       <= ~rom_dout[10];
                     double       <= 1;
                     pc_halt      <= 1;
                 end
-                5'b01010: begin // long imm
+                5'b01010: begin // R=imm (long imm)
                     long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
                     xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
                     dau_imm_load  <= rom_dout[9:7]==3'b010; // DAU register as destination
@@ -207,8 +216,8 @@ always @(posedge clk, posedge rst) begin
                     r_field       <= rom_dout[6:4];
                     double        <= 1;
                 end
-                5'b01111, // RAM load to r0-r3
-                5'b01100  // r0-r3 storage to RAM
+                5'b01111, // R=Y RAM load to r0-r3
+                5'b01100  // Y=R r0-r3 storage to RAM
                 : begin
                     ram_load  <=
                         rom_dout[15:10] == 6'b011110 &&
@@ -219,6 +228,7 @@ always @(posedge clk, posedge rst) begin
                     dau_ram_load <=
                         rom_dout[15:10] == 6'b011110 &&
                         rom_dout[ 9:7]==3'b010; // DAU register as destination
+                    pdx_read <= rom_dout[15:11] == 5'b01111;
                     pc_halt <= 1;
                     if( rom_dout[15:11] == 5'b01100 ) begin
                         ram_we  <= 1; // RAM write
