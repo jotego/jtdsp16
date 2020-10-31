@@ -66,11 +66,10 @@ module jtdsp16_ctrl(
     // instruction fields
     output reg [11:0] i_field,
     // IRQ
-    output reg        ext_irq,
-    output reg        shadow,     // normal execution or inside IRQ
+    output            no_int,       // do not accept an irq now
+    // cache
     output reg        do_start,
     output reg [10:0] do_data,
-
     // X load control
     output            up_xram,
     output            up_xrom,
@@ -97,6 +96,7 @@ wire      con_ok;
 
 assign    long_imm = rom_dout;
 assign    con_ok   = ~dau_con_en | con_result;
+assign    no_int   = ~double;
 
 // Decode instruction
 always @(posedge clk, posedge rst) begin
@@ -113,8 +113,6 @@ always @(posedge clk, posedge rst) begin
         call_ja       <= 0;
         icall         <= 0;
         post_inc      <= 0;
-        ext_irq       <= 0;
-        shadow        <= 1;
         ram_we        <= 0;
         pc_halt       <= 0;
         xaau_ram_load <= 0;

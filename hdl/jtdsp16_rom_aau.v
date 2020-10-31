@@ -40,7 +40,8 @@ module jtdsp16_rom_aau(
     input      [11:0] i_field,
     // IRQ
     input             ext_irq,
-    input             shadow,     // normal execution or inside IRQ
+    input             no_int,
+    output reg        iack,
     // Data buses
     input      [15:0] rom_dout,
     input      [15:0] ram_dout,
@@ -56,6 +57,7 @@ reg  [15:0] pc,     // Program Counter
             pt,     // Table Pointer
             rnext,
             do_head, redo_out, do_end;
+reg         shadow;     // normal execution or inside IRQ
 reg         do_en, redo_en;
 reg  [ 6:0] do_left;
 
@@ -68,6 +70,7 @@ wire        any_load;
 
 wire        ret, iret, goto_pt, call_pt;
 wire        do_endhit, redo;
+wire        enter_int;
 
 assign      next_pc  = pc+1'd1;
 assign      i_ext    = { {4{i[11]}}, i };
@@ -87,6 +90,7 @@ assign      load_i   =  any_load && r_field==3'd3;
 assign      rom_addr = pc;
 assign      do_endhit= do_en && next_pc==do_end;
 assign      redo     = do_start && do_data[10:7]==4'd0;
+assign      enter_int = ext_irq && shadow && !pc_halt && !no_int;
 
 always @(*) begin
     rnext =
@@ -115,14 +119,23 @@ always @(posedge clk, posedge rst ) begin
         do_en   <= 0;
         redo_en <= 0;
         redo_out<= 16'd0;
+        shadow  <= 1;
+        iack    <= 1;
     end else if(cen) begin
         if( load_pt  ) pt <= rnext;
         if( shadow  || load_pi ) pi <= load_pi ? rnext : next_pc;
         if( load_pr ) pr <= rnext;
         if( load_i  ) i  <= rnext[11:0];
+
+        // Interrupt processing
+        if( enter_int || icall ) begin
+            shadow <= 0;
+        end else if( iret ) shadow <= 1;
+        iack <= enter_int;
+
         pc <=
-            ext_irq ? 16'd0 : (
-            icall   ? 16'd1 : (
+            enter_int ? 16'd1 : (
+            icall     ? 16'd2 : (
             (do_endhit || redo ) ? do_head : (
             (redo_en && next_pc==do_end ) ? redo_out :(
             (goto_ja || call_ja) ? { pc[15:12], i_field } : (

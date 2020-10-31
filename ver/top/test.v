@@ -11,6 +11,7 @@ reg  [12:0] prog_addr;
 wire [15:0] prog_data16;
 wire [ 7:0] prog_data;
 reg         prog_we;
+reg         irq;
 reg  [15:0] rom[0:8191];
 
 reg  [15:0] pbus_in;
@@ -89,6 +90,20 @@ always @(posedge pids_n, posedge rst) begin
     end
 end
 
+// Generate an interrupt after a certain parallel port output
+reg last_podsn;
+
+always @(posedge clk, posedge rst) begin
+    if( rst ) begin
+        irq <= 0;
+        last_podsn <= 1;
+    end else begin
+        last_podsn <= pods_n;
+        if( pbus_out==16'hcafe && pods_n && !last_podsn) irq <= 1;
+        else if( iack ) irq <= 0;
+    end
+end
+
 jtdsp16 UUT(
     .rst        ( rst       ),
     .clk        ( clk       ),
@@ -105,7 +120,7 @@ jtdsp16 UUT(
     .ock        ( ock       ),
     .sadd       ( sadd      ),
     // interrupts
-    .irq        ( 1'b0      ),
+    .irq        ( irq       ),
     .iack       ( iack      ),
     // ROM programming interface
     .prog_addr  ( prog_addr ),

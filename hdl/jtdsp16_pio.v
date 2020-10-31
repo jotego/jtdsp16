@@ -77,7 +77,7 @@ assign pdx_access = (pio_imm_load | pdx_read) && r_field[1:0]!=2'd0;
 assign iack_negedge        = ~iack       &  last_iack;
 assign siord_full_posedge  = siord_full  & ~last_siord_full;
 assign siowr_empty_posedge = siowr_empty & ~last_siowr_empty;
-assign irq_posedge         = irq         & ~last_irq;
+assign irq_posedge         = irq & pioc[5] & ~last_irq;
 
 assign pio_dout = r_field[1:0]==2'd0 ? {status[4], pioc[14:5],status} : (
                   r_field[1] ? pdx1_rd : pdx0_rd );
@@ -92,15 +92,17 @@ always @(posedge clk, posedge rst) begin
         irq_latch        <= 0;
         last_iack        <= 0;
         irq_latch        <= 0;
-    end else begin
+    end else if(cen) begin
         last_iack        <= iack;
-        last_irq         <= ~iack_negedge & irq;
+        last_irq         <= ~iack_negedge & (irq&pioc[5]);
         last_siowr_empty <= siowr_empty;
         last_siord_full  <= siord_full;
-        irq_latch        <= ~iack_negedge & (
-                   (irq_posedge & pioc[5]) |
-                   (siowr_empty_posedge & pioc[9]) |
-                   (siord_full_posedge  & pioc[8]) ); // passive mode interrupts are not supported
+        if( irq_posedge |
+           (siowr_empty_posedge & pioc[9]) |
+           (siord_full_posedge  & pioc[8]) ) // passive mode interrupts are not supported
+            irq_latch <= 1;
+        else if( iack_negedge )
+            irq_latch <= 0;
     end
 end
 

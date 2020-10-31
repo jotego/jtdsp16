@@ -69,7 +69,6 @@ wire        post_inc;
 wire [11:0] i_field;
 wire        con_result;
 wire        irq_latch;
-wire        shadow;
 wire        xaau_ram_load, xaau_imm_load;
 wire        do_start;
 wire [10:0] do_data;
@@ -117,6 +116,9 @@ wire        sio_imm_load;
 wire        pdx_read, pio_imm_load;
 wire [15:0] r_pio;
 
+// interrupts
+wire        no_int;
+
 jtdsp16_div u_div(
     .clk            ( clk           ),
     .cen            ( cen           ),
@@ -144,7 +146,6 @@ jtdsp16_ctrl u_ctrl(
     .icall          ( icall         ),
     .post_inc       ( post_inc      ),
     .i_field        ( i_field       ),
-    .shadow         ( shadow        ),
     .pc_halt        ( pc_halt       ),
     .xaau_ram_load  ( xaau_ram_load ),
     .xaau_imm_load  ( xaau_imm_load ),
@@ -171,7 +172,7 @@ jtdsp16_ctrl u_ctrl(
     .rsel           ( rsel          ),
     .y_field        ( y_field       ),
     .ram_we         ( ram_we        ),
-    // Increment selecction
+    // Increment selection
     .inc_sel        ( inc_sel       ),
     .ksel           ( ksel          ),
     .step_sel       ( step_sel      ),
@@ -181,6 +182,8 @@ jtdsp16_ctrl u_ctrl(
     .acc_load       ( acc_load      ),
     .ram_load       ( ram_load      ),
     .post_load      ( post_load     ),
+    // interrupts
+    .no_int         ( no_int        ),
     // register load inputs
     .short_imm      ( short_imm     ),
     .long_imm       ( long_imm      ),
@@ -230,7 +233,8 @@ jtdsp16_rom_aau u_rom_aau(
     .i_field    ( i_field       ),
     // Interruption
     .ext_irq    ( irq_latch     ),
-    .shadow     ( shadow        ),
+    .no_int     ( no_int        ),
+    .iack       ( iack          ),
     // Data buses
     .rom_dout   ( rom_dout      ),
     .ram_dout   ( ram_dout      ),
@@ -344,8 +348,5 @@ jtdsp16_sio u_sio(
     .obe            ( obe           ),
     .ibf            ( ibf           )
 );
-
-// unimplemented
-assign iack        = 0;
 
 endmodule
