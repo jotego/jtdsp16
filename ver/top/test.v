@@ -1,3 +1,5 @@
+`timescale 1ns / 1ps
+
 module test;
 
 reg         clk;
@@ -16,6 +18,7 @@ wire [15:0] pbus_out;
 wire        pods_n;        // parallel output data strobe
 wire        pids_n;        // parallel input  data strobe
 wire        psel;          // peripheral select
+wire        ock, sdo, sadd;
 
 
 assign      cen = 1;
@@ -97,6 +100,10 @@ jtdsp16 UUT(
     .pods_n     ( pods_n    ),
     .pids_n     ( pids_n    ),
     .psel       ( psel      ),
+    // Serial I/O
+    .sdo        ( sdo       ),
+    .ock        ( ock       ),
+    .sadd       ( sadd      ),
     // interrupts
     .irq        ( 1'b0      ),
     .iack       ( iack      ),

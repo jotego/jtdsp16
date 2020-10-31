@@ -81,6 +81,9 @@ module jtdsp16_ctrl(
     output reg        pio_imm_load,
     output reg        pdx_read,
 
+    // Serial port
+    output reg        sio_imm_load,
+
     // Data buses
     input      [15:0] rom_dout,
     output     [15:0] cache_dout,
@@ -137,6 +140,8 @@ always @(posedge clk, posedge rst) begin
         // Parallel port
         pio_imm_load  <= 0;
         pdx_read      <= 0;
+        // Serial port
+        sio_imm_load  <= 0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
         i_field   <= rom_dout[10: 0];
@@ -176,6 +181,9 @@ always @(posedge clk, posedge rst) begin
         pio_imm_load  <= 0;
         pdx_read      <= 0;
 
+        // Serial port
+        sio_imm_load  <= 0;
+
         if(!double) begin
             casez( rom_dout[15:11] ) // T
                 5'b0000?: begin // goto JA
@@ -212,6 +220,7 @@ always @(posedge clk, posedge rst) begin
                     long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
                     xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
                     dau_imm_load  <= rom_dout[9:7]==3'b010; // DAU register as destination
+                    sio_imm_load  <= rom_dout[9:6]==4'b0110; // Serial I/O - tdms register is not implemented
                     pio_imm_load  <= rom_dout[9:6]==4'b0111; // Parallel I/O
                     r_field       <= rom_dout[6:4];
                     double        <= 1;

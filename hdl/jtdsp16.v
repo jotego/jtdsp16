@@ -35,7 +35,7 @@ module jtdsp16(
     // Serial output
     output            sdo,           // serial data output
     output            ock,           // output clock
-    output            doen,          // data output enable
+    input             doen,          // data output enable
     output            sadd,          // serial address
     output            ose,           // output shift register empty
     output            old,           // output load
@@ -111,7 +111,7 @@ wire [15:0] r_xaau, r_yaau, r_dau, rmux;
 wire [ 2:0] rsel;
 
 // Serial I/O
-wire        siord_full, siowr_empty;
+wire        sio_imm_load;
 
 // Parallel interface
 wire        pdx_read, pio_imm_load;
@@ -187,6 +187,8 @@ jtdsp16_ctrl u_ctrl(
     // Parallel port
     .pio_imm_load   ( pio_imm_load  ),
     .pdx_read       ( pdx_read      ),
+    // Serial port
+    .sio_imm_load   ( sio_imm_load  ),
     // Data buses
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
@@ -312,20 +314,38 @@ jtdsp16_pio u_pio(
     .irq            ( irq           ),
     // interface with CPU
     .pdx_read       ( pdx_read      ),
-    .rom_dout       ( rom_dout      ),
+    .long_imm       ( long_imm      ),
     .pio_imm_load   ( pio_imm_load  ),
     .r_field        ( r_field       ),
     .pio_dout       ( r_pio         ),
     // Interrupts
     .iack           ( iack          ),
-    .siord_full     ( siord_full    ),
-    .siowr_empty    ( siowr_empty   ),
+    .siord_full     ( ibf           ),
+    .siowr_empty    ( obe           ),
     .irq_latch      ( irq_latch     )
 );
 
+jtdsp16_sio u_sio(
+    .rst            ( rst           ),
+    .clk            ( clk           ),
+    .cen            ( cen2          ),
+    // DSP16 pins
+    .ock            ( ock           ),  // serial output clock
+    .sio_do         ( sdo           ),   // serial data output
+    .sadd           ( sadd          ),
+    .old            ( old           ),  // output load
+    .ose            ( ose           ),  // output shift register empty
+    .doen           ( doen          ),
+    // interface with CPU
+    .long_imm       ( long_imm      ),
+    .sio_imm_load   ( sio_imm_load  ),
+    .r_field        ( r_field       ),
+    // status
+    .obe            ( obe           ),
+    .ibf            ( ibf           )
+);
+
 // unimplemented
-assign siord_full  = 0;
-assign siowr_empty = 0;
 assign iack        = 0;
 
 endmodule

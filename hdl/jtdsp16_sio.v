@@ -32,37 +32,41 @@
 module jtdsp16_sio(
     input             rst,
     input             clk,
+    input             cen,
     // DSP16 pins
     output reg        ock,  // serial output clock
     output            sio_do,   // serial data output
     output            sadd,
-    output            old,  // output load
+    output reg        old,  // output load
     output            ose,  // output shift register empty
-    // interface with CPU
-    input      [15:0] cpu_dout,
-    output     [15:0] sio_dout,
-    input             sio_we,
-    input             sio_rd,
-    input      [ 1:0] cpu_addr,
+    input             doen, // enable data output (ignored)
+    // interface with CPU - only writes command are implemented
+    input      [15:0] long_imm,
+    input             sio_imm_load,
+    input      [ 2:0] r_field,
     // status
-    output reg        obe,
-    output            ibf,      // input buffer full - unused
-    // Interrupts
-    input             siord_full,
-    input             siowr_empty,
-    output            ext_irq
+    output            obe,      // output buffer empty
+    output            ibf       // input buffer full - unused
 );
 
-reg  [15:0] ibuf, obuf, ocnt;
+reg  [15:0] ibuf, obuf;
+reg  [16:0] ocnt;
 reg  [ 9:0] sioc;
-reg  [15:0] srta;
+reg  [15:0] srta, addr_obuf;
 reg         ifsr, ofsr;
-reg         obe;                // output buffer empty
+reg         last_ock;
+wire        sdx_load, srta_load, sioc_load;
 
 reg  [ 3:0] clkdiv;
+wire        posedge_ock;
 
-assign sio_do = obuf[15];
-assign old    = clkdiv==4'd11;;
+assign sio_do      = obuf[15];
+assign posedge_ock = ock && !last_ock;
+assign obe         = ocnt[16];
+assign sadd        = addr_obuf[7] && !obe;
+assign sdx_load    = sio_imm_load && r_field==3'b010;
+assign srta_load   = sio_imm_load && r_field==3'b001;
+assign sioc_load   = sio_imm_load && r_field==3'b000;
 
 // serial input related registers. Not supported
 assign sio_dout = 16'd0;
@@ -71,15 +75,38 @@ assign ibf      = 0;
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
-        obe    <= 1;
-        clkdiv <= 4'd0;
-        ocnt   <= 16'hfffe;
-    end else begin
-        clkdiv <= clkdiv==4'd11 ? 4'd0: clkdiv+4'd1;
-        ock    <= oevent;
-        if( oevent ) begin
-            obuf <= obuf<<1;
-            ocnt <= ocnt<<1;
+        clkdiv    <= 4'd0;
+        ocnt      <= ~17'h0;
+        old       <= 1;
+        last_ock  <= 0;
+        ock       <= 0;
+        addr_obuf <= ~8'h0;
+        srta      <= 16'h0;
+        obuf      <= 16'h0;
+    end else if(cen) begin
+        clkdiv   <= clkdiv==4'd11 ? 4'd0: clkdiv+4'd1;
+        last_ock <= ock;
+        if( clkdiv==4'd5  ) ock <= ~obe;
+        if( clkdiv==4'd11 ) ock <= 0;
+        if( sio_imm_load ) begin
+            if( sdx_load ) begin
+                obuf      <= long_imm;
+                addr_obuf <= srta[7:0];
+                ocnt      <= 16'h1;
+            end
+            if( sioc_load ) sioc <= long_imm[9:0]; // contents ignored as config is fixed
+            if( srta_load ) srta <= long_imm;
+        end else begin
+            if( posedge_ock && !obe ) begin
+                old  <= 0;
+                if( !old ) begin
+                    obuf <= obuf<<1;
+                    ocnt <= ocnt<<1;
+                    addr_obuf <= { addr_obuf[6:0], 1'b1 };
+                end
+            end else if( obe ) begin
+                old <= 1;
+            end
         end
     end
 end

@@ -33,7 +33,7 @@ module jtdsp16_pio(
     input             irq,           // external interrupt request
     // interface with CPU
     input             pdx_read,
-    input      [15:0] rom_dout,
+    input      [15:0] long_imm,
     input             pio_imm_load,
     input             pio_rd,
     input      [ 2:0] r_field,
@@ -131,13 +131,13 @@ always @(posedge clk, posedge rst) begin
         if( pdx_access ) begin
             psel <= r_field[1];
             if( pio_imm_load ) begin
-                pbus_out <= rom_dout;
+                pbus_out <= long_imm;
             end
             // if(r_field[0] && pdx_read ) pdx0_rd <= pdx_buffer;
             // if(r_field[1] && pdx_read ) pdx1_rd <= pdx_buffer;
         end
 
-        if( pioc_load ) pioc[14:5] <= rom_dout[14:5];
+        if( pioc_load ) pioc[14:5] <= long_imm[14:5];
     end
 end
 
