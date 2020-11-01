@@ -87,7 +87,7 @@ if [ ! -e $CHECKFILE ]; then
     echo "Warning: check file for simulation " $CHECKFILE " not found"
 fi
 
-iverilog test.v $(add_dir ../../hdl jtdsp16.f) -o sim \
+iverilog -g2005-sv test.v $(add_dir ../../hdl jtdsp16.f) -o sim \
     -s test -DSIMULATION $MACROS || exit $?
 
 if [ $QUIET = 0 ]; then

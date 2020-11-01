@@ -4,6 +4,7 @@ module test;
 
 reg         clk;
 wire        rst, cen, iack;
+reg         auto_finish;
 
 wire [15:0] ext_addr;
 reg  [15:0] ext_data;
@@ -40,10 +41,7 @@ initial begin
     forever #15 clk=~clk;
 end
 
-initial begin
-    prog_addr = 0;
-    prog_we   = 1;
-    #45_000;
+task do_report;
     // YAAU
     $display("r0=0x%04X", UUT.u_ram_aau.r0);
     $display("r1=0x%04X", UUT.u_ram_aau.r1);
@@ -70,7 +68,16 @@ initial begin
     $display("c2=0x%04X", UUT.u_dau.c2);
     $display("auc=0x%04X", UUT.u_dau.auc);
     $display("psw=0x%04X", UUT.u_dau.psw);
-    $finish;
+endtask
+
+initial begin
+    prog_addr = 0;
+    prog_we   = 1;
+    #45_000;
+    if( auto_finish ) begin
+        do_report();
+        $finish;
+    end
 end
 
 always @(posedge clk) begin
@@ -97,9 +104,19 @@ always @(posedge clk, posedge rst) begin
     if( rst ) begin
         irq <= 0;
         last_podsn <= 1;
+        auto_finish <= 1;
     end else begin
         last_podsn <= pods_n;
         if( pbus_out==16'hcafe && pods_n && !last_podsn) irq <= 1;
+        if( pbus_out==16'hdead && pods_n && !last_podsn) begin
+            auto_finish <= 0;
+            if( !auto_finish ) begin
+                do_report();
+                $finish;
+            end else begin
+                $display("INFO: automatic simulation finish is disabled");
+            end
+        end
         else if( iack ) irq <= 0;
     end
 end
