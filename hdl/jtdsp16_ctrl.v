@@ -278,7 +278,7 @@ always @(posedge clk, posedge rst) begin
                 5'b1110: begin // do
                     do_data  <= rom_dout[10:0];
                     do_start <= 1;
-                    pc_halt  <= 1;
+                    pc_halt  <= rom_dout[10:7]==4'd0;
                     double   <= rom_dout[10:7]==4'd0;
                 end
             endcase

@@ -21,7 +21,8 @@
 module jtdsp16_rom(
     input             clk,
     input      [15:0] addr,
-    output     [15:0] dout,
+    output     [15:0] dout,     // first 4kB of memory comes from internal ROM
+                                // the rest is read from the external memory
     // External ROM
     input             ext_mode,
     input      [15:0] ext_data,

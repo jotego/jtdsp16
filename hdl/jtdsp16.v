@@ -119,6 +119,8 @@ wire [15:0] r_pio;
 // interrupts
 wire        no_int;
 
+assign cen_cko = cen2;  // clock output, input clock divided by 2
+
 jtdsp16_div u_div(
     .clk            ( clk           ),
     .cen            ( cen           ),

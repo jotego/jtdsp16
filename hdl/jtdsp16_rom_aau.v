@@ -58,7 +58,7 @@ reg  [15:0] pc,     // Program Counter
             rnext,
             do_head, redo_out, do_end;
 reg         shadow;     // normal execution or inside IRQ
-reg         do_en, redo_en;
+reg         do_en, redo_en, last_do_en;
 reg  [ 6:0] do_left;
 
 wire [15:0] next_pc;
@@ -69,7 +69,7 @@ wire        load_pt, load_pi, load_pr ,load_i;
 wire        any_load;
 
 wire        ret, iret, goto_pt, call_pt;
-wire        do_endhit, redo;
+wire        do_endhit, redo, do_loop;
 wire        enter_int;
 
 assign      next_pc  = pc+1'd1;
@@ -88,9 +88,10 @@ assign      load_pi  =  any_load && r_field==3'd2;
 assign      load_i   =  any_load && r_field==3'd3;
 
 assign      rom_addr = pc;
-assign      do_endhit= do_en && next_pc==do_end;
+assign      do_endhit= next_pc==do_end;
+assign      do_loop  = do_endhit && do_left>7'd1;
 assign      redo     = do_start && do_data[10:7]==4'd0;
-assign      enter_int = ext_irq && shadow && !pc_halt && !no_int;
+assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_en;
 
 always @(*) begin
     rnext =
@@ -121,22 +122,25 @@ always @(posedge clk, posedge rst ) begin
         redo_out<= 16'd0;
         shadow  <= 1;
         iack    <= 1;
+        do_left <= 7'd0;
+        last_do_en <= 0;
     end else if(cen) begin
+        last_do_en <= do_en;
         if( load_pt  ) pt <= rnext;
         if( shadow  || load_pi ) pi <= load_pi ? rnext : next_pc;
         if( load_pr ) pr <= rnext;
         if( load_i  ) i  <= rnext[11:0];
 
         // Interrupt processing
-        if( enter_int || icall ) begin
+        if( enter_int || icall || redo ) begin
             shadow <= 0;
-        end else if( iret ) shadow <= 1;
+        end else if( iret || (last_do_en && !do_en) ) shadow <= 1;
         iack <= enter_int;
 
         pc <=
             enter_int ? 16'd1 : (
             icall     ? 16'd2 : (
-            (do_endhit || redo ) ? do_head : (
+            ((do_loop && do_en) || redo ) ? do_head : (
             (redo_en && next_pc==do_end ) ? redo_out :(
             (goto_ja || call_ja) ? { pc[15:12], i_field } : (
             (goto_pt || call_pt) ? pt : (
@@ -156,9 +160,12 @@ always @(posedge clk, posedge rst ) begin
             do_en    <= 1;
         end
         if( do_endhit ) begin
-            do_left <= do_left-7'd1;
-            do_en   <= do_left>7'd2;
-            redo_en <= do_left>7'd2;
+            if(do_left > 7'd0 ) do_left <= do_left-7'd1;
+            do_en   <= do_left>7'd1;
+            if( do_left==7'd1 ) begin
+                do_en   <= 0;
+                redo_en <= 0;
+            end
         end
     end
 end
