@@ -108,6 +108,8 @@ always @(posedge clk, posedge rst) begin
     end else begin
         last_podsn <= pods_n;
         if( pbus_out==16'hcafe && pods_n && !last_podsn) irq <= 1;
+        else if( iack ) irq <= 0;
+        /*
         if( pbus_out==16'hdead && pods_n && !last_podsn) begin
             auto_finish <= 0;
             if( !auto_finish ) begin
@@ -116,8 +118,7 @@ always @(posedge clk, posedge rst) begin
             end else begin
                 $display("INFO: automatic simulation finish is disabled");
             end
-        end
-        else if( iack ) irq <= 0;
+        end*/
     end
 end
 

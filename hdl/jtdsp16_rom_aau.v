@@ -124,6 +124,8 @@ always @(posedge clk, posedge rst ) begin
         iack    <= 1;
         do_left <= 7'd0;
         last_do_en <= 0;
+        do_end     <= 0;
+        do_head    <= 16'd0;
     end else if(cen) begin
         last_do_en <= do_en;
         if( load_pt  ) pt <= rnext;
@@ -159,8 +161,8 @@ always @(posedge clk, posedge rst ) begin
             do_left  <= do_data[6:0];
             do_en    <= 1;
         end
-        if( do_endhit ) begin
-            if(do_left > 7'd0 ) do_left <= do_left-7'd1;
+        if( do_endhit && !pc_halt ) begin
+            if( do_left > 7'd0 ) do_left <= do_left-7'd1;
             do_en   <= do_left>7'd1;
             if( do_left==7'd1 ) begin
                 do_en   <= 0;
