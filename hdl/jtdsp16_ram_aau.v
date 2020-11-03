@@ -72,7 +72,7 @@ wire        reg_load;
 
 assign      vsr_en     = |re;   // virtual shift register enable
 assign      vsr_loop   = rin==re && vsr_en;
-assign      short_sign = (rin == 3'd6 || rin == 3'd7) ? 1'b0 : short_imm[8];
+assign      short_sign = (rin == 16'd6 || rin == 16'd7) ? 1'b0 : short_imm[8]; // is this right?
 assign      imm_ext    = long_load ? long_imm : { {7{short_sign}}, short_imm };
 assign      imm_load   = short_load || long_load;
 assign      ram_addr   = rind[10:0];

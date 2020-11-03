@@ -59,6 +59,7 @@ wire [15:0] rom_addr;
 
 wire [ 2:0] r_field;
 wire [ 1:0] inc_sel;
+wire        at_sel;
 
 // X-AAU
 wire        goto_ja;
@@ -82,6 +83,8 @@ wire        imm_type; // 0 for short, 1 for long
 wire        imm_en;
 wire        acc_en;
 wire        pc_halt;
+wire        ksel, step_sel;
+wire        short_load, long_load, acc_load, post_load, ram_load;
 
 // DAU
 wire [ 4:0] t_field;
@@ -89,7 +92,7 @@ wire [ 5:0] dau_op_fields;
 wire [ 1:0] y_field;
 wire        dau_acc_load, dau_imm_load, dau_ram_load;
 wire        st_a0h, st_a1h;
-wire        dau_dec_en, dau_con_en;
+wire        dau_dec_en, dau_con_en, dau_rmux_load;
 
 wire [15:0] cache_dout;
 wire [15:0] dau_dout;
@@ -110,7 +113,7 @@ wire [15:0] r_xaau, r_yaau, r_dau, rmux;
 wire [ 2:0] rsel;
 
 // Serial I/O
-wire        sio_imm_load;
+wire        sio_imm_load, obe;
 
 // Parallel interface
 wire        pdx_read, pio_imm_load;
@@ -141,6 +144,7 @@ jtdsp16_ctrl u_ctrl(
     .rst            ( rst           ),
     .clk            ( clk           ),
     .cen            ( cen2          ),
+    .t_field        (               ),
     // ROM AAU - XAAU
     .goto_ja        ( goto_ja       ),
     .goto_b         ( goto_b        ),
@@ -259,6 +263,7 @@ jtdsp16_ram_aau u_ram_aau(
     .cen        ( cen2          ),
     .r_field    ( r_field       ),
     .y_field    ( y_field       ),
+    .rmux       ( rmux          ),
     // Increment selecction
     .inc_sel    ( inc_sel       ),
     .ksel       ( ksel          ),
@@ -289,11 +294,12 @@ jtdsp16_dau u_dau(
     .r_field        ( r_field       ),
     .t_field        ( t_field       ),
     .op_fields      ( dau_op_fields ),
+    .rmux           ( rmux          ),
+    .alu_sel        ( 1'b1          ), // to do
     // Acc control
     .rmux_load      ( dau_rmux_load ),
     .imm_load       ( dau_imm_load  ),
     .ram_load       ( dau_ram_load  ),
-    .rmux           ( rmux          ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     // Data buses

@@ -165,15 +165,17 @@ always @(posedge clk, posedge rst) begin
         c2       <= 8'd0;
     end else if(cen) begin
         if( con_en ) begin
-            if( c_field>=5'd10 && c_field<=5'd11 ) c0<=c0+9'd1;
-            if( c_field>=5'd12 && c_field<=5'd13 ) c1<=c1+9'd1;
+            if( c_field>=5'd10 && c_field<=5'd11 ) c0<=c0+8'd1;
+            if( c_field>=5'd12 && c_field<=5'd13 ) c1<=c1+8'd1;
         end
     end
 end
 
-function [35:0] round;
-    input [35:0] a;
+function [36:0] round;
+    input [36:0] a;
+    /* verilator lint_off WIDTH */
     round = { a[35:16] + a[15] , 16'd0 };
+    /* verilator lint_on WIDTH */
 endfunction
 
 always @(posedge clk, posedge rst) begin
@@ -201,7 +203,7 @@ always @(posedge clk, posedge rst) begin
                                              (imm_load ? long_imm : ram_dout);
                 if( clr_yl ) yl <= 16'd0;
             end else begin
-                yl <= imm_load ? long_imm : ram_dout[7:0];
+                yl <= imm_load ? long_imm : ram_dout[15:0];
             end
         end
         if( st_a0h )
@@ -290,7 +292,7 @@ always @(*) begin
         3'd0: reg_dout = x;
         3'd1: reg_dout = y[31:16];
         3'd2: reg_dout = yl;
-        3'd3: reg_dout = { 10'd0, auc };
+        3'd3: reg_dout = { 9'd0, auc };
         3'd4: reg_dout = psw;
         3'd5: reg_dout = {8'd0, c0};
         3'd6: reg_dout = {8'd0, c1};

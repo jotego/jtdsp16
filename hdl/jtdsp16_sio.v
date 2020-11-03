@@ -52,7 +52,7 @@ module jtdsp16_sio(
 reg  [15:0] ibuf, obuf;
 reg  [16:0] ocnt;
 reg  [ 9:0] sioc;
-reg  [15:0] srta, addr_obuf;
+reg  [ 7:0] srta, addr_obuf;
 reg         ifsr, ofsr;
 reg         last_ock;
 wire        sdx_load, srta_load, sioc_load;
@@ -69,7 +69,6 @@ assign srta_load   = sio_imm_load && r_field==3'b001;
 assign sioc_load   = sio_imm_load && r_field==3'b000;
 
 // serial input related registers. Not supported
-assign sio_dout = 16'd0;
 assign ibf      = 0;
 // Other unsupported signals
 
@@ -81,7 +80,7 @@ always @(posedge clk, posedge rst) begin
         last_ock  <= 0;
         ock       <= 0;
         addr_obuf <= ~8'h0;
-        srta      <= 16'h0;
+        srta      <= 8'h0;
         obuf      <= 16'h0;
     end else if(cen) begin
         clkdiv   <= clkdiv==4'd11 ? 4'd0: clkdiv+4'd1;
@@ -92,10 +91,10 @@ always @(posedge clk, posedge rst) begin
             if( sdx_load ) begin
                 obuf      <= long_imm;
                 addr_obuf <= srta[7:0];
-                ocnt      <= 16'h1;
+                ocnt      <= 17'h1;
             end
             if( sioc_load ) sioc <= long_imm[9:0]; // contents ignored as config is fixed
-            if( srta_load ) srta <= long_imm;
+            if( srta_load ) srta <= long_imm[7:0];
         end else begin
             if( posedge_ock && !obe ) begin
                 old  <= 0;

@@ -35,7 +35,6 @@ module jtdsp16_pio(
     input             pdx_read,
     input      [15:0] long_imm,
     input             pio_imm_load,
-    input             pio_rd,
     input      [ 2:0] r_field,
     output     [15:0] pio_dout,
     // Interrupts

@@ -38,7 +38,7 @@ reg [15:8] rom_msb[0:4095];
 reg [15:0] rom_dout;
 
 assign     ext_addr = addr;
-assign     dout     = ext_mode ? ext_data : (addr[15:12]==4'd0? rom_dout : ext_data);
+assign     dout     = ext_mode ? ext_data : ((addr[15:12]==4'd0) ? rom_dout : ext_data);
 
 always @(posedge clk) begin
     if(prog_we && !prog_addr[0]) rom_lsb[ prog_addr[12:1] ] <= prog_data;

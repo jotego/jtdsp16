@@ -142,7 +142,7 @@ always @(posedge clk, posedge rst) begin
         sio_imm_load  <= 0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
-        i_field   <= rom_dout[10: 0];
+        i_field   <= rom_dout[11: 0];
         x_field   <= rom_dout[    4];
         short_imm <= rom_dout[ 8: 0];
 
@@ -281,6 +281,7 @@ always @(posedge clk, posedge rst) begin
                     pc_halt  <= rom_dout[10:7]==4'd0;
                     double   <= rom_dout[10:7]==4'd0;
                 end
+                default:;
             endcase
         end
     end
