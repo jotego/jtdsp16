@@ -22,6 +22,11 @@ wire        pids_n;        // parallel input  data strobe
 wire        psel;          // peripheral select
 wire        ock, sdo, sadd;
 
+// Finish signals
+reg         time_finish, pio_finish;
+wire        run_finish;
+
+assign      run_finish = time_finish | pio_finish;
 
 assign      cen = 1;
 assign      rst = prog_we;
@@ -41,7 +46,7 @@ initial begin
     forever #15 clk=~clk;
 end
 
-task do_report;
+always @(posedge run_finish) begin
     // YAAU
     $display("r0=0x%04X", UUT.u_ram_aau.r0);
     $display("r1=0x%04X", UUT.u_ram_aau.r1);
@@ -68,16 +73,18 @@ task do_report;
     $display("c2=0x%04X", UUT.u_dau.c2);
     $display("auc=0x%04X", UUT.u_dau.auc);
     $display("psw=0x%04X", UUT.u_dau.psw);
-endtask
+    $finish;;
+end
 
 initial begin
-    prog_addr = 0;
-    prog_we   = 1;
+    prog_addr  = 0;
+    prog_we    = 1;
+    time_finish= 0;
     #45_000;
     if( auto_finish ) begin
-        do_report();
-        $finish;
+        time_finish=1;
     end
+    #1_450_000 $finish;
 end
 
 always @(posedge clk) begin
@@ -105,20 +112,20 @@ always @(posedge clk, posedge rst) begin
         irq <= 0;
         last_podsn <= 1;
         auto_finish <= 1;
+        pio_finish  <= 0;
     end else begin
         last_podsn <= pods_n;
         if( pbus_out==16'hcafe && pods_n && !last_podsn) irq <= 1;
         else if( iack ) irq <= 0;
-        /*
+        // PIO finish control
         if( pbus_out==16'hdead && pods_n && !last_podsn) begin
             auto_finish <= 0;
             if( !auto_finish ) begin
-                do_report();
-                $finish;
+                pio_finish <= 1;
             end else begin
                 $display("INFO: automatic simulation finish is disabled");
             end
-        end*/
+        end
     end
 end
 

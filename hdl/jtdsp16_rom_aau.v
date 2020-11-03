@@ -58,7 +58,7 @@ reg  [15:0] pc,     // Program Counter
             rnext,
             do_head, redo_out, do_end;
 reg         shadow;     // normal execution or inside IRQ
-reg         do_en, redo_en, last_do_en;
+reg         do_en, redo_en, last_do_en, redo_aux;
 reg  [ 6:0] do_left;
 
 wire [15:0] next_pc;
@@ -139,34 +139,43 @@ always @(posedge clk, posedge rst ) begin
         end else if( iret || (last_do_en && !do_en) ) shadow <= 1;
         iack <= enter_int;
 
-        pc <=
-            enter_int ? 16'd1 : (
-            icall     ? 16'd2 : (
-            ((do_loop && do_en) || redo ) ? do_head : (
-            (redo_en && next_pc==do_end ) ? redo_out :(
-            (goto_ja || call_ja) ? { pc[15:12], i_field } : (
-            (goto_pt || call_pt) ? pt : (
-            ret                  ? pr : (
-            iret                 ? pi : (
-            pc_halt              ? pc : next_pc ))))))));
+        if( do_en ) begin
+            pc <= do_endhit ?
+                    ( do_left==7'd1 ? redo_out : do_head ) : (
+                  pc_halt ? pc : next_pc );
+        end else begin
+            pc <=
+                enter_int ? 16'd1 : (
+                icall     ? 16'd2 : (
+                (goto_ja || call_ja) ? { pc[15:12], i_field } : (
+                (goto_pt || call_pt) ? pt : (
+                ret                  ? pr : (
+                iret                 ? pi : (
+                pc_halt              ? pc : next_pc ))))));
+        end
         if( do_start ) begin
             if(do_data[10:7]!=4'd0) begin
                 do_head  <= pc;
                 do_end   <= pc + {12'd0,do_data[10:7]};
-                redo_en  <= 0;
+                redo_out <= pc + {12'd0,do_data[10:7]};
+                redo_aux <= 0;
+                if( do_data[10:7]==4'd1 )
+                    pc <= pc;
             end else begin
                 redo_out <= pc;
-                redo_en  <= 1;
+                pc       <= do_head;
+                redo_aux <= 1;
             end
             do_left  <= do_data[6:0];
             do_en    <= 1;
-        end
-        if( do_endhit && !pc_halt ) begin
-            if( do_left > 7'd0 ) do_left <= do_left-7'd1;
-            do_en   <= do_left>7'd1;
-            if( do_left==7'd1 ) begin
-                do_en   <= 0;
-                redo_en <= 0;
+        end else begin
+            redo_aux <= 0;
+            if( do_en && do_endhit && !pc_halt && !redo_aux) begin
+                if( do_left > 7'd0 )
+                    do_left <= do_left-7'd1;
+                if( do_left==7'd1 ) begin
+                    do_en   <= 0;
+                end
             end
         end
     end
