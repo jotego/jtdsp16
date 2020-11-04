@@ -8,14 +8,15 @@
 using namespace std;
 
 class RTL {
-    vluint64_t ticks;
+    vluint64_t ticks, sim_time, half_period;
     VerilatedVcdC vcd;
 public:
     Vjtdsp16 top;
     RTL();
     void reset();
-    void clk();
+    void clk( int n=1 );
     void read_rom( int16_t* data );
+    bool fault();
 };
 
 class ROM {
@@ -31,7 +32,18 @@ int main( int argc, char *argv[] ) {
     ROM rom;
     rtl.read_rom( rom.data() );
 
-    return 0;
+    // Simulate
+    for(int k=0; k<100 && !rtl.fault(); k++ ) {
+        rtl.clk(100);
+    }
+
+    // Close down
+    if( rtl.fault() ) {
+        cout << "ERROR: fault was asserted\n";
+        return 1;
+    }
+    else
+        return 0;
 }
 
 ROM::ROM() {
@@ -48,8 +60,17 @@ ROM::~ROM() {
 /////////////////////////
 RTL::RTL() {
     Verilated::traceEverOn(true);
+    top.trace(&vcd, 99);
     vcd.open("test.vcd");
+    ticks=0;
+    sim_time=0;
+    half_period=10;
     reset();
+}
+
+bool RTL::fault() {
+    int f = top.fault;
+    return f!=0;
 }
 
 void RTL::reset() {
@@ -69,18 +90,26 @@ void RTL::reset() {
     top.rst = 0;
 }
 
-void RTL::clk() {
-    top.clk = 0;
-    top.eval();
-    top.clk = 1;
-    top.eval();
-    ticks++;
+void RTL::clk(int n) {
+    while( n-- ) {
+        sim_time += half_period;
+        top.clk = 0;
+        top.eval();
+        vcd.dump(sim_time);
+
+        sim_time += half_period;
+        top.clk = 1;
+        top.eval();
+        vcd.dump(sim_time);
+        ticks++;
+    }
 };
 
 void RTL::read_rom( int16_t* data ) {
     int addr = 0;
     top.prog_we = 1;
-    for( int j=0; j<8*1024; j++ ) {
+    top.rst = 1;
+    for( int j=0; j<4*1024; j++ ) {
         int16_t d = *data++;
         // LSB
         top.prog_addr = addr++;

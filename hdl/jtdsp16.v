@@ -49,7 +49,9 @@ module jtdsp16(
     // ROM programming interface
     input      [12:0] prog_addr,
     input      [ 7:0] prog_data,
-    input             prog_we
+    input             prog_we,
+    // Debug
+    output            fault
 );
 
 wire        cen2;   // cen divided by 2
@@ -201,7 +203,9 @@ jtdsp16_ctrl u_ctrl(
     // Data buses
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
-    .ext_dout       ( rb_din        )
+    .ext_dout       ( rb_din        ),
+    // Debug
+    .fault          ( fault         )
 );
 
 jtdsp16_rom u_rom(

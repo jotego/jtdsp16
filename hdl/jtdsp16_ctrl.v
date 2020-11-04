@@ -86,7 +86,10 @@ module jtdsp16_ctrl(
     // Data buses
     input      [15:0] rom_dout,
     output     [15:0] cache_dout,
-    input      [15:0] ext_dout
+    input      [15:0] ext_dout,
+
+    // Debug
+    output reg        fault
 );
 
 reg       x_field;
@@ -140,6 +143,7 @@ always @(posedge clk, posedge rst) begin
         pdx_read      <= 0;
         // Serial port
         sio_imm_load  <= 0;
+        fault         <= 0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
         i_field   <= rom_dout[11: 0];
@@ -271,6 +275,13 @@ always @(posedge clk, posedge rst) begin
                     dau_op_fields <= rom_dout[10:5];
                     //mul_en
                 end
+                // 5'b10100: begin // F1, *rN = y, 2 cycles
+                //     dau_dec_en <= 1;
+                //     dau_op_fields <= rom_dout[10:5];
+                //     ram_we <= 1; // RAM write
+                //     pc_halt<= 1;
+                //     double <= 1;
+                // end
                 5'b11010: begin
                     dau_con_en    <= 1;
                     dau_op_fields <= {1'b0, rom_dout[4:0]};
@@ -281,7 +292,7 @@ always @(posedge clk, posedge rst) begin
                     pc_halt  <= rom_dout[10:7]==4'd0;
                     double   <= rom_dout[10:7]==4'd0;
                 end
-                default:;
+                default: fault<=1;
             endcase
         end
     end
