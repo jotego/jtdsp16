@@ -1,6 +1,6 @@
 // #include "verilated.h"
 #include "Vjtdsp16.h"
-// #include "verilated_vcd_c.h"
+#include "verilated_vcd_c.h"
 
 #include <iostream>
 #include <fstream>
@@ -9,6 +9,7 @@ using namespace std;
 
 class RTL {
     vluint64_t ticks;
+    VerilatedVcdC vcd;
 public:
     Vjtdsp16 top;
     RTL();
@@ -46,6 +47,8 @@ ROM::~ROM() {
 
 /////////////////////////
 RTL::RTL() {
+    Verilated::traceEverOn(true);
+    vcd.open("test.vcd");
     reset();
 }
 
