@@ -57,7 +57,7 @@ int main( int argc, char *argv[] ) {
     bool good=true;
 
     // Simulate
-    for(int k=0; k<100 && !rtl.fault(); k++ ) {
+    for(int k=0; k<1000 && !rtl.fault(); k++ ) {
         int ticks = emu.eval();
         rtl.clk(ticks<<1);
         good = compare(rtl,emu);
