@@ -275,13 +275,34 @@ always @(posedge clk, posedge rst) begin
                     dau_op_fields <= rom_dout[10:5];
                     //mul_en
                 end
-                // 5'b10100: begin // F1, *rN = y, 2 cycles
-                //     dau_dec_en <= 1;
-                //     dau_op_fields <= rom_dout[10:5];
-                //     ram_we <= 1; // RAM write
-                //     pc_halt<= 1;
-                //     double <= 1;
-                // end
+                5'b10100: begin // F1, *rN = y, 2 cycles
+                    dau_dec_en <= 1;
+                    dau_op_fields <= rom_dout[10:5];
+                    ram_we    <= 1; // RAM write
+                    pc_halt   <= 1;
+                    double    <= 1;
+                    y_field   <= rom_dout[3:2];
+                    r_field   <= rom_dout[4] ? 3'd1 : 3'd2;
+                    post_load <= 1;
+                    case( rom_dout[1:0] )
+                        2'd0: begin // *rN
+                            inc_sel <= 2'd1;
+                            step_sel<= 0;
+                        end
+                        2'd1: begin // *rN++
+                            inc_sel <= 2'd2;
+                            step_sel<= 0;
+                        end
+                        2'd2: begin // *rN--
+                            inc_sel  <= 2'd0;
+                            step_sel <= 0;
+                        end
+                        2'd3: begin // *rN++j
+                            step_sel <= 1;
+                            ksel     <= 0;
+                        end
+                    endcase
+                end
                 5'b11010: begin
                     dau_con_en    <= 1;
                     dau_op_fields <= {1'b0, rom_dout[4:0]};
