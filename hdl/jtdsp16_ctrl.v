@@ -24,8 +24,10 @@ module jtdsp16_ctrl(
     output reg        dau_dec_en,
     output reg        dau_con_en,
     output reg [ 4:0] t_field,
+    output reg [ 4:0] c_field,
     output reg [ 2:0] r_field,
     output reg [ 1:0] y_field,
+    output reg [ 1:0] a_field,
     output reg [ 5:0] dau_op_fields,
     output reg [ 2:0] rsel,
 
@@ -41,6 +43,7 @@ module jtdsp16_ctrl(
     output reg        dau_ram_load,
     output reg        st_a0h,
     output reg        st_a1h,
+    output reg        acc_sel,
     input             con_result,
     // Load control
     output reg        short_load,
@@ -128,6 +131,8 @@ always @(posedge clk, posedge rst) begin
         ksel          <= 0;
         inc_sel       <= 2'b0;
         // DAU
+        a_field       <= 2'd0;
+        c_field       <= 5'd0;
         dau_dec_en    <= 0;
         dau_con_en    <= 0;
         at_sel        <= 0;
@@ -138,6 +143,7 @@ always @(posedge clk, posedge rst) begin
         st_a0h        <= 0;
         st_a1h        <= 0;
         con_check     <= 0;
+        acc_sel       <= 0;
         // Parallel port
         pio_imm_load  <= 0;
         pdx_read      <= 0;
@@ -148,6 +154,8 @@ always @(posedge clk, posedge rst) begin
         t_field   <= rom_dout[15:11];
         i_field   <= rom_dout[11: 0];
         x_field   <= rom_dout[    4];
+        c_field   <= rom_dout[ 4: 0];
+        a_field   <= 2'd0;
         short_imm <= rom_dout[ 8: 0];
 
         con_check <= dau_con_en;
@@ -178,6 +186,7 @@ always @(posedge clk, posedge rst) begin
         dau_ram_load  <= 0;
         st_a0h        <= 0;
         st_a1h        <= 0;
+        acc_sel       <= 0;
 
         // Parallel port
         pio_imm_load  <= 0;
@@ -270,19 +279,44 @@ always @(posedge clk, posedge rst) begin
                     endcase
                     double   <= 1;
                 end
+
                 5'b0011?: begin // F1 Y
                     dau_dec_en    <= 1;
                     dau_op_fields <= rom_dout[10:5];
                     //mul_en
                 end
-                5'b10100: begin // F1, *rN = y, 2 cycles
+
+                5'b10011: // if CON F2
+                begin
+                    dau_con_en    <= 1;
+                    dau_op_fields <= rom_dout[10:5];
+                end
+
+                5'b10100, // F1, *rN = y, 2 cycles
+                5'b10111, // F1, y[k]=Y
+                5'b11100, // F1, Y=a0[l]
+                5'b00100: // F1, Y=a1[l]
+                begin
                     dau_dec_en <= 1;
                     dau_op_fields <= rom_dout[10:5];
-                    ram_we    <= 1; // RAM write
+                    case( rom_dout[15:11] )
+                        5'b10100: begin // RAM write
+                            ram_we <= 1;
+                            rsel   <= 3'b010;  // DAU
+                        end
+                        5'b10111: begin // write to y[l] register
+                            dau_ram_load <= 1;
+                        end
+                        default: begin
+                            rsel <= 3'b010; // DAU
+                            acc_sel <= 1;
+                            a_field <= { rom_dout[4], ~rom_dout[15] };
+                        end
+                    endcase
                     pc_halt   <= 1;
                     double    <= 1;
                     y_field   <= rom_dout[3:2];
-                    r_field   <= rom_dout[4] ? 3'd1 : 3'd2;
+                    r_field   <= rom_dout[4] ? 3'd1 : 3'd2; // select y or yl
                     post_load <= 1;
                     case( rom_dout[1:0] )
                         2'd0: begin // *rN
@@ -303,9 +337,8 @@ always @(posedge clk, posedge rst) begin
                         end
                     endcase
                 end
-                5'b11010: begin
+                5'b11010: begin // conditional branch
                     dau_con_en    <= 1;
-                    dau_op_fields <= {1'b0, rom_dout[4:0]};
                 end
                 5'b1110: begin // do
                     do_data  <= rom_dout[10:0];

@@ -61,7 +61,7 @@ wire [15:0] rom_addr;
 
 wire [ 2:0] r_field;
 wire [ 1:0] inc_sel;
-wire        at_sel;
+wire        at_sel, acc_sel;
 
 // X-AAU
 wire        goto_ja;
@@ -89,9 +89,9 @@ wire        ksel, step_sel;
 wire        short_load, long_load, acc_load, post_load, ram_load;
 
 // DAU
-wire [ 4:0] t_field;
+wire [ 4:0] t_field, c_field;
 wire [ 5:0] dau_op_fields;
-wire [ 1:0] y_field;
+wire [ 1:0] y_field, a_field;
 wire        dau_acc_load, dau_imm_load, dau_ram_load;
 wire        st_a0h, st_a1h;
 wire        dau_dec_en, dau_con_en, dau_rmux_load;
@@ -138,7 +138,9 @@ jtdsp16_rsel u_rsel(
     .r_dau   ( r_dau     ),
     .r_pio   ( r_pio     ),
     .r_if    ( 16'd0     ),
+    .r_acc   ( acc_dout  ),
     .rsel    ( rsel      ),
+    .acc_sel ( acc_sel   ),
     .rmux    ( rmux      )
 );
 
@@ -164,12 +166,15 @@ jtdsp16_ctrl u_ctrl(
     .dau_con_en     ( dau_con_en    ),
     .dau_op_fields  ( dau_op_fields ),
     .at_sel         ( at_sel        ),
+    .a_field        ( a_field       ),
+    .c_field        ( c_field       ),
     .dau_rmux_load  ( dau_rmux_load ),
     .dau_imm_load   ( dau_imm_load  ),
     .dau_ram_load   ( dau_ram_load  ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     .con_result     ( con_result    ),
+    .acc_sel        ( acc_sel       ),
     // X load control
     .up_xram        ( up_xram       ),
     .up_xrom        ( up_xrom       ),
@@ -297,6 +302,8 @@ jtdsp16_dau u_dau(
     .con_en         ( dau_con_en    ),
     .r_field        ( r_field       ),
     .t_field        ( t_field       ),
+    .a_field        ( a_field       ),
+    .c_field        ( c_field       ),
     .op_fields      ( dau_op_fields ),
     .rmux           ( rmux          ),
     .alu_sel        ( 1'b1          ), // to do

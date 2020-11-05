@@ -23,7 +23,9 @@ module jtdsp16_dau(
     input             dec_en,   // F1 decoder enable
     input             con_en,   // condition check enable
     input      [ 2:0] r_field,
+    input      [ 1:0] a_field,  // select acc output
     input      [ 4:0] t_field,
+    input      [ 4:0] c_field,
     input      [ 5:0] op_fields,
     input             ram_load,
     input             rmux_load,
@@ -57,7 +59,6 @@ wire [ 3:0] f1_field;
 wire [ 3:0] f2_field;
 wire        s_field;  // source
 wire        d_field;  // destination
-wire        at_sel;
 
 // Control registers
 reg  [ 7:0] c0, c1, c2;
@@ -68,10 +69,9 @@ reg         ov1, ov0;   // overflow
 
 wire [31:0] y;
 wire [36:0] as, y_ext;
-wire [35:0] ram_ext;
+wire [35:0] ram_ext, acc_mux;
 wire [19:0] rmux_ext, acc_in;
 wire [ 3:0] flags;
-wire [ 4:0] c_field;
 wire        pre_ov;
 wire        up_p;
 wire        up_y;
@@ -95,7 +95,6 @@ reg         c1lt;   // counter1 <0  (and counter gets incremented)
 wire        heads;  // pseudorandom sequence bit set
 wire        tails;  // pseudorandom sequence bit clear
 
-assign c_field     = op_fields[4:0];
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
 assign up_p        = dec_en && f1_field[3:2]==2'b0;
@@ -115,7 +114,8 @@ assign sat_a0      = auc[2];
 assign ram_ext     = { {4{ram_dout[15]}}, ram_dout, 16'd0 };
 assign rmux_ext    = { {4{rmux[15]}}, rmux };
 assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
-assign acc_dout    = at_sel ? a1[15:0] : a0[15:0];
+assign acc_mux     = a_field[0] ? a1 : a0;
+assign acc_dout    = a_field[1] ? acc_mux[31:16] : acc_mux[15:0];
 assign acc_in      = rmux_load ? rmux_ext : alu_out[35:16];
 assign pre_ov      = ^{alu_llv, alu_out[35:31]};
 

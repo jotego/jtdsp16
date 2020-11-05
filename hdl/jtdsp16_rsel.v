@@ -22,14 +22,17 @@ module jtdsp16_rsel(
     input   [15:0] r_dau,
     input   [15:0] r_pio,
     input   [15:0] r_if,
+    input   [15:0] r_acc,
     input   [ 2:0] rsel,
+    input          acc_sel,
     output  [15:0] rmux
 );
 
-assign rmux = rsel[2:1]== 2'b00   ? r_yaau : (
+assign rmux = acc_sel             ? r_acc  : (
+              rsel[2:1]== 2'b00   ? r_yaau : (
               rsel[2:1]== 2'b01   ? r_xaau : (
               rsel[2:1]== 2'b10   ? r_dau  : (
               rsel     == 3'b11_1 ? r_pio  : (
-                                    r_if       ))));
+                                    r_if       )))));
 
 endmodule
