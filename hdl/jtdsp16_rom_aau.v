@@ -47,7 +47,9 @@ module jtdsp16_rom_aau(
     input      [15:0] ram_dout,
     // ROM request
     output reg [15:0] reg_dout,
-    output     [15:0] rom_addr
+    output     [15:0] rom_addr,
+    // Registers - for debugging only
+    output     [15:0] debug_pc
 );
 
 reg  [11:0] i;
@@ -92,6 +94,9 @@ assign      do_endhit= next_pc==do_end;
 assign      do_loop  = do_endhit && do_left>7'd1;
 assign      redo     = do_start && do_data[10:7]==4'd0;
 assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_en;
+
+// Debugging
+assign      debug_pc = pc;
 
 always @(*) begin
     rnext =

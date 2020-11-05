@@ -192,7 +192,7 @@ always @(posedge clk, posedge rst) begin
         pio_imm_load  <= 0;
         pdx_read      <= 0;
 
-        // Serial port
+        // Serial portf
         sio_imm_load  <= 0;
 
         if(!double) begin
@@ -202,20 +202,24 @@ always @(posedge clk, posedge rst) begin
                     pc_halt <= ~con_ok;
                     double  <= 1;
                 end
+
+                5'b0001?: begin // short imm j, k, rb, re
+                    short_load <= 1;
+                    r_field    <= rom_dout[11:9]^3'b100;
+                end
+
                 5'b1000?: begin // call JA
                     call_ja <= con_ok;
                     pc_halt <= ~con_ok;
                     double  <= 1;
                 end
+
                 5'b11000: begin // goto B (ret, iret, goto pt, call pt)
                     goto_b  <= con_ok || (rom_dout[10:8]==3'b1); // iret is always executed
                     pc_halt <= ~con_ok;
                     double  <= 1;
                 end
-                5'b0001?: begin // short imm j, k, rb, re
-                    short_load <= 1;
-                    r_field    <= rom_dout[11:9]^3'b100;
-                end
+
                 5'b01000: begin // aT=R
                     r_field      <=  rom_dout[6:4];
                     rsel         <=  rom_dout[8:6];
@@ -227,6 +231,7 @@ always @(posedge clk, posedge rst) begin
                     double       <= 1;
                     pc_halt      <= 1;
                 end
+
                 5'b01010: begin // R=imm (long imm)
                     long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
                     xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
@@ -236,6 +241,7 @@ always @(posedge clk, posedge rst) begin
                     r_field       <= rom_dout[6:4];
                     double        <= 1;
                 end
+
                 5'b01111, // R=Y RAM load to r0-r3
                 5'b01100  // Y=R r0-r3 storage to RAM
                 : begin
@@ -280,7 +286,9 @@ always @(posedge clk, posedge rst) begin
                     double   <= 1;
                 end
 
-                5'b0011?: begin // F1 Y
+                5'b00110, // Y    F1
+                5'b00111: // aT=Y F1
+                begin
                     dau_dec_en    <= 1;
                     dau_op_fields <= rom_dout[10:5];
                     //mul_en
@@ -340,7 +348,7 @@ always @(posedge clk, posedge rst) begin
                 5'b11010: begin // conditional branch
                     dau_con_en    <= 1;
                 end
-                5'b1110: begin // do
+                5'b01110: begin // do
                     do_data  <= rom_dout[10:0];
                     do_start <= 1;
                     pc_halt  <= rom_dout[10:7]==4'd0;

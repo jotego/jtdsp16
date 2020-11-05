@@ -16,6 +16,8 @@
     Version: 1.0
     Date: 15-7-2020 */
 
+`define JTDSP16_DEBUG
+
 module jtdsp16(
     input             rst,
     input             clk,
@@ -52,7 +54,15 @@ module jtdsp16(
     input             prog_we,
     // Debug
     output            fault
+    `ifdef JTDSP16_DEBUG
+    ,
+    output [15:0]     debug_pc
+    `endif
 );
+
+`ifndef JTDSP16_DEBUG
+wire [15:0] debug_pc;
+`endif
 
 wire        cen2;   // cen divided by 2
 
@@ -255,7 +265,9 @@ jtdsp16_rom_aau u_rom_aau(
     .ram_dout   ( ram_dout      ),
     // ROM request
     .rom_addr   ( rom_addr      ),
-    .reg_dout   ( r_xaau        )
+    .reg_dout   ( r_xaau        ),
+    // Debugging
+    .debug_pc   ( debug_pc      )
 );
 
 jtdsp16_ram u_ram(
