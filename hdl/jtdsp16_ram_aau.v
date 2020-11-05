@@ -43,7 +43,16 @@ module jtdsp16_ram_aau(
     input    [15:0] rmux,
     // outputs
     output   [15:0] reg_dout,
-    output   [10:0] ram_addr
+    output   [10:0] ram_addr,
+    // Debug outputs
+    output   [15:0] debug_re,
+    output   [15:0] debug_rb,
+    output   [15:0] debug_j,
+    output   [15:0] debug_k,
+    output   [15:0] debug_r0,
+    output   [15:0] debug_r1,
+    output   [15:0] debug_r2,
+    output   [15:0] debug_r3
 );
 
 reg  [15:0] re, // end   - virtual shift register
@@ -72,12 +81,22 @@ wire        reg_load;
 
 assign      vsr_en     = |re;   // virtual shift register enable
 assign      vsr_loop   = rin==re && vsr_en;
-assign      short_sign = (rin == 16'd6 || rin == 16'd7) ? 1'b0 : short_imm[8]; // is this right?
+assign      short_sign = (r_field == 3'd4 || r_field == 3'd5) ? short_imm[8] : 1'b0; // only j and k get sign extended
 assign      imm_ext    = long_load ? long_imm : { {7{short_sign}}, short_imm };
 assign      imm_load   = short_load || long_load;
 assign      ram_addr   = rind[10:0];
 assign      reg_load   = imm_load || acc_load || ram_load;
 assign      reg_dout   = rin;
+
+// Debug
+assign      debug_re = re;
+assign      debug_rb = rb;
+assign      debug_j  = j;
+assign      debug_k  = k;
+assign      debug_r0 = r0;
+assign      debug_r1 = r1;
+assign      debug_r2 = r2;
+assign      debug_r3 = r3;
 
 always @(*) begin
     load_j  = reg_load  && r_field==3'd4;
@@ -93,7 +112,7 @@ always @(*) begin
     post_r2 = post_load && y_field==2'd2;
     post_r3 = post_load && y_field==2'd3;
 end
-
+/*
 function [15:0] load_reg;
     input           load_acc;
     input           load_short;
@@ -105,7 +124,7 @@ function [15:0] load_reg;
     load_reg = load_acc   ? acc  : (
                load_long  ? long : { {7{sign}}, short});
 endfunction
-
+*/
 always @(*) begin
     case( r_field ) // register to load from
         3'd0: rin = r0;

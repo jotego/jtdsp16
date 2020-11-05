@@ -56,12 +56,28 @@ module jtdsp16(
     output            fault
     `ifdef JTDSP16_DEBUG
     ,
-    output [15:0]     debug_pc
+    output [15:0]     debug_pc,
+    output [15:0]     debug_re,
+    output [15:0]     debug_rb,
+    output [15:0]     debug_j,
+    output [15:0]     debug_k,
+    output [15:0]     debug_r0,
+    output [15:0]     debug_r1,
+    output [15:0]     debug_r2,
+    output [15:0]     debug_r3
     `endif
 );
 
 `ifndef JTDSP16_DEBUG
-wire [15:0] debug_pc;
+wire [15:0] debug_pc,
+            debug_re,
+            debug_rb,
+            debug_j,
+            debug_k,
+            debug_r0,
+            debug_r1,
+            debug_r2,
+            debug_r3;
 `endif
 
 wire        cen2;   // cen divided by 2
@@ -302,7 +318,16 @@ jtdsp16_ram_aau u_ram_aau(
     .ram_dout   ( ram_dout      ),
     // outputs
     .ram_addr   ( ram_addr      ),
-    .reg_dout   ( r_yaau        )
+    .reg_dout   ( r_yaau        ),
+    // Debug
+    .debug_re   ( debug_re      ),
+    .debug_rb   ( debug_rb      ),
+    .debug_j    ( debug_j       ),
+    .debug_k    ( debug_k       ),
+    .debug_r0   ( debug_r0      ),
+    .debug_r1   ( debug_r1      ),
+    .debug_r2   ( debug_r2      ),
+    .debug_r3   ( debug_r3      )
 );
 
 jtdsp16_dau u_dau(
