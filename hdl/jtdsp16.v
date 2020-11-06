@@ -61,7 +61,7 @@ module jtdsp16(
     output [15:0]     debug_pr,
     output [15:0]     debug_pi,
     output [15:0]     debug_pt,
-    output [15:0]     debug_i,
+    output [11:0]     debug_i,
     // RAM AAU
     output [15:0]     debug_re,
     output [15:0]     debug_rb,
@@ -77,15 +77,19 @@ module jtdsp16(
     output [15:0]     debug_yl,
     output [ 7:0]     debug_c0,
     output [ 7:0]     debug_c1,
-    output [ 7:0]     debug_c2
+    output [ 7:0]     debug_c2,
+    output [35:0]     debug_a0,
+    output [35:0]     debug_a1
     `endif
 );
 
 `ifndef JTDSP16_DEBUG
-wire [15:0] debug_pc, debug_pr, debug_pi, debug_pt, debug_i,
+wire [15:0] debug_pc, debug_pr, debug_pi, debug_pt,
             debug_re, debug_rb, debug_j,  debug_k,  debug_r0, debug_r1, debug_r2, debug_r3;
 wire [15:0] debug_x,  debug_y,  debug_yl;
+wire [11:0] debug_i;
 wire [ 7:0] debug_c0, debug_c1, debug_c2;
+wire [35:0] debug_a1, debug_a0;
 `endif
 
 wire        cen2;   // cen divided by 2
@@ -376,7 +380,9 @@ jtdsp16_dau u_dau(
     .debug_yl       ( debug_yl      ),
     .debug_c0       ( debug_c0      ),
     .debug_c1       ( debug_c1      ),
-    .debug_c2       ( debug_c2      )
+    .debug_c2       ( debug_c2      ),
+    .debug_a0       ( debug_a0      ),
+    .debug_a1       ( debug_a1      )
 );
 
 jtdsp16_pio u_pio(

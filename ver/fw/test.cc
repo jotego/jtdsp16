@@ -44,6 +44,10 @@ public:
     int  c0() { return top.debug_c0; }
     int  c1() { return top.debug_c1; }
     int  c2() { return top.debug_c2; }
+
+    int  a0() { return top.debug_a0; }
+    int  a1() { return top.debug_a1; }
+
     int get_ticks() { return ticks; }
 };
 
@@ -62,19 +66,25 @@ void dump( RTL& rtl, DSP16emu& emu );
 const int GOTOJA   = 3;
 const int SHORTIMM = 3<<2;
 const int LONGIMM  = 1<<10;
+const int AT_R     = 1<<8;
 
 int main( int argc, char *argv[] ) {
-    srand(100);
+    srand(300);
     RTL rtl;
     ROM rom;
-    rom.random( GOTOJA | SHORTIMM | LONGIMM );
+    rom.random( /*GOTOJA | */
+        SHORTIMM |
+        LONGIMM |
+        // AT_R |
+        0
+     );
     rtl.read_rom( rom.data() );
     DSP16emu emu( rom.data() );
     bool good=true;
 
     // Simulate
     int k;
-    for( k=0; k<1000 && !rtl.fault(); k++ ) {
+    for( k=0; k<2000 && !rtl.fault(); k++ ) {
         int ticks = emu.eval();
         rtl.clk(ticks<<1);
         good = compare(rtl,emu);
@@ -94,6 +104,7 @@ int main( int argc, char *argv[] ) {
         dump(rtl, emu);
         return 1;
     }
+    dump(rtl, emu);
     printf("PASSED %d operations\n", k);
     return 0;
 }
@@ -109,6 +120,14 @@ ROM::~ROM() {
     rom = nullptr;
 }
 
+int random_rfield() {
+    int r=32;
+    const int PIOC=28; // do not allow random writes here
+    // as it can enable interrupts
+    while( !(r<=11 || (r>=16 && r<31) ) || r==PIOC  ) r=rand()%31;
+    return r;
+}
+
 void ROM::random( int valid ) {
     if(valid==0) valid=~0;
 
@@ -118,9 +137,23 @@ void ROM::random( int valid ) {
             r = rand()%32;
         } while( ((1<<r) & valid) == 0 );
         //printf("%04X - %X\n",r, ((1<<r) & valid));
-        r <<= 11;
-        r |= rand()%0x7ff;
-        rom[k] = r;
+        int op;
+        op  = r << 11;
+        // prevents illegal OP codes
+        int extra=0;
+        switch( r ) {
+            case 0:
+            case 2:
+            case 3: extra = rand()%4096; break; // GOTO, Short immediate
+            case 8:
+                extra  = (rand()%2) << 10;
+                extra |= random_rfield() << 4; break; // aT=R
+            case 10: extra = random_rfield() << 4; break; // R=imm
+            default: cout << "Error: unsupported OP for randomization\n";
+        }
+        extra &= 0x7ff;
+        op |= extra;
+        rom[k] = op;
     }
 }
 
@@ -215,6 +248,8 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     g = g && rtl.c0() == emu.c0;
     g = g && rtl.c1() == emu.c1;
     g = g && rtl.c2() == emu.c2;
+    g = g && rtl.a0() == emu.a0;
+    g = g && rtl.a1() == emu.a1;
 
     return g;
 }
@@ -248,5 +283,6 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     REG_DUMP(C0, emu.c0, rtl.c0 )
     REG_DUMP(C1, emu.c1, rtl.c1 )
     REG_DUMP(C2, emu.c2, rtl.c2 )
-
+    REG_DUMP(A0, emu.a0, rtl.a0 )
+    REG_DUMP(A1, emu.a1, rtl.a1 )
 }

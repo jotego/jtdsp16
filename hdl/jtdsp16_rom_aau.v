@@ -53,7 +53,7 @@ module jtdsp16_rom_aau(
     output     [15:0] debug_pr,
     output     [15:0] debug_pi,
     output     [15:0] debug_pt,
-    output     [15:0] debug_i
+    output     [11:0] debug_i
 );
 
 reg  [11:0] i;
@@ -105,7 +105,7 @@ assign      debug_pc = pc;
 assign      debug_pr = pr;
 assign      debug_pi = pi;
 assign      debug_pt = pt;
-assign      debug_i  = {4'd0, i};
+assign      debug_i  = i;
 
 always @(*) begin
     rnext =

@@ -50,7 +50,9 @@ module jtdsp16_dau(
     output     [15:0] debug_yl,
     output     [ 7:0] debug_c0,
     output     [ 7:0] debug_c1,
-    output     [ 7:0] debug_c2
+    output     [ 7:0] debug_c2,
+    output     [35:0] debug_a0,
+    output     [35:0] debug_a1
 );
 
 reg  [15:0] x, yh, yl;
@@ -113,11 +115,11 @@ assign as          = s_field ? {a1[35],a1} : {a0[35],a0};
 assign y_ext       = { {5{y[31]}}, y };
 assign sel_special = 0; //t_field == 5'h12 || t_field == 5'h13;
 assign psw         = { flags, 2'b0, ov1, ov0, a1[35:32], a0[35:32] };
-assign clr_yl      = auc[6];
-assign clr_a1l     = auc[5];
-assign clr_a0l     = auc[4];
-assign sat_a1      = auc[3];
-assign sat_a0      = auc[2];
+assign clr_yl      = ~auc[6];
+assign clr_a1l     = ~auc[5];
+assign clr_a0l     = ~auc[4];
+assign sat_a1      = ~auc[3];
+assign sat_a0      = ~auc[2];
 assign ram_ext     = { {4{ram_dout[15]}}, ram_dout, 16'd0 };
 assign rmux_ext    = { {4{rmux[15]}}, rmux };
 assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
@@ -147,6 +149,8 @@ assign debug_yl = yl;
 assign debug_c0 = c0;
 assign debug_c1 = c1;
 assign debug_c2 = c2;
+assign debug_a0 = a0;
+assign debug_a1 = a1;
 
 // Condition check
 always @(*) begin
