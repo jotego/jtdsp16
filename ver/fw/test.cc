@@ -37,6 +37,7 @@ public:
     int  r3() { return top.debug_r3; }
 
     // DAU
+    int  psw(){ return top.debug_psw;}
     int  x()  { return top.debug_x;  }
     int  y()  { return top.debug_y;  }
     int  yl() { return top.debug_yl; }
@@ -45,8 +46,11 @@ public:
     int  c1() { return top.debug_c1; }
     int  c2() { return top.debug_c2; }
 
-    int  a0() { return top.debug_a0; }
-    int  a1() { return top.debug_a1; }
+    int64_t a0() { return top.debug_a0; }
+    int64_t a1() { return top.debug_a1; }
+
+    // SIO
+    int  srta() { return top.debug_srta; }
 
     int get_ticks() { return ticks; }
 };
@@ -69,13 +73,13 @@ const int LONGIMM  = 1<<10;
 const int AT_R     = 1<<8;
 
 int main( int argc, char *argv[] ) {
-    srand(300);
+    srand(3000);
     RTL rtl;
     ROM rom;
     rom.random( /*GOTOJA | */
         SHORTIMM |
         LONGIMM |
-        // AT_R |
+        AT_R |
         0
      );
     rtl.read_rom( rom.data() );
@@ -123,8 +127,14 @@ ROM::~ROM() {
 int random_rfield() {
     int r=32;
     const int PIOC=28; // do not allow random writes here
+    const int TDMS=27; // do not allow random writes here
+    const int SDX=0x1A; // do not allow random writes here
+    const int PDX0=0x1D; // do not allow random writes here
+    const int PDX1=0x1E; // do not allow random writes here
+    const int PSW=0x14; // do not allow random writes here
     // as it can enable interrupts
-    while( !(r<=11 || (r>=16 && r<31) ) || r==PIOC  ) r=rand()%31;
+    while( !(r<=11 || (r>=16 && r<31) )
+            || r==PIOC || r==TDMS || r==SDX || r==PDX0 || r==PDX1 || r==PSW ) r=rand()%31;
     return r;
 }
 
@@ -242,29 +252,33 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     g = g && rtl.j()  == emu.j;
     g = g && rtl.k()  == emu.k;
     // DAU
-    g = g && rtl.x()  == emu.x;
-    g = g && rtl.y()  == emu.y;
-    g = g && rtl.yl() == emu.yl;
-    g = g && rtl.c0() == emu.c0;
-    g = g && rtl.c1() == emu.c1;
-    g = g && rtl.c2() == emu.c2;
-    g = g && rtl.a0() == emu.a0;
-    g = g && rtl.a1() == emu.a1;
+    //g = g && rtl.psw() == emu.psw;
+    g = g && rtl.x()   == emu.x;
+    g = g && rtl.y()   == emu.y;
+    g = g && rtl.yl()  == emu.yl;
+    g = g && rtl.c0()  == emu.c0;
+    g = g && rtl.c1()  == emu.c1;
+    g = g && rtl.c2()  == emu.c2;
+    g = g && rtl.a0()  == emu.a0;
+    g = g && rtl.a1()  == emu.a1;
 
     return g;
 }
 
-#define REG_DUMP( r, emu, rtl ) printf("%2s - %04X - %04X %c\n", #r, emu , rtl(), emu!=rtl() ? '*' : ' ' );
+#define REG_DUMP( r, emu, rtl ) printf("%4s - %04X - %04X %c\n", #r, emu , rtl(), emu!=rtl() ? '*' : ' ' );
+#define REG_DUMPL( r, emu, rtl ) printf("%4s - %09lX - %09lX %c\n", #r, emu&0xF'FFFF'FFFF , rtl()&0xF'FFFF'FFFF, emu!=rtl() ? '*' : ' ' );
 
 void dump( RTL& rtl, DSP16emu& emu ) {
     printf("      EMU -  RTL \n");
     // ROM AAU
+    cout << "-- ROM AAU --\n";
     REG_DUMP(PC, emu.pc, rtl.pc )
     REG_DUMP(PR, emu.pr, rtl.pr )
     REG_DUMP(PI, emu.pi, rtl.pi )
     REG_DUMP(PT, emu.pt, rtl.pt )
     REG_DUMP( I, emu.i , rtl.i  )
     // RAM AAU
+    cout << "-- RAM AAU --\n";
     REG_DUMP(R0, emu.r0, rtl.r0 )
     REG_DUMP(R1, emu.r1, rtl.r1 )
     REG_DUMP(R2, emu.r2, rtl.r2 )
@@ -277,12 +291,17 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     REG_DUMP(PR, emu.pr, rtl.pr )
     REG_DUMP(PI, emu.pi, rtl.pi )
     // DAU
+    cout << "-- DAU --\n";
+    //REG_DUMP(PSW, emu.psw , rtl.psw )
     REG_DUMP( X, emu.x , rtl.x  )
     REG_DUMP( Y, emu.y , rtl.y  )
     REG_DUMP(YL, emu.yl, rtl.yl )
     REG_DUMP(C0, emu.c0, rtl.c0 )
     REG_DUMP(C1, emu.c1, rtl.c1 )
     REG_DUMP(C2, emu.c2, rtl.c2 )
-    REG_DUMP(A0, emu.a0, rtl.a0 )
-    REG_DUMP(A1, emu.a1, rtl.a1 )
+    REG_DUMPL(A0, emu.a0, rtl.a0 )
+    REG_DUMPL(A1, emu.a1, rtl.a1 )
+
+    cout << "-- SIO --\n";
+    REG_DUMP(SRTA, emu.srta, rtl.srta )
 }

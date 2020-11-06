@@ -79,16 +79,19 @@ module jtdsp16(
     output [ 7:0]     debug_c1,
     output [ 7:0]     debug_c2,
     output [35:0]     debug_a0,
-    output [35:0]     debug_a1
+    output [35:0]     debug_a1,
+    output [15:0]     debug_psw,
+    // SIO
+    output [ 7:0]     debug_srta
     `endif
 );
 
 `ifndef JTDSP16_DEBUG
 wire [15:0] debug_pc, debug_pr, debug_pi, debug_pt,
             debug_re, debug_rb, debug_j,  debug_k,  debug_r0, debug_r1, debug_r2, debug_r3;
-wire [15:0] debug_x,  debug_y,  debug_yl;
+wire [15:0] debug_x,  debug_y,  debug_yl, debug_psw;
 wire [11:0] debug_i;
-wire [ 7:0] debug_c0, debug_c1, debug_c2;
+wire [ 7:0] debug_c0, debug_c1, debug_c2, debug_srta;
 wire [35:0] debug_a1, debug_a0;
 `endif
 
@@ -154,6 +157,7 @@ wire [ 2:0] rsel;
 
 // Serial I/O
 wire        sio_imm_load, obe;
+wire [15:0] r_sio;
 
 // Parallel interface
 wire        pdx_read, pio_imm_load;
@@ -175,6 +179,7 @@ jtdsp16_rsel u_rsel(
     .r_yaau  ( r_yaau    ),
     .r_dau   ( r_dau     ),
     .r_pio   ( r_pio     ),
+    .r_sio   ( r_sio     ),
     .r_if    ( 16'd0     ),
     .r_acc   ( acc_dout  ),
     .rsel    ( rsel      ),
@@ -382,7 +387,8 @@ jtdsp16_dau u_dau(
     .debug_c1       ( debug_c1      ),
     .debug_c2       ( debug_c2      ),
     .debug_a0       ( debug_a0      ),
-    .debug_a1       ( debug_a1      )
+    .debug_a1       ( debug_a1      ),
+    .debug_psw      ( debug_psw     )
 );
 
 jtdsp16_pio u_pio(
@@ -427,7 +433,10 @@ jtdsp16_sio u_sio(
     .r_field        ( r_field       ),
     // status
     .obe            ( obe           ),
-    .ibf            ( ibf           )
+    .ibf            ( ibf           ),
+    .r_sio          ( r_sio         ),
+    // debug
+    .debug_srta     ( debug_srta    )
 );
 
 endmodule

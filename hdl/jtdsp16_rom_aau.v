@@ -120,7 +120,7 @@ always @(*) begin
         2'd0: reg_dout = pt;
         2'd1: reg_dout = pr;
         2'd2: reg_dout = pi;
-        2'd3: reg_dout = { 4'd0, i };
+        2'd3: reg_dout = { {4{i[11]}}, i };
     endcase
 
     if( do_en ) begin

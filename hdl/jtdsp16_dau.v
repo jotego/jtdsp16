@@ -52,7 +52,8 @@ module jtdsp16_dau(
     output     [ 7:0] debug_c1,
     output     [ 7:0] debug_c2,
     output     [35:0] debug_a0,
-    output     [35:0] debug_a1
+    output     [35:0] debug_a1,
+    output     [15:0] debug_psw
 );
 
 reg  [15:0] x, yh, yl;
@@ -143,14 +144,15 @@ assign load_a1     = f1_st &&  d_field;
 assign { d_field, s_field, f1_field } = op_fields;
 
 // Debug
-assign debug_x  = x;
-assign debug_y  = yh;
-assign debug_yl = yl;
-assign debug_c0 = c0;
-assign debug_c1 = c1;
-assign debug_c2 = c2;
-assign debug_a0 = a0;
-assign debug_a1 = a1;
+assign debug_x   = x;
+assign debug_y   = yh;
+assign debug_yl  = yl;
+assign debug_c0  = c0;
+assign debug_c1  = c1;
+assign debug_c2  = c2;
+assign debug_a0  = a0;
+assign debug_a1  = a1;
+assign debug_psw = psw;
 
 // Condition check
 always @(*) begin
@@ -313,9 +315,9 @@ always @(*) begin
         3'd2: reg_dout = yl;
         3'd3: reg_dout = { 9'd0, auc };
         3'd4: reg_dout = psw;
-        3'd5: reg_dout = {8'd0, c0};
-        3'd6: reg_dout = {8'd0, c1};
-        3'd7: reg_dout = {8'd0, c2};
+        3'd5: reg_dout = {{8{c0[7]}}, c0};
+        3'd6: reg_dout = {{8{c1[7]}}, c1};
+        3'd7: reg_dout = {{8{c2[7]}}, c2};
     endcase
 end
 

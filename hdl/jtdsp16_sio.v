@@ -46,7 +46,10 @@ module jtdsp16_sio(
     input      [ 2:0] r_field,
     // status
     output            obe,      // output buffer empty
-    output            ibf       // input buffer full - unused
+    output            ibf,      // input buffer full - unused
+    output reg [15:0] r_sio,    // output register
+    // Debug
+    output     [ 7:0] debug_srta
 );
 
 reg  [15:0] ibuf, obuf;
@@ -71,6 +74,9 @@ assign sioc_load   = sio_imm_load && r_field==3'b000;
 // serial input related registers. Not supported
 assign ibf      = 0;
 // Other unsupported signals
+
+// Debug
+assign debug_srta = srta;
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
@@ -108,6 +114,14 @@ always @(posedge clk, posedge rst) begin
             end
         end
     end
+end
+
+always @(*) begin
+    case( r_field )
+        3'd0: r_sio = { 6'd0, sioc};
+        3'd1: r_sio = { 8'd0, srta};
+        default: r_sio = 16'h0; // serial input unsupported
+    endcase // r_field
 end
 
 endmodule

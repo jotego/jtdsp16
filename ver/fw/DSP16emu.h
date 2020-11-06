@@ -1,5 +1,3 @@
-// int must be 64 bits
-
 class DSP16emu {
     int16_t *rom;
     int16_t read_rom(int a);
@@ -8,10 +6,10 @@ class DSP16emu {
     int next_x,  next_y,  next_yl;
     int next_auc, next_psw, next_c0, next_c1, next_c2, next_sioc, next_srta, next_sdx;
     int next_tdms, next_pioc, next_pdx0, next_pdx1;
-    int next_a0, next_a1;
+    int64_t next_a0, next_a1;
     void update_regs();
     int get_register( int rfield );
-    int assign_high( int clr_mask, int& dest, int val );
+    int64_t assign_high( int clr_mask, int64_t& dest, int val );
     int sign_extend( int v, int msb=7 );
 public:
     int pc, j, k, rb, re, r0, r1, r2, r3;
@@ -19,7 +17,7 @@ public:
     int x, y, yl;
     int auc, psw, c0, c1, c2, sioc, srta, sdx;
     int tdms, pioc, pdx0, pdx1;
-    int a0, a1;
+    int64_t a0, a1;
 
     int ticks;
     DSP16emu( int16_t* _rom );
@@ -42,7 +40,7 @@ DSP16emu::DSP16emu( int16_t* _rom ) {
 int DSP16emu::sign_extend( int v, int msb ) {
     int sign_bit = 1<<msb;
     int mask = sign_bit-1;
-    if( sign_bit ) {
+    if( sign_bit & v ) {
         return v | ~mask;
     } else
         return v;
@@ -73,8 +71,8 @@ void DSP16emu::update_regs() {
     c0   = next_c0 & 0xff;
     c1   = next_c1 & 0xff;
     c2   = next_c2 & 0xff;
-    sioc = next_sioc;
-    srta = next_srta;
+    sioc = next_sioc & 0x3ff;
+    srta = next_srta & 0xff; // only transmit address is tested
     sdx  = next_sdx;
 
     tdms = next_tdms;
@@ -119,12 +117,14 @@ int DSP16emu::get_register( int rfield ) {
     return 0;
 }
 
-int DSP16emu::assign_high( int clr_mask, int& dest, int val ) {
+int64_t DSP16emu::assign_high( int clr_mask, int64_t& dest, int val ) {
+    const int64_t mask36 = 0xF'FFFF'FFFF;
     dest &= ~(0xffff<<16);
     val  &= 0xffff;
     dest |= (val<<16);
     if( ((auc>>4) & clr_mask)==0 )
         dest &= ~0xffff; // clear low bits
+    dest &= mask36;
     return dest;
 }
 
@@ -162,6 +162,7 @@ int DSP16emu::eval() {
         case 0x8: // aT = R
             aux = (op>>4)&0x3f;
             aux2 = get_register(aux);
+            //printf("aT=R (%d)  -- op == %X\n",aux,op);
             if( (op>>10)&1 )
                 a0 = assign_high( 1, next_a0, aux2 ); // 1 selects a0
             else
