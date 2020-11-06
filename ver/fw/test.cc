@@ -22,6 +22,11 @@ public:
     bool fault();
     // access to registers
     int  pc() { return top.debug_pc; }
+    int  pt() { return top.debug_pt; }
+    int  pr() { return top.debug_pr; }
+    int  pi() { return top.debug_pi; }
+    int  i()  { return top.debug_i;  }
+
     int  re() { return top.debug_re; }
     int  rb() { return top.debug_rb; }
     int  j()  { return top.debug_j; }
@@ -30,6 +35,15 @@ public:
     int  r1() { return top.debug_r1; }
     int  r2() { return top.debug_r2; }
     int  r3() { return top.debug_r3; }
+
+    // DAU
+    int  x()  { return top.debug_x;  }
+    int  y()  { return top.debug_y;  }
+    int  yl() { return top.debug_yl; }
+
+    int  c0() { return top.debug_c0; }
+    int  c1() { return top.debug_c1; }
+    int  c2() { return top.debug_c2; }
     int get_ticks() { return ticks; }
 };
 
@@ -47,22 +61,25 @@ void dump( RTL& rtl, DSP16emu& emu );
 
 const int GOTOJA   = 3;
 const int SHORTIMM = 3<<2;
+const int LONGIMM  = 1<<10;
 
 int main( int argc, char *argv[] ) {
+    srand(100);
     RTL rtl;
     ROM rom;
-    rom.random( GOTOJA | SHORTIMM );
+    rom.random( GOTOJA | SHORTIMM | LONGIMM );
     rtl.read_rom( rom.data() );
     DSP16emu emu( rom.data() );
     bool good=true;
 
     // Simulate
-    for(int k=0; k<1000 && !rtl.fault(); k++ ) {
+    int k;
+    for( k=0; k<1000 && !rtl.fault(); k++ ) {
         int ticks = emu.eval();
         rtl.clk(ticks<<1);
         good = compare(rtl,emu);
         if( !good ) {
-            rtl.clk(1);
+            //rtl.clk(2);
             break;
         }
     }
@@ -73,11 +90,11 @@ int main( int argc, char *argv[] ) {
         return 1;
     }
     if( !good ) {
-        cout << "ERROR: emulator and RTL diverged\n";
+        printf("ERROR: emulator and RTL diverged after %d operations \n", k);
         dump(rtl, emu);
         return 1;
     }
-    cout << "PASSED\n";
+    printf("PASSED %d operations\n", k);
     return 0;
 }
 
@@ -176,29 +193,60 @@ void RTL::read_rom( int16_t* data ) {
 
 bool compare( RTL& rtl, DSP16emu& emu ) {
     bool g = true;
+    // ROM AAU
     g = g && rtl.pc() == emu.pc;
+    g = g && rtl.pr() == emu.pr;
+    g = g && rtl.pi() == emu.pi;
+    g = g && rtl.pt() == emu.pt;
+    g = g && rtl.i()  == emu.i;
+    // RAM AAU
     g = g && rtl.r0() == emu.r0;
     g = g && rtl.r1() == emu.r1;
     g = g && rtl.r2() == emu.r2;
     g = g && rtl.r3() == emu.r3;
     g = g && rtl.re() == emu.re;
     g = g && rtl.rb() == emu.rb;
-    g = g && rtl.j() == emu.j;
-    g = g && rtl.k() == emu.k;
+    g = g && rtl.j()  == emu.j;
+    g = g && rtl.k()  == emu.k;
+    // DAU
+    g = g && rtl.x()  == emu.x;
+    g = g && rtl.y()  == emu.y;
+    g = g && rtl.yl() == emu.yl;
+    g = g && rtl.c0() == emu.c0;
+    g = g && rtl.c1() == emu.c1;
+    g = g && rtl.c2() == emu.c2;
+
     return g;
 }
 
-#define REG_DUMP( r, emu, rtl ) printf("%2s - %04X - %04X\n", #r, emu , rtl() );
+#define REG_DUMP( r, emu, rtl ) printf("%2s - %04X - %04X %c\n", #r, emu , rtl(), emu!=rtl() ? '*' : ' ' );
 
 void dump( RTL& rtl, DSP16emu& emu ) {
     printf("      EMU -  RTL \n");
+    // ROM AAU
     REG_DUMP(PC, emu.pc, rtl.pc )
+    REG_DUMP(PR, emu.pr, rtl.pr )
+    REG_DUMP(PI, emu.pi, rtl.pi )
+    REG_DUMP(PT, emu.pt, rtl.pt )
+    REG_DUMP( I, emu.i , rtl.i  )
+    // RAM AAU
     REG_DUMP(R0, emu.r0, rtl.r0 )
     REG_DUMP(R1, emu.r1, rtl.r1 )
     REG_DUMP(R2, emu.r2, rtl.r2 )
     REG_DUMP(R3, emu.r3, rtl.r3 )
     REG_DUMP(RB, emu.rb, rtl.rb )
     REG_DUMP(RE, emu.re, rtl.re )
-    REG_DUMP( J, emu.j, rtl.j )
-    REG_DUMP( K, emu.k, rtl.k )
+    REG_DUMP( J, emu.j,  rtl.j  )
+    REG_DUMP( K, emu.k,  rtl.k  )
+    REG_DUMP(PT, emu.pt, rtl.pt )
+    REG_DUMP(PR, emu.pr, rtl.pr )
+    REG_DUMP(PI, emu.pi, rtl.pi )
+    // DAU
+    REG_DUMP( X, emu.x , rtl.x  )
+    REG_DUMP( Y, emu.y , rtl.y  )
+    REG_DUMP(YL, emu.yl, rtl.yl )
+    REG_DUMP(C0, emu.c0, rtl.c0 )
+    REG_DUMP(C1, emu.c1, rtl.c1 )
+    REG_DUMP(C2, emu.c2, rtl.c2 )
+
 }

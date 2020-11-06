@@ -56,7 +56,13 @@ module jtdsp16(
     output            fault
     `ifdef JTDSP16_DEBUG
     ,
+    // ROM AAU
     output [15:0]     debug_pc,
+    output [15:0]     debug_pr,
+    output [15:0]     debug_pi,
+    output [15:0]     debug_pt,
+    output [15:0]     debug_i,
+    // RAM AAU
     output [15:0]     debug_re,
     output [15:0]     debug_rb,
     output [15:0]     debug_j,
@@ -64,20 +70,22 @@ module jtdsp16(
     output [15:0]     debug_r0,
     output [15:0]     debug_r1,
     output [15:0]     debug_r2,
-    output [15:0]     debug_r3
+    output [15:0]     debug_r3,
+    // DAU
+    output [15:0]     debug_x,
+    output [15:0]     debug_y,
+    output [15:0]     debug_yl,
+    output [ 7:0]     debug_c0,
+    output [ 7:0]     debug_c1,
+    output [ 7:0]     debug_c2
     `endif
 );
 
 `ifndef JTDSP16_DEBUG
-wire [15:0] debug_pc,
-            debug_re,
-            debug_rb,
-            debug_j,
-            debug_k,
-            debug_r0,
-            debug_r1,
-            debug_r2,
-            debug_r3;
+wire [15:0] debug_pc, debug_pr, debug_pi, debug_pt, debug_i,
+            debug_re, debug_rb, debug_j,  debug_k,  debug_r0, debug_r1, debug_r2, debug_r3;
+wire [15:0] debug_x,  debug_y,  debug_yl;
+wire [ 7:0] debug_c0, debug_c1, debug_c2;
 `endif
 
 wire        cen2;   // cen divided by 2
@@ -283,7 +291,11 @@ jtdsp16_rom_aau u_rom_aau(
     .rom_addr   ( rom_addr      ),
     .reg_dout   ( r_xaau        ),
     // Debugging
-    .debug_pc   ( debug_pc      )
+    .debug_pc   ( debug_pc      ),
+    .debug_pr   ( debug_pr      ),
+    .debug_pi   ( debug_pi      ),
+    .debug_pt   ( debug_pt      ),
+    .debug_i    ( debug_i       )
 );
 
 jtdsp16_ram u_ram(
@@ -357,7 +369,14 @@ jtdsp16_dau u_dau(
     .cache_dout     ( cache_dout    ),
     .acc_dout       ( acc_dout      ),
     .reg_dout       ( r_dau         ),
-    .con_result     ( con_result    )
+    .con_result     ( con_result    ),
+    // Debug
+    .debug_x        ( debug_x       ),
+    .debug_y        ( debug_y       ),
+    .debug_yl       ( debug_yl      ),
+    .debug_c0       ( debug_c0      ),
+    .debug_c1       ( debug_c1      ),
+    .debug_c2       ( debug_c2      )
 );
 
 jtdsp16_pio u_pio(

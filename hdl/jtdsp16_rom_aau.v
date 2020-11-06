@@ -49,7 +49,11 @@ module jtdsp16_rom_aau(
     output reg [15:0] reg_dout,
     output     [15:0] rom_addr,
     // Registers - for debugging only
-    output     [15:0] debug_pc
+    output     [15:0] debug_pc,
+    output     [15:0] debug_pr,
+    output     [15:0] debug_pi,
+    output     [15:0] debug_pt,
+    output     [15:0] debug_i
 );
 
 reg  [11:0] i;
@@ -63,7 +67,8 @@ reg         shadow;     // normal execution or inside IRQ
 reg         do_en, redo_en, last_do_en, redo_aux;
 reg  [ 6:0] do_left;
 
-wire [15:0] next_pc;
+wire [15:0] sequ_pc;
+reg  [15:0] next_pc;
 wire [15:0] i_ext;
 wire [ 2:0] b_field;
 wire        copy_pc;
@@ -74,7 +79,7 @@ wire        ret, iret, goto_pt, call_pt;
 wire        do_endhit, redo, do_loop;
 wire        enter_int;
 
-assign      next_pc  = pc+1'd1;
+assign      sequ_pc  = pc+1'd1;
 assign      i_ext    = { {4{i[11]}}, i };
 assign      b_field  = i_field[10:8];
 
@@ -90,13 +95,17 @@ assign      load_pi  =  any_load && r_field==3'd2;
 assign      load_i   =  any_load && r_field==3'd3;
 
 assign      rom_addr = pc;
-assign      do_endhit= next_pc==do_end;
+assign      do_endhit= sequ_pc==do_end;
 assign      do_loop  = do_endhit && do_left>7'd1;
 assign      redo     = do_start && do_data[10:7]==4'd0;
 assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_en;
 
 // Debugging
 assign      debug_pc = pc;
+assign      debug_pr = pr;
+assign      debug_pi = pi;
+assign      debug_pt = pt;
+assign      debug_i  = {4'd0, i};
 
 always @(*) begin
     rnext =
@@ -113,6 +122,21 @@ always @(*) begin
         2'd2: reg_dout = pi;
         2'd3: reg_dout = { 4'd0, i };
     endcase
+
+    if( do_en ) begin
+        next_pc = do_endhit ?
+                ( do_left==7'd1 ? redo_out : do_head ) : (
+              pc_halt ? pc : sequ_pc );
+    end else begin
+        next_pc =
+            enter_int ? 16'd1 : (
+            icall     ? 16'd2 : (
+            (goto_ja || call_ja) ? { pc[15:12], i_field } : (
+            (goto_pt || call_pt) ? pt : (
+            ret                  ? pr : (
+            iret                 ? pi : (
+            pc_halt              ? pc : sequ_pc ))))));
+    end
 end
 
 always @(posedge clk, posedge rst ) begin
@@ -134,7 +158,6 @@ always @(posedge clk, posedge rst ) begin
     end else if(cen) begin
         last_do_en <= do_en;
         if( load_pt  ) pt <= rnext;
-        if( shadow  || load_pi ) pi <= load_pi ? rnext : next_pc;
         if( load_pr ) pr <= rnext;
         if( load_i  ) i  <= rnext[11:0];
 
@@ -144,20 +167,12 @@ always @(posedge clk, posedge rst ) begin
         end else if( iret || (last_do_en && !do_en) ) shadow <= 1;
         iack <= enter_int;
 
-        if( do_en ) begin
-            pc <= do_endhit ?
-                    ( do_left==7'd1 ? redo_out : do_head ) : (
-                  pc_halt ? pc : next_pc );
-        end else begin
-            pc <=
-                enter_int ? 16'd1 : (
-                icall     ? 16'd2 : (
-                (goto_ja || call_ja) ? { pc[15:12], i_field } : (
-                (goto_pt || call_pt) ? pt : (
-                ret                  ? pr : (
-                iret                 ? pi : (
-                pc_halt              ? pc : next_pc ))))));
+        // Update PC
+        pc <= next_pc;
+        if( shadow || load_pi ) begin
+            pi <= load_pi ? rnext : next_pc;
         end
+
         if( do_start ) begin
             if(do_data[10:7]!=4'd0) begin
                 do_head  <= pc;

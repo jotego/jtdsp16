@@ -43,7 +43,14 @@ module jtdsp16_dau(
 
     output     [15:0] acc_dout,
     output reg [15:0] reg_dout,
-    output reg        con_result
+    output reg        con_result,
+    // Debug
+    output     [15:0] debug_x,
+    output     [15:0] debug_y,
+    output     [15:0] debug_yl,
+    output     [ 7:0] debug_c0,
+    output     [ 7:0] debug_c1,
+    output     [ 7:0] debug_c2
 );
 
 reg  [15:0] x, yh, yl;
@@ -132,6 +139,14 @@ assign load_a0     = f1_st && !d_field;
 assign load_a1     = f1_st &&  d_field;
 
 assign { d_field, s_field, f1_field } = op_fields;
+
+// Debug
+assign debug_x  = x;
+assign debug_y  = yh;
+assign debug_yl = yl;
+assign debug_c0 = c0;
+assign debug_c1 = c1;
+assign debug_c2 = c2;
 
 // Condition check
 always @(*) begin
