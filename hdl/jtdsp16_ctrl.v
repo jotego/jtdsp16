@@ -41,6 +41,7 @@ module jtdsp16_ctrl(
     output reg        dau_rmux_load,
     output reg        dau_imm_load,
     output reg        dau_ram_load,
+    output reg        dau_acc_load,
     output reg        st_a0h,
     output reg        st_a1h,
     output reg        acc_sel,
@@ -66,6 +67,7 @@ module jtdsp16_ctrl(
     output reg        pc_halt,
     output reg        xaau_ram_load,
     output reg        xaau_imm_load,
+    output reg        xaau_acc_load,
     // instruction fields
     output reg [11:0] i_field,
     // IRQ
@@ -85,6 +87,7 @@ module jtdsp16_ctrl(
 
     // Serial port
     output reg        sio_imm_load,
+    output reg        sio_acc_load,
 
     // Data buses
     input      [15:0] rom_dout,
@@ -123,6 +126,7 @@ always @(posedge clk, posedge rst) begin
         pc_halt       <= 0;
         xaau_ram_load <= 0;
         xaau_imm_load <= 0;
+        xaau_acc_load <= 0;
         do_data       <= 11'd0;
         do_start      <= 0;
         // *r++ control lines:
@@ -149,6 +153,8 @@ always @(posedge clk, posedge rst) begin
         pdx_read      <= 0;
         // Serial port
         sio_imm_load  <= 0;
+        sio_acc_load  <= 0;
+
         fault         <= 0;
     end else if(cen) begin
         t_field   <= rom_dout[15:11];
@@ -164,6 +170,7 @@ always @(posedge clk, posedge rst) begin
         short_load    <= 0;
         long_load     <= 0;
         ram_load      <= 0;
+        acc_load      <= 0;
         ram_we        <= 0;
         double        <= 0;
         post_load     <= 0;
@@ -175,6 +182,7 @@ always @(posedge clk, posedge rst) begin
         call_ja       <= 0;
         xaau_ram_load <= 0;
         xaau_imm_load <= 0;
+        xaau_acc_load <= 0;
         do_start      <= 0;
 
         // DAU
@@ -184,6 +192,7 @@ always @(posedge clk, posedge rst) begin
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
+        dau_acc_load  <= 0;
         st_a0h        <= 0;
         st_a1h        <= 0;
         acc_sel       <= 0;
@@ -194,6 +203,7 @@ always @(posedge clk, posedge rst) begin
 
         // Serial portf
         sio_imm_load  <= 0;
+        sio_acc_load  <= 0;
 
         if(!double) begin
             casez( rom_dout[15:11] ) // T
@@ -228,6 +238,18 @@ always @(posedge clk, posedge rst) begin
                     at_sel       <=  rom_dout[10];
                     st_a0h       <=  rom_dout[10];
                     st_a1h       <= ~rom_dout[10];
+                    double       <= 1;
+                    pc_halt      <= 1;
+                end
+
+                5'b01001, 5'b01011: begin // R=a0 / R=a1
+                    r_field      <=  rom_dout[6:4];
+                    a_field      <=  { 1'b1, rom_dout[12] };
+                    acc_sel      <= 1;
+                    dau_acc_load <= rom_dout[8:7]==2'b10;  // DAU register
+                    acc_load     <= rom_dout[8:7]==2'b00;  // RAM AAU register
+                    xaau_acc_load<= rom_dout[8:7]==2'b01;  // ROM AAU register
+                    sio_acc_load <= rom_dout[8:6]==3'b110; // SIO register
                     double       <= 1;
                     pc_halt      <= 1;
                 end

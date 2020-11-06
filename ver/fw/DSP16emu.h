@@ -9,6 +9,7 @@ class DSP16emu {
     int64_t next_a0, next_a1;
     void update_regs();
     int get_register( int rfield );
+    void set_register( int rfield, int v );
     int64_t assign_high( int clr_mask, int64_t& dest, int val );
     int sign_extend( int v, int msb=7 );
 public:
@@ -117,6 +118,40 @@ int DSP16emu::get_register( int rfield ) {
     return 0;
 }
 
+void DSP16emu::set_register( int rfield, int v ) {
+    switch(rfield) {
+        case  0: next_r0 = r0 = v; break;
+        case  1: next_r1 = r1 = v; break;
+        case  2: next_r2 = r2 = v; break;
+        case  3: next_r3 = r3 = v; break;
+        case  4: next_j  = j  = v; break;
+        case  5: next_k  = k  = v; break;
+        case  6: next_rb = rb = v; break;
+        case  7: next_re = re = v; break;
+        case  8: next_pt = pt = v; break;
+        case  9: next_pr = pr = v; break;
+        case 10: next_pi = pi = v; break;
+        case 11: next_i  = i  = v & 0xfff; break;
+        case 16: next_x  = x  = v; break;
+        case 17: next_y  = y  = v;
+            if( (auc>>6)==0 ) next_yl = yl = 0;
+            break;
+        case 18: next_yl = yl = v; break;
+        case 19: next_auc   = v; break;
+        case 20: next_psw   = v; break;
+        case 21: next_c0 = c0 = v & 0xff; break;
+        case 22: next_c1 = c1 = v & 0xff; break;
+        case 23: next_c2 = c2 = v & 0xff; break;
+        case 24: next_sioc  = v; break;
+        case 25: srta = next_srta  = v&0xff; break;
+        case 26: next_sdx   = v; break;
+        case 27: next_tdms  = v; break;
+        case 28: next_pioc  = v; break;
+        case 29: next_pdx0  = v; break;
+        case 30: next_pdx1  = v; break;
+    }
+}
+
 int64_t DSP16emu::assign_high( int clr_mask, int64_t& dest, int val ) {
     const int64_t mask36 = 0xF'FFFF'FFFF;
     dest &= ~(0xffff<<16);
@@ -135,6 +170,7 @@ int DSP16emu::eval() {
 
     next_pi = pc;
     update_regs();
+    // printf("OP=%04X\n",op);
     switch( op>>11 ) {
         case 0: // goto JA
         case 1:
@@ -169,6 +205,11 @@ int DSP16emu::eval() {
                 a1 = assign_high( 2, next_a1, aux2 ); // 0 selects a1
             delta = 2;
             break;
+        case 0x9: // R = a0
+            aux  = (op>>4)&0x3f;
+            delta = 2;
+            set_register( aux, (a0>>16) & 0xffff );
+            break;
         case 0xa: // long imm
             aux  = (op>>4)&0x3f;
             aux2 = read_rom(pc++);
@@ -176,37 +217,7 @@ int DSP16emu::eval() {
             pi = pc;
             delta=2;
             //printf("DEBUG = %X\n", aux);
-            switch(aux) {
-                case  0: next_r0 = r0 = aux2; break;
-                case  1: next_r1 = r1 = aux2; break;
-                case  2: next_r2 = r2 = aux2; break;
-                case  3: next_r3 = r3 = aux2; break;
-                case  4: next_j  = j  = aux2; break;
-                case  5: next_k  = k  = aux2; break;
-                case  6: next_rb = rb = aux2; break;
-                case  7: next_re = re = aux2; break;
-                case  8: next_pt = pt = aux2; break;
-                case  9: next_pr = pr = aux2; break;
-                case 10: next_pi = pi = aux2; break;
-                case 11: next_i  = i  = aux2 & 0xfff; break;
-                case 16: next_x  = x  = aux2; break;
-                case 17: next_y  = y  = aux2;
-                    if( (auc>>6)==0 ) next_yl = yl = 0;
-                    break;
-                case 18: next_yl = yl = aux2; break;
-                case 19: next_auc   = aux2; break;
-                case 20: next_psw   = aux2; break;
-                case 21: next_c0 = c0 = aux2 & 0xff; break;
-                case 22: next_c1 = c1 = aux2 & 0xff; break;
-                case 23: next_c2 = c2 = aux2 & 0xff; break;
-                case 24: next_sioc  = aux2; break;
-                case 25: next_srta  = aux2; break;
-                case 26: next_sdx   = aux2; break;
-                case 27: next_tdms  = aux2; break;
-                case 28: next_pioc  = aux2; break;
-                case 29: next_pdx0  = aux2; break;
-                case 30: next_pdx1  = aux2; break;
-            }
+            set_register( aux, aux2 );
             break;
         // default:
     }

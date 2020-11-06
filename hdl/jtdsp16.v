@@ -113,7 +113,7 @@ wire        post_inc;
 wire [11:0] i_field;
 wire        con_result;
 wire        irq_latch;
-wire        xaau_ram_load, xaau_imm_load;
+wire        xaau_ram_load, xaau_imm_load, xaau_acc_load;
 wire        do_start;
 wire [10:0] do_data;
 
@@ -156,7 +156,7 @@ wire [15:0] r_xaau, r_yaau, r_dau, rmux;
 wire [ 2:0] rsel;
 
 // Serial I/O
-wire        sio_imm_load, obe;
+wire        sio_imm_load, sio_acc_load, obe;
 wire [15:0] r_sio;
 
 // Parallel interface
@@ -202,6 +202,7 @@ jtdsp16_ctrl u_ctrl(
     .pc_halt        ( pc_halt       ),
     .xaau_ram_load  ( xaau_ram_load ),
     .xaau_imm_load  ( xaau_imm_load ),
+    .xaau_acc_load  ( xaau_acc_load ),
     .do_start       ( do_start      ),
     .do_data        ( do_data       ),
     // DAU
@@ -214,6 +215,7 @@ jtdsp16_ctrl u_ctrl(
     .dau_rmux_load  ( dau_rmux_load ),
     .dau_imm_load   ( dau_imm_load  ),
     .dau_ram_load   ( dau_ram_load  ),
+    .dau_acc_load   ( dau_acc_load  ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     .con_result     ( con_result    ),
@@ -248,6 +250,7 @@ jtdsp16_ctrl u_ctrl(
     .pdx_read       ( pdx_read      ),
     // Serial port
     .sio_imm_load   ( sio_imm_load  ),
+    .sio_acc_load   ( sio_acc_load  ),
     // Data buses
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
@@ -283,6 +286,7 @@ jtdsp16_rom_aau u_rom_aau(
     .pc_halt    ( pc_halt       ),
     .ram_load   ( xaau_ram_load ),
     .imm_load   ( xaau_imm_load ),
+    .acc_load   ( xaau_acc_load ),
     // Do loop
     .do_start   ( do_start      ),
     .do_data    ( do_data       ),
@@ -296,6 +300,7 @@ jtdsp16_rom_aau u_rom_aau(
     // Data buses
     .rom_dout   ( rom_dout      ),
     .ram_dout   ( ram_dout      ),
+    .acc_dout   ( acc_dout      ),
     // ROM request
     .rom_addr   ( rom_addr      ),
     .reg_dout   ( r_xaau        ),
@@ -369,6 +374,7 @@ jtdsp16_dau u_dau(
     .rmux_load      ( dau_rmux_load ),
     .imm_load       ( dau_imm_load  ),
     .ram_load       ( dau_ram_load  ),
+    .acc_load       ( dau_acc_load  ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     // Data buses
@@ -429,7 +435,9 @@ jtdsp16_sio u_sio(
     .doen           ( doen          ),
     // interface with CPU
     .long_imm       ( long_imm      ),
+    .acc_dout       ( acc_dout      ),
     .sio_imm_load   ( sio_imm_load  ),
+    .sio_acc_load   ( sio_acc_load  ),
     .r_field        ( r_field       ),
     // status
     .obe            ( obe           ),

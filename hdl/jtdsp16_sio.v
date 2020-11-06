@@ -42,7 +42,9 @@ module jtdsp16_sio(
     input             doen, // enable data output (ignored)
     // interface with CPU - only writes command are implemented
     input      [15:0] long_imm,
+    input      [15:0] acc_dout,
     input             sio_imm_load,
+    input             sio_acc_load,
     input      [ 2:0] r_field,
     // status
     output            obe,      // output buffer empty
@@ -59,6 +61,8 @@ reg  [ 7:0] srta, addr_obuf;
 reg         ifsr, ofsr;
 reg         last_ock;
 wire        sdx_load, srta_load, sioc_load;
+wire [15:0] load_data;
+wire        any_load;
 
 reg  [ 3:0] clkdiv;
 wire        posedge_ock;
@@ -67,9 +71,11 @@ assign sio_do      = obuf[15];
 assign posedge_ock = ock && !last_ock;
 assign obe         = ocnt[16];
 assign sadd        = addr_obuf[7] && !obe;
-assign sdx_load    = sio_imm_load && r_field==3'b010;
-assign srta_load   = sio_imm_load && r_field==3'b001;
-assign sioc_load   = sio_imm_load && r_field==3'b000;
+assign sdx_load    = any_load && r_field==3'b010;
+assign srta_load   = any_load && r_field==3'b001;
+assign sioc_load   = any_load && r_field==3'b000;
+assign any_load    = sio_imm_load || sio_acc_load;
+assign load_data   = sio_imm_load ? long_imm : acc_dout;
 
 // serial input related registers. Not supported
 assign ibf      = 0;
@@ -93,14 +99,14 @@ always @(posedge clk, posedge rst) begin
         last_ock <= ock;
         if( clkdiv==4'd5  ) ock <= ~obe;
         if( clkdiv==4'd11 ) ock <= 0;
-        if( sio_imm_load ) begin
+        if( any_load ) begin
             if( sdx_load ) begin
-                obuf      <= long_imm;
+                obuf      <= load_data;
                 addr_obuf <= srta[7:0];
                 ocnt      <= 17'h1;
             end
-            if( sioc_load ) sioc <= long_imm[9:0]; // contents ignored as config is fixed
-            if( srta_load ) srta <= long_imm[7:0];
+            if( sioc_load ) sioc <= load_data[9:0]; // contents ignored as config is fixed
+            if( srta_load ) srta <= load_data[7:0];
         end else begin
             if( posedge_ock && !obe ) begin
                 old  <= 0;

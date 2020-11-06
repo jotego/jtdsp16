@@ -32,6 +32,7 @@ module jtdsp16_rom_aau(
     input             pc_halt,
     input             ram_load,
     input             imm_load,
+    input             acc_load,
     // do loop
     input             do_start,
     input      [10:0] do_data,
@@ -45,6 +46,7 @@ module jtdsp16_rom_aau(
     // Data buses
     input      [15:0] rom_dout,
     input      [15:0] ram_dout,
+    input      [15:0] acc_dout,
     // ROM request
     output reg [15:0] reg_dout,
     output     [15:0] rom_addr,
@@ -88,7 +90,7 @@ assign      iret     = goto_b && b_field==3'b01;
 assign      goto_pt  = goto_b && b_field==3'b10;
 assign      call_pt  = goto_b && b_field==3'b11;
 assign      copy_pc  = call_pt || call_ja;
-assign      any_load = ram_load || imm_load;
+assign      any_load = ram_load || imm_load || acc_load;
 assign      load_pt  =  any_load && r_field==3'd0;
 assign      load_pr  = (any_load && r_field==3'd1) || copy_pc;
 assign      load_pi  =  any_load && r_field==3'd2;
@@ -111,8 +113,9 @@ always @(*) begin
     rnext =
         imm_load ? rom_dout : (
         ram_load ? ram_dout : (
+        acc_load ? acc_dout : (
         copy_pc  ? pc       : (
-                   pt+i_ext    )));
+                   pt+i_ext    ))));
 end
 
 always @(*) begin

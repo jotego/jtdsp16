@@ -71,15 +71,19 @@ const int GOTOJA   = 3;
 const int SHORTIMM = 3<<2;
 const int LONGIMM  = 1<<10;
 const int AT_R     = 1<<8;
+const int R_A0     = 1<<9;
+const int R_A1     = 1<<10;
 
 int main( int argc, char *argv[] ) {
-    srand(3000);
+    srand(200);
     RTL rtl;
     ROM rom;
     rom.random( /*GOTOJA | */
         SHORTIMM |
         LONGIMM |
         AT_R |
+        R_A0 |
+        R_A1 |
         0
      );
     rtl.read_rom( rom.data() );
@@ -128,6 +132,7 @@ int random_rfield() {
     int r=32;
     const int PIOC=28; // do not allow random writes here
     const int TDMS=27; // do not allow random writes here
+    const int SRTA=0x19; // do not allow random writes here
     const int SDX=0x1A; // do not allow random writes here
     const int PDX0=0x1D; // do not allow random writes here
     const int PDX1=0x1E; // do not allow random writes here
@@ -155,7 +160,9 @@ void ROM::random( int valid ) {
             case 0:
             case 2:
             case 3: extra = rand()%4096; break; // GOTO, Short immediate
-            case 8:
+            case 8:  // aT=R
+            case 9:  // R=a0
+            case 11: // R=a1
                 extra  = (rand()%2) << 10;
                 extra |= random_rfield() << 4; break; // aT=R
             case 10: extra = random_rfield() << 4; break; // R=imm
@@ -261,7 +268,8 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     g = g && rtl.c2()  == emu.c2;
     g = g && rtl.a0()  == emu.a0;
     g = g && rtl.a1()  == emu.a1;
-
+    // SIO
+    g = g && rtl.srta()  == emu.srta;
     return g;
 }
 

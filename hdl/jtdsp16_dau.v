@@ -30,6 +30,7 @@ module jtdsp16_dau(
     input             ram_load,
     input             rmux_load,
     input             imm_load,
+    input             acc_load,
     // ALU control
     input             alu_sel,
     input             st_a0h,
@@ -82,6 +83,7 @@ wire [36:0] as, y_ext;
 wire [35:0] ram_ext, acc_mux;
 wire [19:0] rmux_ext, acc_in;
 wire [ 3:0] flags;
+wire [15:0] load_data;
 wire        pre_ov;
 wire        up_p;
 wire        up_y;
@@ -131,17 +133,19 @@ assign pre_ov      = ^{alu_llv, alu_out[35:31]};
 
 assign f1_st       = dec_en && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
 
-assign load_x      = (imm_load || ram_load) && r_field==3'd0;
-assign load_y      = (imm_load || ram_load) && r_field==3'd1;
-assign load_yl     = (imm_load || ram_load) && r_field==3'd2;
-assign load_auc    = (imm_load || ram_load) && r_field==3'd3;
-assign load_c0     = (imm_load || ram_load) && r_field==3'd5;
-assign load_c1     = (imm_load || ram_load) && r_field==3'd6;
-assign load_c2     = (imm_load || ram_load) && r_field==3'd7;
+assign load_x      = (imm_load || ram_load || acc_load) && r_field==3'd0;
+assign load_y      = (imm_load || ram_load || acc_load) && r_field==3'd1;
+assign load_yl     = (imm_load || ram_load || acc_load) && r_field==3'd2;
+assign load_auc    = (imm_load || ram_load || acc_load) && r_field==3'd3;
+assign load_c0     = (imm_load || ram_load || acc_load) && r_field==3'd5;
+assign load_c1     = (imm_load || ram_load || acc_load) && r_field==3'd6;
+assign load_c2     = (imm_load || ram_load || acc_load) && r_field==3'd7;
 assign load_a0     = f1_st && !d_field;
 assign load_a1     = f1_st &&  d_field;
+assign load_data   = acc_load ? acc_dout : (imm_load ? long_imm : ram_dout);
 
 assign { d_field, s_field, f1_field } = op_fields;
+
 
 // Debug
 assign debug_x   = x;
@@ -213,7 +217,7 @@ always @(posedge clk, posedge rst) begin
         { lmi, leq, llv, lmv } <= 4'd0;
     end else if(cen) begin
         if( up_p ) p  <= x*yh;
-        if( load_x ) x <= imm_load ? long_imm : ram_dout;
+        if( load_x ) x <= load_data;
         //x <= up_xram   ? ram_dout   : (
         //     up_xrom   ? rom_dout   : (
         //     up_xcache ? cache_dout : (
@@ -221,10 +225,10 @@ always @(posedge clk, posedge rst) begin
         if( up_y ) begin
             if( !load_yl ) begin
                 yh <= /*load_ay1 ? a1[31:16] : (load_ay0 ? a0[15:0] :*/
-                                             (imm_load ? long_imm : ram_dout);
+                                             load_data;
                 if( clr_yl ) yl <= 16'd0;
             end else begin
-                yl <= imm_load ? long_imm : ram_dout[15:0];
+                yl <= load_data;
             end
         end
         if( st_a0h )
@@ -240,11 +244,11 @@ always @(posedge clk, posedge rst) begin
         //a1[15: 0] <= st_a1h ? (clr_a1l ? 16'd0 : alu_out[15:0]) :
         //            (st_a1l ? alu_out[15:0] : a1[15:0]);
         // Counters
-        if( load_c0 ) c0 <= imm_load ? long_imm[7:0] : ram_dout[7:0];
-        if( load_c1 ) c1 <= imm_load ? long_imm[7:0] : ram_dout[7:0];
-        if( load_c2 ) c2 <= imm_load ? long_imm[7:0] : ram_dout[7:0];
+        if( load_c0 ) c0 <= load_data[7:0];
+        if( load_c1 ) c1 <= load_data[7:0];
+        if( load_c2 ) c2 <= load_data[7:0];
         // special registers
-        if( load_auc ) auc <= imm_load ? long_imm[6:0] : ram_dout[6:0];
+        if( load_auc ) auc <= load_data[6:0];
         // Flags
         if(dec_en) begin
             lmi <= alu_out[35];
