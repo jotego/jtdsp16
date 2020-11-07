@@ -442,7 +442,12 @@ int DSP16emu::eval() {
             update_regs();
             delta = 2;
             break;
-        // case 22:
+        case 22: // x=Y F1
+            F1parse( op );
+            aux = Yparse( op&0xf, false );
+            next_x = aux;
+            delta = 1;
+            break;
         case 23: // y=Y F1
             F1parse( op );
             aux = Yparse( op&0xf, false );

@@ -337,6 +337,17 @@ always @(posedge clk, posedge rst) begin
                     dau_op_fields <= rom_dout[10:5];
                 end
 
+                5'b10110: begin // F1, x=Y, 1 cycle
+                    dau_dec_en    <= 1;
+                    dau_op_fields <= rom_dout[10:5];
+                    dau_ram_load  <= 1;
+                    r_field       <= 3'd0; // x
+                    // Y control
+                    post_load <= 1;
+                    inc_sel   <= pre_inc_sel;
+                    step_sel  <= pre_step_sel;
+                    ksel      <= pre_ksel;
+                end
                 5'b10100, // F1, Y = y, 2 cycles
                 5'b10111, // F1, y[k]=Y, 1 cycle
                 5'b11100, // F1, Y=a0[l], 2 cycles
