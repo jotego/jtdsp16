@@ -317,6 +317,7 @@ void DSP16emu::Yparse( int Y, int v ) {
         case 3: rpt = &r3; rpt_next = &next_r3; break;
     }
     ram[ (*rpt)&0x7ff ] = v;
+    printf("RAM write [%04X]=%04X\n", (*rpt)&0x7ff, v&0xFFFF );
     switch( Y&3 ) {
         case 1:
             if( re==0 || re != *rpt ) // virtual shift register feature
@@ -339,7 +340,7 @@ int DSP16emu::Yparse( int Y, bool up_now ) {
         case 2: rpt = &r2; rpt_next = &next_r2; break;
         case 3: rpt = &r3; rpt_next = &next_r3; break;
     }
-    int v = ram[ (*rpt)&0x7ff ];
+    int v = ram[ (*rpt)&0x7ff ] & 0xffff;
     switch( Y&3 ) {
         case 1:
             if( re==0 || re != *rpt ) // virtual shift register feature
@@ -350,14 +351,15 @@ int DSP16emu::Yparse( int Y, bool up_now ) {
         case 2: *rpt_next = (*rpt-1)&0xffff; break;
         case 3: *rpt_next = (*rpt+j)&0xffff; break;
     }
+    printf("RAM read [%04X]=%04X\n", (*rpt)&0x7ff, v );
     if( up_now )
         *rpt = *rpt_next;
     stats.ram_reads++;
-    return v&0xffff;
+    return v;
 }
 
 int DSP16emu::eval() {
-    int op = read_rom(pc++);
+    int op = read_rom(pc++) &0xffff;
     int delta=0;
     int aux, aux2;
 
@@ -436,7 +438,16 @@ int DSP16emu::eval() {
         // case 27:
         // case 28:
         // case 31:
-        // case 4:
+        case 4: // F1 Y=a1
+            aux2 = (op&0x10) ? (a1>>16) : a1; // get old value of accumulator
+            aux2 &= 0xffff;
+            aux = (op>>5)&0x3f;
+            F1parse( aux );
+            Yparse( op&0xf, aux2 );
+            update_regs();
+            // printf("(F1 Y=a1) next a0=%lX\n",next_a0);
+            delta = 2;
+            break;
         case 6: // F1 Y
             aux = (op>>5)&0x3f;
             F1parse( aux );

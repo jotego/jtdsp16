@@ -355,6 +355,7 @@ always @(posedge clk, posedge rst) begin
                         default: begin
                             rsel <= 3'b010; // DAU
                             acc_sel <= 1;
+                            ram_we  <= 1;
                             a_field <= { rom_dout[4], ~rom_dout[15] };
                         end
                     endcase

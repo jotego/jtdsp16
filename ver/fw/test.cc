@@ -47,6 +47,7 @@ public:
     int  c1() { return top.debug_c1; }
     int  c2() { return top.debug_c2; }
 
+    int64_t p() { return top.debug_p; }
 
     int64_t a0() { return top.debug_a0; }
     int64_t a1() { return top.debug_a1; }
@@ -86,7 +87,7 @@ const int xY_F1      = 1<<22;
 const int yY_F1      = 1<<23;
 const int ya0_xX_F1  = 1<<25;
 const int ya1_xX_F1  = 1<<27;
-const int ya0_F1     = 1<<28;
+const int Ya0_F1     = 1<<28;
 const int yY_xX_F1   = 1<<31;
 
 class ParseArgs {
@@ -110,6 +111,7 @@ int main( int argc, char *argv[] ) {
         R_Y  |
         // F1 operations
         Y_F1 |
+        Ya1_F1 |
         0
      );
     rtl.read_rom( rom.data() );
@@ -354,6 +356,7 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     REG_DUMP(C1, emu.c1, rtl.c1 )
     REG_DUMP(C2, emu.c2, rtl.c2 )
     REG_DUMP(AUC, emu.auc, rtl.auc )
+    REG_DUMPL(P,  emu.p,  rtl.p  )
     REG_DUMPL(A0, emu.a0, rtl.a0 )
     REG_DUMPL(A1, emu.a1, rtl.a1 )
 

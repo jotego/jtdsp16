@@ -82,6 +82,7 @@ module jtdsp16(
     output [35:0]     debug_a1,
     output [15:0]     debug_psw,
     output [ 6:0]     debug_auc,
+    output [31:0]     debug_p,
     // SIO
     output [ 7:0]     debug_srta,
     output [ 9:0]     debug_sioc
@@ -97,6 +98,7 @@ wire [ 7:0] debug_c0, debug_c1, debug_c2, debug_srta;
 wire [ 6:0] debug_auc;
 wire [ 9:0] debug_sioc;
 wire [35:0] debug_a1, debug_a0;
+wire [31:0] debug_p;
 `endif
 
 wire        cen2;   // cen divided by 2
@@ -399,7 +401,8 @@ jtdsp16_dau u_dau(
     .debug_a0       ( debug_a0      ),
     .debug_a1       ( debug_a1      ),
     .debug_psw      ( debug_psw     ),
-    .debug_auc      ( debug_auc     )
+    .debug_auc      ( debug_auc     ),
+    .debug_p        ( debug_p       )
 );
 
 jtdsp16_pio u_pio(

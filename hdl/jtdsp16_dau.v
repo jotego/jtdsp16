@@ -55,7 +55,8 @@ module jtdsp16_dau(
     output     [ 6:0] debug_auc,
     output     [35:0] debug_a0,
     output     [35:0] debug_a1,
-    output     [15:0] debug_psw
+    output     [15:0] debug_psw,
+    output     [31:0] debug_p
 );
 
 reg  [15:0] x, yh, yl;
@@ -161,6 +162,7 @@ assign debug_a0  = a0;
 assign debug_a1  = a1;
 assign debug_psw = psw;
 assign debug_auc = auc;
+assign debug_p   = p;
 
 // Condition check
 always @(*) begin
