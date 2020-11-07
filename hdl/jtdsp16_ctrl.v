@@ -338,14 +338,16 @@ always @(posedge clk, posedge rst) begin
                 end
 
                 5'b10100, // F1, Y = y, 2 cycles
-                5'b10111, // F1, y[k]=Y
-                5'b11100, // F1, Y=a0[l]
-                5'b00100: // F1, Y=a1[l]
+                5'b10111, // F1, y[k]=Y, 1 cycle
+                5'b11100, // F1, Y=a0[l], 2 cycles
+                5'b00100: // F1, Y=a1[l], 2 cycles
                 begin
                     case( rom_dout[15:11] )
                         5'b10100: begin // RAM write
                             ram_we <= 1;
                             rsel   <= 3'b100;  // DAU
+                            double <= 1;
+                            pc_halt<= 1;
                         end
                         5'b10111: begin // write to y[l] register
                             dau_ram_load <= 1;
@@ -354,14 +356,14 @@ always @(posedge clk, posedge rst) begin
                             rsel <= 3'b010; // DAU
                             acc_sel <= 1;
                             ram_we  <= 1;
+                            double  <= 1;
+                            pc_halt <= 1;
                             a_field <= { rom_dout[4], ~rom_dout[15] };
                         end
                     endcase
                     dau_dec_en    <= 1;
                     dau_op_fields <= rom_dout[10:5];
-                    pc_halt   <= 1;
-                    double    <= 1;
-                    r_field   <= rom_dout[4] ? 3'd1 : 3'd2; // select y or yl
+                    r_field   <= rom_dout[4] ? 3'd1  /* y */: 3'd2 /* yl */; // select y or yl
                     // Y control
                     post_load <= 1;
                     inc_sel   <= pre_inc_sel;

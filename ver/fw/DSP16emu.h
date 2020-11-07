@@ -434,7 +434,7 @@ int DSP16emu::eval() {
             delta = 2;
             break;
         // F1 operations:
-        case 0x14: // 20
+        case 0x14: // 20 Y=y[l] F1
             aux2 = (op&0x10) ? y : yl;
             aux2 &= 0xffff;
             F1parse( op );
@@ -443,13 +443,23 @@ int DSP16emu::eval() {
             delta = 2;
             break;
         // case 22:
-        // case 23:
+        case 23: // y=Y F1
+            F1parse( op );
+            aux = Yparse( op&0xf, false );
+            if( op&0x10 ) {
+                next_y = aux;
+                if( ((auc>>6)&1)==0 ) next_yl=0;
+            }
+            else
+                next_yl = aux;
+            delta = 1;
+            break;
         // case 25:
         // case 27:
         // case 28:
         // case 31:
         case 4: // F1 Y=a1
-        case 28:
+        case 28: // 0x1C
             // get old value of accumulator
             if( opcode==4 )
                 aux2 = (op&0x10) ? (a1>>16) : a1;
