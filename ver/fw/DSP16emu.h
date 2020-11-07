@@ -142,6 +142,7 @@ int DSP16emu::get_register( int rfield ) {
 }
 
 void DSP16emu::set_register( int rfield, int v ) {
+    v &= 0xffff;
     switch(rfield) {
         case  0: next_r0 = r0 = v; break;
         case  1: next_r1 = r1 = v; break;
@@ -362,11 +363,12 @@ int DSP16emu::eval() {
     int op = read_rom(pc++) &0xffff;
     int delta=0;
     int aux, aux2;
+    const int opcode = (op>>11) & 0x1f;
 
     next_pi = pc;
     update_regs();
-    printf("OP=%04X (%2X)\n",op,(op>>11)&0x1f );
-    switch( (op>>11)&0x1f ) {
+    printf("OP=%04X (%2X)\n",op, opcode );
+    switch( opcode ) {
         case 0: // goto JA
         case 1:
             pc = op&0xfff;
@@ -439,7 +441,12 @@ int DSP16emu::eval() {
         // case 28:
         // case 31:
         case 4: // F1 Y=a1
-            aux2 = (op&0x10) ? (a1>>16) : a1; // get old value of accumulator
+        case 28:
+            // get old value of accumulator
+            if( opcode==4 )
+                aux2 = (op&0x10) ? (a1>>16) : a1;
+            else
+                aux2 = (op&0x10) ? (a0>>16) : a0;
             aux2 &= 0xffff;
             aux = (op>>5)&0x3f;
             F1parse( aux );
