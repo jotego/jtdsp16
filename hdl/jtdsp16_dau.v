@@ -52,6 +52,7 @@ module jtdsp16_dau(
     output     [ 7:0] debug_c0,
     output     [ 7:0] debug_c1,
     output     [ 7:0] debug_c2,
+    output     [ 6:0] debug_auc,
     output     [35:0] debug_a0,
     output     [35:0] debug_a1,
     output     [15:0] debug_psw
@@ -75,6 +76,7 @@ wire        d_field;  // destination
 reg  [ 7:0] c0, c1, c2;
 reg  [ 6:0] auc;        // arithmetic unit control
 reg         lmi, leq, llv, lmv, alu_llv;
+reg         nop;        // indicates that F1 should not alter the flags
 wire [15:0] psw;        // processor status word
 reg         ov1, ov0;   // overflow
 
@@ -87,6 +89,7 @@ wire [15:0] load_data;
 wire        pre_ov;
 wire        up_p;
 wire        up_y;
+wire        up_a0h, up_a1h;
 wire        ad_sel;
 wire        as_sel;
 wire        store;
@@ -127,7 +130,7 @@ assign ram_ext     = { {4{ram_dout[15]}}, ram_dout, 16'd0 };
 assign rmux_ext    = { {4{rmux[15]}}, rmux };
 assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
 assign acc_mux     = a_field[0] ? a1 : a0;
-assign acc_dout    = a_field[1] ? acc_mux[31:16] : acc_mux[15:0];
+assign acc_dout    = a_field[1] ? acc_mux[31:16] : acc_mux[15:0]; // this is used in R=aT operations
 assign acc_in      = rmux_load ? rmux_ext : alu_out[35:16];
 assign pre_ov      = ^{alu_llv, alu_out[35:31]};
 
@@ -157,6 +160,7 @@ assign debug_c2  = c2;
 assign debug_a0  = a0;
 assign debug_a1  = a1;
 assign debug_psw = psw;
+assign debug_auc = auc;
 
 // Condition check
 always @(*) begin
@@ -231,13 +235,17 @@ always @(posedge clk, posedge rst) begin
                 yl <= load_data;
             end
         end
-        if( st_a0h )
+        // a0
+        if( st_a0h ) begin
             a0[35:16] <= acc_in;
-        else if( load_a0 )
+            if( clr_a0l ) a0[15:0] <= 16'd0;
+        end else if( load_a0 )
             a0 <= alu_out;
-        if( st_a1h )
+        // a1
+        if( st_a1h ) begin
             a1[35:16] <= acc_in;
-        else if( load_a1 )
+            if( clr_a1l ) a1[15:0] <= 16'd0;
+        end else if( load_a1 )
             a1 <= alu_out;
         //a0[15: 0] <= st_a0h ? (clr_a0l ? 16'd0 : alu_out[15:0]) :
         //            (st_a0l ? alu_out[15:0] : a0[15:0]);
@@ -250,7 +258,7 @@ always @(posedge clk, posedge rst) begin
         // special registers
         if( load_auc ) auc <= load_data[6:0];
         // Flags
-        if(dec_en) begin
+        if(dec_en && !nop) begin
             lmi <= alu_out[35];
             leq <= ~|alu_out;
             llv <= pre_ov;
@@ -276,6 +284,7 @@ always @(*) begin
         4'd15:      alu_arith = as - y_ext;
         default: alu_arith = 37'd0;
     endcase
+    nop = f1_field==4'd2 || f1_field==4'd6; // do not modify flags
 end
 
 /////// F2 field
@@ -302,8 +311,8 @@ end
 
 always @(*) begin
     case( auc[1:0] )
-        2'd0: p_ext = { {5{p[31]}}, p };
-        2'd1, 2'd3: p_ext = { {7{p[31]}}, p[31:2] }; // Makes reserved case 3 same as 1
+        2'd0, 2'd3: p_ext = { {5{p[31]}}, p }; // Makes reserved case 3 same as 0
+        2'd1: p_ext = { {7{p[31]}}, p[31:2] };
         2'd2: p_ext = { {3{p[31]}}, p, 2'd0 };
     endcase
 end

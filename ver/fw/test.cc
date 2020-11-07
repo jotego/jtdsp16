@@ -38,6 +38,7 @@ public:
 
     // DAU
     int  psw(){ return top.debug_psw;}
+    int  auc(){ return top.debug_auc;}
     int  x()  { return top.debug_x;  }
     int  y()  { return top.debug_y;  }
     int  yl() { return top.debug_yl; }
@@ -45,6 +46,7 @@ public:
     int  c0() { return top.debug_c0; }
     int  c1() { return top.debug_c1; }
     int  c2() { return top.debug_c2; }
+
 
     int64_t a0() { return top.debug_a0; }
     int64_t a1() { return top.debug_a1; }
@@ -76,9 +78,20 @@ const int R_A0     = 1<<9;
 const int R_A1     = 1<<10;
 const int Y_R      = 1<<12;
 const int R_Y      = 1<<15;
+// Format 1:
+const int Ya1_F1     = 1<<4;
+const int Y_F1       = 1<<6;
+const int Yy_F1      = 1<<20;
+const int xY_F1      = 1<<22;
+const int yY_F1      = 1<<23;
+const int ya0_xX_F1  = 1<<25;
+const int ya1_xX_F1  = 1<<27;
+const int ya0_F1     = 1<<28;
+const int yY_xX_F1   = 1<<31;
 
 class ParseArgs {
 public:
+    bool step, extra;
     ParseArgs( int argc, char *argv[]);
 };
 
@@ -95,6 +108,8 @@ int main( int argc, char *argv[] ) {
         R_A1 |
         Y_R  |
         R_Y  |
+        // F1 operations
+        Y_F1 |
         0
      );
     rtl.read_rom( rom.data() );
@@ -108,9 +123,10 @@ int main( int argc, char *argv[] ) {
         rtl.clk(ticks<<1);
         good = compare(rtl,emu);
         if( !good ) {
-            //rtl.clk(2);
+            if(args.extra) rtl.clk(2);
             break;
         }
+        if( args.step ) dump(rtl, emu);
     }
 
     // Close down
@@ -182,10 +198,26 @@ void ROM::random( int valid ) {
                 extra  = random_rfield() << 4;
                 extra |= rand()%16; // Y field
                 break;
+            // F1 operations:
+            case 6:
+                extra = rand()%0x800;
+                extra &= ~0x10;
+                break;
+            case 4:
+            case 20:
+            case 22:
+            case 23:
+            case 25:
+            case 27:
+            case 28:
+            case 31:
+                extra = rand()%0x800;
+                break;
             default: cout << "Error: unsupported OP for randomization\n";
         }
         extra &= 0x7ff;
         op |= extra;
+        //printf("%04X = %04X\n", k, op );
         rom[k] = op;
     }
 }
@@ -321,6 +353,7 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     REG_DUMP(C0, emu.c0, rtl.c0 )
     REG_DUMP(C1, emu.c1, rtl.c1 )
     REG_DUMP(C2, emu.c2, rtl.c2 )
+    REG_DUMP(AUC, emu.auc, rtl.auc )
     REG_DUMPL(A0, emu.a0, rtl.a0 )
     REG_DUMPL(A1, emu.a1, rtl.a1 )
 
@@ -333,10 +366,17 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 }
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
+    extra = step=false;
     if( argc==1 ) return;
-    if( argc==2 ) {
-        int n = strtol(argv[1], NULL, 0);
-        srand(n);
-        printf("Random seed = %d\n", n);
+    for( int k=1; k<argc; k++ ) {
+        if( argv[k][0]=='-' ) {
+            if( strcmp(argv[k],"-step")==0 )  { step=true;  continue; }
+            if( strcmp(argv[k],"-extra")==0 ) { extra=true; continue; }
+        } else {
+            // parse as seed
+            int n = strtol(argv[1], NULL, 0);
+            srand(n);
+            printf("Random seed = %d\n", n);
+        }
     }
 }

@@ -37,7 +37,6 @@ module jtdsp16_ctrl(
     output reg        ksel,
     output reg        step_sel,
     // DAU
-    output reg        at_sel,
     output reg        dau_rmux_load,
     output reg        dau_imm_load,
     output reg        dau_ram_load,
@@ -103,10 +102,37 @@ reg       x_field;
 reg       double;
 reg       con_check;
 wire      con_ok;
+// Y control
+reg       pre_step_sel, pre_ksel;
+reg [1:0] pre_inc_sel;
 
 assign    long_imm = rom_dout;
 assign    con_ok   = ~dau_con_en | con_result;
 assign    no_int   = ~double;
+
+always @(*) begin
+    pre_step_sel = 0;
+    pre_ksel     = 0;
+    pre_inc_sel  = 2'd0;
+    case( rom_dout[1:0] )
+        2'd0: begin // *rN
+            pre_inc_sel  = 2'd1;
+            pre_step_sel = 0;
+        end
+        2'd1: begin // *rN++
+            pre_inc_sel  = 2'd2;
+            pre_step_sel = 0;
+        end
+        2'd2: begin // *rN--
+            pre_inc_sel  = 2'd0;
+            pre_step_sel = 0;
+        end
+        2'd3: begin // *rN++j
+            pre_step_sel = 1;
+            pre_ksel     = 0;
+        end
+    endcase
+end
 
 // Decode instruction
 always @(posedge clk, posedge rst) begin
@@ -140,7 +166,6 @@ always @(posedge clk, posedge rst) begin
         c_field       <= 5'd0;
         dau_dec_en    <= 0;
         dau_con_en    <= 0;
-        at_sel        <= 0;
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
@@ -163,6 +188,7 @@ always @(posedge clk, posedge rst) begin
         i_field   <= rom_dout[11: 0];
         x_field   <= rom_dout[    4];
         c_field   <= rom_dout[ 4: 0];
+        y_field   <= rom_dout[ 3:2];
         a_field   <= 2'd0;
         short_imm <= rom_dout[ 8: 0];
 
@@ -238,7 +264,6 @@ always @(posedge clk, posedge rst) begin
                     rsel         <=  rom_dout[8:6];
                     dau_rmux_load<= 1;
                     pdx_read     <= 1;
-                    at_sel       <=  rom_dout[10];
                     st_a0h       <=  rom_dout[10];
                     st_a1h       <= ~rom_dout[10];
                     double       <= 1;
@@ -285,27 +310,12 @@ always @(posedge clk, posedge rst) begin
                     end
                     rsel      <= rom_dout[ 8:6];
                     r_field   <= rom_dout[ 6:4];
-                    y_field   <= rom_dout[ 3:2];
-                    post_load <= 1;
-                    case( rom_dout[1:0] )
-                        2'd0: begin // *rN
-                            inc_sel <= 2'd1;
-                            step_sel<= 0;
-                        end
-                        2'd1: begin // *rN++
-                            inc_sel <= 2'd2;
-                            step_sel<= 0;
-                        end
-                        2'd2: begin // *rN--
-                            inc_sel  <= 2'd0;
-                            step_sel <= 0;
-                        end
-                        2'd3: begin // *rN++j
-                            step_sel <= 1;
-                            ksel     <= 0;
-                        end
-                    endcase
                     double   <= 1;
+                    // Y control
+                    post_load <= 1;
+                    inc_sel   <= pre_inc_sel;
+                    step_sel  <= pre_step_sel;
+                    ksel      <= pre_ksel;
                 end
 
                 5'b00110, // Y    F1
@@ -313,7 +323,12 @@ always @(posedge clk, posedge rst) begin
                 begin
                     dau_dec_en    <= 1;
                     dau_op_fields <= rom_dout[10:5];
-                    //mul_en
+                    a_field       <= rom_dout[10:9];
+                    // Y control
+                    post_load <= 1;
+                    inc_sel   <= pre_inc_sel;
+                    step_sel  <= pre_step_sel;
+                    ksel      <= pre_ksel;
                 end
 
                 5'b10011: // if CON F2
@@ -345,27 +360,12 @@ always @(posedge clk, posedge rst) begin
                     endcase
                     pc_halt   <= 1;
                     double    <= 1;
-                    y_field   <= rom_dout[3:2];
                     r_field   <= rom_dout[4] ? 3'd1 : 3'd2; // select y or yl
+                    // Y control
                     post_load <= 1;
-                    case( rom_dout[1:0] )
-                        2'd0: begin // *rN
-                            inc_sel <= 2'd1;
-                            step_sel<= 0;
-                        end
-                        2'd1: begin // *rN++
-                            inc_sel <= 2'd2;
-                            step_sel<= 0;
-                        end
-                        2'd2: begin // *rN--
-                            inc_sel  <= 2'd0;
-                            step_sel <= 0;
-                        end
-                        2'd3: begin // *rN++j
-                            step_sel <= 1;
-                            ksel     <= 0;
-                        end
-                    endcase
+                    inc_sel   <= pre_inc_sel;
+                    step_sel  <= pre_step_sel;
+                    ksel      <= pre_ksel;
                 end
                 5'b11010: begin // conditional branch
                     dau_con_en    <= 1;

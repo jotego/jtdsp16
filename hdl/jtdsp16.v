@@ -81,6 +81,7 @@ module jtdsp16(
     output [35:0]     debug_a0,
     output [35:0]     debug_a1,
     output [15:0]     debug_psw,
+    output [ 6:0]     debug_auc,
     // SIO
     output [ 7:0]     debug_srta,
     output [ 9:0]     debug_sioc
@@ -93,6 +94,7 @@ wire [15:0] debug_pc, debug_pr, debug_pi, debug_pt,
 wire [15:0] debug_x,  debug_y,  debug_yl, debug_psw;
 wire [11:0] debug_i;
 wire [ 7:0] debug_c0, debug_c1, debug_c2, debug_srta;
+wire [ 6:0] debug_auc;
 wire [ 9:0] debug_sioc;
 wire [35:0] debug_a1, debug_a0;
 `endif
@@ -104,7 +106,7 @@ wire [15:0] rom_addr;
 
 wire [ 2:0] r_field;
 wire [ 1:0] inc_sel;
-wire        at_sel, acc_sel;
+wire        acc_sel;
 
 // X-AAU
 wire        goto_ja;
@@ -211,7 +213,6 @@ jtdsp16_ctrl u_ctrl(
     .dau_dec_en     ( dau_dec_en    ),
     .dau_con_en     ( dau_con_en    ),
     .dau_op_fields  ( dau_op_fields ),
-    .at_sel         ( at_sel        ),
     .a_field        ( a_field       ),
     .c_field        ( c_field       ),
     .dau_rmux_load  ( dau_rmux_load ),
@@ -397,7 +398,8 @@ jtdsp16_dau u_dau(
     .debug_c2       ( debug_c2      ),
     .debug_a0       ( debug_a0      ),
     .debug_a1       ( debug_a1      ),
-    .debug_psw      ( debug_psw     )
+    .debug_psw      ( debug_psw     ),
+    .debug_auc      ( debug_auc     )
 );
 
 jtdsp16_pio u_pio(

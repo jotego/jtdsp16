@@ -18,11 +18,15 @@ class DSP16emu {
     int64_t assign_high( int clr_mask, int64_t& dest, int val );
     int     sign_extend( int v, int msb=7 );
     void    Yparse( int Y, int v );
-    int     Yparse( int Y );
+    int     Yparse( int Y, bool up_now=true );
+    void    F1parse( int f );
+    void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 );
+    int64_t extend_p();
+    int64_t extend_y();
 public:
     int pc, j, k, rb, re, r0, r1, r2, r3;
     int pt, pr, pi, i;
-    int x, y, yl;
+    int x, y, yl, p;
     int auc, psw, c0, c1, c2, sioc, srta, sdx;
     int tdms, pioc, pdx0, pdx1;
     int64_t a0, a1;
@@ -44,6 +48,7 @@ DSP16emu::DSP16emu( int16_t* _rom ) {
     next_auc = next_psw = next_c0 = next_c1 = next_c2 = next_sioc = next_srta = next_sdx = 0;
     next_tdms = next_pioc = next_pdx0 = next_pdx1 = 0;
     next_a0 = a0 = next_a1 = a1 = 0;
+    p = 0;
     ticks=0;
     rom = _rom;
     ram = new int16_t[2048];
@@ -181,6 +186,127 @@ int64_t DSP16emu::assign_high( int clr_mask, int64_t& dest, int val ) {
     return dest;
 }
 
+int64_t DSP16emu::extend_p() {
+    int64_t psh = p; // sign extension here is automatic
+    switch( auc&3 ) {
+        case 1: psh >>= 2; break;
+        case 2: psh <<= 2; break;
+    }
+    return psh; // &0xF'FFFF'FFFF;
+}
+
+int64_t DSP16emu::extend_y() {
+    int64_t yext = (int16_t)y; // sign extension here is automatic
+    yext<<=16;
+    yext|=yl;
+    return yext; // &0xF'FFFF'FFFF;
+}
+
+void DSP16emu::F1parse( int f ) {
+    int64_t *ad, *next_ad, *as;
+    int ov0 = (psw&0x100)!=0;
+    int ov1 = (psw&0x200)!=0;
+    int* pov;
+    if( f&0x10 ) {
+        as = &a1;
+    } else {
+        as = &a0;
+    }
+    if( f&0x20 ) {
+        ad = &a1;
+        next_ad = &next_a1;
+        pov = &ov1;
+    } else {
+        ad = &a0;
+        next_ad = &next_a0;
+        pov = &ov0;
+    }
+    int64_t old_ad = *ad, r=*ad;
+    bool flag_up = true;
+    switch( f&0xf ) {
+        case 0:
+            r = extend_p();
+            p = x*y;
+            break;
+        case 1:
+            r = *as + extend_p();
+            p = x*y;
+            break;
+        case 2:
+            p = x*y;
+            flag_up = false;
+            break;
+        case 3:
+            r = *as - extend_p();
+            p = x*y;
+            break;
+        case 4:
+            r = extend_p();
+            break;
+        case 5:
+            r = *as + extend_p();
+            break;
+        case 6:
+            flag_up = false;
+            break;
+        case 7:
+            r = *as - extend_p();
+            break;
+        case 8:
+            r = *as | extend_y();
+            break;
+        case 9:
+            r = *as ^ extend_y();
+            break;
+        case 10:
+            *as & extend_y();
+            break;
+        case 11:
+            *as - extend_y();
+            break;
+        case 12:
+            r = extend_y();
+            break;
+        case 13:
+            r = *as + extend_y();
+            break;
+        case 14:
+            r = *as & extend_y();
+            break;
+        case 15:
+            r = *as - extend_y();
+            break;
+    }
+    // update flags
+    int lmi = (r>>35) != 0;
+    int leq = r == 0;
+    int llv = 0;
+    int lmv = 0;
+    const int sign = (r>>31)&1;
+    for( int k=32;k<35;k++ ) {
+        if( ((r>>k)&1) != sign ) lmv=1;
+    }
+    llv = lmv; // llv checks one more bit
+    if( ((r>>36)&1) != sign ) llv=1;
+    *pov = llv;
+    // store the final value
+    r &= 0xF'FFFF'FFFF;
+    *next_ad = r;
+    // *ad = r;
+    if(flag_up) set_psw( lmi, leq, llv, lmv, ov0, ov1 );
+}
+
+void DSP16emu::set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 ) {
+    psw = ((lmi&1)<<15) |
+          ((leq&1)<<14) |
+          ((llv&1)<<13) |
+          ((lmv&1)<<12) |
+          ((ov1&1)<< 9) |
+          ((ov0&1)<< 4) |
+          (((a1>>32)&0xf)<<5) |
+           ((a0>>32)&0xf);
+}
+
 void DSP16emu::Yparse( int Y, int v ) {
     int* rpt;
     int* rpt_next;
@@ -204,7 +330,7 @@ void DSP16emu::Yparse( int Y, int v ) {
     stats.ram_writes++;
 }
 
-int DSP16emu::Yparse( int Y ) {
+int DSP16emu::Yparse( int Y, bool up_now ) {
     int* rpt;
     int* rpt_next;
     switch( (Y>>2)&3 ) {
@@ -217,13 +343,15 @@ int DSP16emu::Yparse( int Y ) {
     switch( Y&3 ) {
         case 1:
             if( re==0 || re != *rpt ) // virtual shift register feature
-                *rpt = *rpt_next = (*rpt+1)&0xffff;
+                *rpt_next = (*rpt+1)&0xffff;
             else
-                *rpt = *rpt_next = rb;
+                *rpt_next = rb;
             break;
-        case 2: *rpt = *rpt_next = (*rpt-1)&0xffff; break;
-        case 3: *rpt = *rpt_next = (*rpt+j)&0xffff; break;
+        case 2: *rpt_next = (*rpt-1)&0xffff; break;
+        case 3: *rpt_next = (*rpt+j)&0xffff; break;
     }
+    if( up_now )
+        *rpt = *rpt_next;
     stats.ram_reads++;
     return v&0xffff;
 }
@@ -235,8 +363,8 @@ int DSP16emu::eval() {
 
     next_pi = pc;
     update_regs();
-    // printf("OP=%04X\n",op);
-    switch( op>>11 ) {
+    printf("OP=%04X (%2X)\n",op,(op>>11)&0x1f );
+    switch( (op>>11)&0x1f ) {
         case 0: // goto JA
         case 1:
             pc = op&0xfff;
@@ -289,13 +417,31 @@ int DSP16emu::eval() {
             aux2 = get_register(aux);
             aux  = op&0xf;
             Yparse( aux, aux2 );
+            // printf("Y = R [%X] = %X\n",aux,aux2);
             delta = 2;
             break;
         case 0xf: // R=Y
             aux  = (op>>4)&0x3f;
             aux2 = op&0xf;
+            //printf("R=Y [%02X] = %X\n", aux, aux2);
+            //printf("next a0 = %lX\n", next_a0 );
             set_register( aux, Yparse( aux2 ) );
             delta = 2;
+            break;
+        // F1 operations:
+        // case 20:
+        // case 22:
+        // case 23:
+        // case 25:
+        // case 27:
+        // case 28:
+        // case 31:
+        // case 4:
+        case 6: // F1 Y
+            aux = (op>>5)&0x3f;
+            F1parse( aux );
+            Yparse( op&0xf, false );
+            delta = 1;
             break;
         // default:
     }
