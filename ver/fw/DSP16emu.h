@@ -19,7 +19,7 @@ class DSP16emu {
     int     sign_extend( int v, int msb=7 );
     void    Yparse( int Y, int v );
     int     Yparse( int Y, bool up_now=true );
-    void    F1parse( int f );
+    void    F1parse( int op );
     void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 );
     int64_t extend_p();
     int64_t extend_y();
@@ -203,11 +203,12 @@ int64_t DSP16emu::extend_y() {
     return yext; // &0xF'FFFF'FFFF;
 }
 
-void DSP16emu::F1parse( int f ) {
+void DSP16emu::F1parse( int op ) {
     int64_t *ad, *next_ad, *as;
     int ov0 = (psw&0x100)!=0;
     int ov1 = (psw&0x200)!=0;
     int* pov;
+    int f = (op>>5)&0x3f;
     if( f&0x10 ) {
         as = &a1;
     } else {
@@ -433,7 +434,14 @@ int DSP16emu::eval() {
             delta = 2;
             break;
         // F1 operations:
-        // case 20:
+        case 0x14: // 20
+            aux2 = (op&0x10) ? y : yl;
+            aux2 &= 0xffff;
+            F1parse( op );
+            Yparse( op&0xf, aux2 );
+            update_regs();
+            delta = 2;
+            break;
         // case 22:
         // case 23:
         // case 25:
@@ -448,16 +456,14 @@ int DSP16emu::eval() {
             else
                 aux2 = (op&0x10) ? (a0>>16) : a0;
             aux2 &= 0xffff;
-            aux = (op>>5)&0x3f;
-            F1parse( aux );
+            F1parse( op );
             Yparse( op&0xf, aux2 );
             update_regs();
             // printf("(F1 Y=a1) next a0=%lX\n",next_a0);
             delta = 2;
             break;
         case 6: // F1 Y
-            aux = (op>>5)&0x3f;
-            F1parse( aux );
+            F1parse( op );
             Yparse( op&0xf, false );
             delta = 1;
             break;

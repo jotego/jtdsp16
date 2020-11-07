@@ -113,6 +113,7 @@ int main( int argc, char *argv[] ) {
         Y_F1 |
         Ya1_F1 |
         Ya0_F1 |
+        Yy_F1  |
         0
      );
     rtl.read_rom( rom.data() );
