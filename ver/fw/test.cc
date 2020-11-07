@@ -73,9 +73,10 @@ const int LONGIMM  = 1<<10;
 const int AT_R     = 1<<8;
 const int R_A0     = 1<<9;
 const int R_A1     = 1<<10;
+const int Y_R      = 1<<12;
 
 int main( int argc, char *argv[] ) {
-    srand(200);
+    srand(2000);
     RTL rtl;
     ROM rom;
     rom.random( /*GOTOJA | */
@@ -84,6 +85,7 @@ int main( int argc, char *argv[] ) {
         AT_R |
         R_A0 |
         R_A1 |
+        Y_R  |
         0
      );
     rtl.read_rom( rom.data() );
@@ -92,7 +94,7 @@ int main( int argc, char *argv[] ) {
 
     // Simulate
     int k;
-    for( k=0; k<2000 && !rtl.fault(); k++ ) {
+    for( k=0; k<3000 && !rtl.fault(); k++ ) {
         int ticks = emu.eval();
         rtl.clk(ticks<<1);
         good = compare(rtl,emu);
@@ -166,6 +168,10 @@ void ROM::random( int valid ) {
                 extra  = (rand()%2) << 10;
                 extra |= random_rfield() << 4; break; // aT=R
             case 10: extra = random_rfield() << 4; break; // R=imm
+            case 12: // Y = R
+                extra  = random_rfield() << 4;
+                extra |= rand()%16; // Y field
+                break;
             default: cout << "Error: unsupported OP for randomization\n";
         }
         extra &= 0x7ff;
@@ -295,9 +301,6 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     REG_DUMP(RE, emu.re, rtl.re )
     REG_DUMP( J, emu.j,  rtl.j  )
     REG_DUMP( K, emu.k,  rtl.k  )
-    REG_DUMP(PT, emu.pt, rtl.pt )
-    REG_DUMP(PR, emu.pr, rtl.pr )
-    REG_DUMP(PI, emu.pi, rtl.pi )
     // DAU
     cout << "-- DAU --\n";
     //REG_DUMP(PSW, emu.psw , rtl.psw )

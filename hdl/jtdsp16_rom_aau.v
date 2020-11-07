@@ -161,8 +161,8 @@ always @(posedge clk, posedge rst ) begin
     end else if(cen) begin
         last_do_en <= do_en;
         if( load_pt  ) pt <= rnext;
-        if( load_pr ) pr <= rnext;
-        if( load_i  ) i  <= rnext[11:0];
+        if( load_pr  ) pr <= rnext;
+        if( load_i   ) i  <= rnext[11:0];
 
         // Interrupt processing
         if( enter_int || icall || redo ) begin

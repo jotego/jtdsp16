@@ -71,16 +71,15 @@ reg         load_j,
             load_r1, post_r1,
             load_r2, post_r2,
             load_r3, post_r3;
+reg         vsr_loop;
 
 wire        vsr_en;
-wire        vsr_loop;
 wire        short_sign;
 wire [15:0] imm_ext;
 wire        imm_load;
 wire        reg_load;
 
 assign      vsr_en     = |re;   // virtual shift register enable
-assign      vsr_loop   = rin==re && vsr_en;
 assign      short_sign = (r_field == 3'd4 || r_field == 3'd5) ? short_imm[8] : 1'b0; // only j and k get sign extended
 assign      imm_ext    = long_load ? long_imm : { {7{short_sign}}, short_imm };
 assign      imm_load   = short_load || long_load;
@@ -154,6 +153,7 @@ always @(*) begin
         2'd3: unit_mux =  16'd2;
     endcase
     step_mux = step_sel ? jk_mux : unit_mux;
+    vsr_loop = rind==re && vsr_en && step_mux==16'd1; // loops only if post increment is one
     rsum     = rind + step_mux;
     rnext    = imm_load  ? imm_ext  : (
                acc_load  ? acc      :
