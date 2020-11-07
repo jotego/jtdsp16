@@ -88,6 +88,7 @@ module jtdsp16_ctrl(
     // Serial port
     output reg        sio_imm_load,
     output reg        sio_acc_load,
+    output reg        sio_ram_load,
 
     // Data buses
     input      [15:0] rom_dout,
@@ -154,6 +155,7 @@ always @(posedge clk, posedge rst) begin
         // Serial port
         sio_imm_load  <= 0;
         sio_acc_load  <= 0;
+        sio_ram_load  <= 0;
 
         fault         <= 0;
     end else if(cen) begin
@@ -204,6 +206,7 @@ always @(posedge clk, posedge rst) begin
         // Serial portf
         sio_imm_load  <= 0;
         sio_acc_load  <= 0;
+        sio_ram_load  <= 0;
 
         if(!double) begin
             casez( rom_dout[15:11] ) // T
@@ -267,15 +270,12 @@ always @(posedge clk, posedge rst) begin
                 5'b01111, // R=Y RAM load to r0-r3
                 5'b01100  // Y=R r0-r3 storage to RAM
                 : begin
-                    ram_load  <=
-                        rom_dout[15:10] == 6'b011110 &&
-                        rom_dout[ 9:7]==3'b000; // YAAU register as destination
-                    xaau_ram_load <=
-                        rom_dout[15:10] == 6'b011110 &&
-                        rom_dout[ 9:7]==3'b001; // YAAU register as destination
-                    dau_ram_load <=
-                        rom_dout[15:10] == 6'b011110 &&
-                        rom_dout[ 9:7]==3'b010; // DAU register as destination
+                    if( rom_dout[15:10] == 6'b011110 ) begin
+                        ram_load      <= rom_dout[ 9:7]==3'b000; // YAAU register as destination
+                        xaau_ram_load <= rom_dout[ 9:7]==3'b001; // YAAU register as destination
+                        dau_ram_load  <= rom_dout[ 9:7]==3'b010; // DAU register as destination
+                        sio_ram_load  <= rom_dout[ 9:6]==4'b0110;
+                    end
                     pdx_read <= rom_dout[15:11] == 5'b01111;
                     pc_halt <= 1;
                     if( rom_dout[15:11] == 5'b01100 ) begin

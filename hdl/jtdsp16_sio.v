@@ -43,15 +43,18 @@ module jtdsp16_sio(
     // interface with CPU - only writes command are implemented
     input      [15:0] long_imm,
     input      [15:0] acc_dout,
+    input      [15:0] ram_dout,
     input             sio_imm_load,
     input             sio_acc_load,
+    input             sio_ram_load,
     input      [ 2:0] r_field,
     // status
     output            obe,      // output buffer empty
     output            ibf,      // input buffer full - unused
     output reg [15:0] r_sio,    // output register
     // Debug
-    output     [ 7:0] debug_srta
+    output     [ 7:0] debug_srta,
+    output     [ 9:0] debug_sioc
 );
 
 reg  [15:0] ibuf, obuf;
@@ -74,8 +77,8 @@ assign sadd        = addr_obuf[7] && !obe;
 assign sdx_load    = any_load && r_field==3'b010;
 assign srta_load   = any_load && r_field==3'b001;
 assign sioc_load   = any_load && r_field==3'b000;
-assign any_load    = sio_imm_load || sio_acc_load;
-assign load_data   = sio_imm_load ? long_imm : acc_dout;
+assign any_load    = sio_imm_load || sio_acc_load || sio_ram_load;
+assign load_data   = sio_imm_load ? long_imm : ( sio_acc_load ? acc_dout : ram_dout );
 
 // serial input related registers. Not supported
 assign ibf      = 0;
@@ -83,6 +86,7 @@ assign ibf      = 0;
 
 // Debug
 assign debug_srta = srta;
+assign debug_sioc = sioc;
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin

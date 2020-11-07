@@ -82,7 +82,8 @@ module jtdsp16(
     output [35:0]     debug_a1,
     output [15:0]     debug_psw,
     // SIO
-    output [ 7:0]     debug_srta
+    output [ 7:0]     debug_srta,
+    output [ 9:0]     debug_sioc
     `endif
 );
 
@@ -92,6 +93,7 @@ wire [15:0] debug_pc, debug_pr, debug_pi, debug_pt,
 wire [15:0] debug_x,  debug_y,  debug_yl, debug_psw;
 wire [11:0] debug_i;
 wire [ 7:0] debug_c0, debug_c1, debug_c2, debug_srta;
+wire [ 9:0] debug_sioc;
 wire [35:0] debug_a1, debug_a0;
 `endif
 
@@ -156,7 +158,7 @@ wire [15:0] r_xaau, r_yaau, r_dau, rmux;
 wire [ 2:0] rsel;
 
 // Serial I/O
-wire        sio_imm_load, sio_acc_load, obe;
+wire        sio_imm_load, sio_acc_load, sio_ram_load, obe;
 wire [15:0] r_sio;
 
 // Parallel interface
@@ -251,6 +253,7 @@ jtdsp16_ctrl u_ctrl(
     // Serial port
     .sio_imm_load   ( sio_imm_load  ),
     .sio_acc_load   ( sio_acc_load  ),
+    .sio_ram_load   ( sio_ram_load  ),
     // Data buses
     .rom_dout       ( rom_dout      ),
     .cache_dout     ( cache_dout    ),
@@ -434,17 +437,21 @@ jtdsp16_sio u_sio(
     .ose            ( ose           ),  // output shift register empty
     .doen           ( doen          ),
     // interface with CPU
-    .long_imm       ( long_imm      ),
-    .acc_dout       ( acc_dout      ),
     .sio_imm_load   ( sio_imm_load  ),
     .sio_acc_load   ( sio_acc_load  ),
+    .sio_ram_load   ( sio_ram_load  ),
     .r_field        ( r_field       ),
+    // data bus
+    .long_imm       ( long_imm      ),
+    .acc_dout       ( acc_dout      ),
+    .ram_dout       ( ram_dout      ),
     // status
     .obe            ( obe           ),
     .ibf            ( ibf           ),
     .r_sio          ( r_sio         ),
     // debug
-    .debug_srta     ( debug_srta    )
+    .debug_srta     ( debug_srta    ),
+    .debug_sioc     ( debug_sioc    )
 );
 
 endmodule

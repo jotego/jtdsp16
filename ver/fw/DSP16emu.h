@@ -1,3 +1,7 @@
+struct EmuStats {
+    int ram_reads, ram_writes;
+};
+
 class DSP16emu {
     int16_t *rom, *ram;
     int16_t read_rom(int a);
@@ -14,6 +18,7 @@ class DSP16emu {
     int64_t assign_high( int clr_mask, int64_t& dest, int val );
     int     sign_extend( int v, int msb=7 );
     void    Yparse( int Y, int v );
+    int     Yparse( int Y );
 public:
     int pc, j, k, rb, re, r0, r1, r2, r3;
     int pt, pr, pi, i;
@@ -21,6 +26,8 @@ public:
     int auc, psw, c0, c1, c2, sioc, srta, sdx;
     int tdms, pioc, pdx0, pdx1;
     int64_t a0, a1;
+
+    EmuStats stats;
 
     int ticks;
     DSP16emu( int16_t* _rom );
@@ -41,6 +48,7 @@ DSP16emu::DSP16emu( int16_t* _rom ) {
     rom = _rom;
     ram = new int16_t[2048];
     for(int k=0; k<2048; k++) ram[k]=0;
+    stats.ram_reads = stats.ram_writes = 0;
 }
 
 DSP16emu::~DSP16emu() {
@@ -152,8 +160,8 @@ void DSP16emu::set_register( int rfield, int v ) {
         case 21: next_c0 = c0 = v & 0xff; break;
         case 22: next_c1 = c1 = v & 0xff; break;
         case 23: next_c2 = c2 = v & 0xff; break;
-        case 24: next_sioc  = v; break;
-        case 25: srta = next_srta  = v&0xff; break;
+        case 24: next_sioc = sioc = v & 0x3ff; break;
+        case 25: srta = next_srta = v & 0xff; break;
         case 26: next_sdx   = v; break;
         case 27: next_tdms  = v; break;
         case 28: next_pioc  = v; break;
@@ -193,6 +201,31 @@ void DSP16emu::Yparse( int Y, int v ) {
         case 2: *rpt = *rpt_next = (*rpt-1)&0xffff; break;
         case 3: *rpt = *rpt_next = (*rpt+j)&0xffff; break;
     }
+    stats.ram_writes++;
+}
+
+int DSP16emu::Yparse( int Y ) {
+    int* rpt;
+    int* rpt_next;
+    switch( (Y>>2)&3 ) {
+        case 0: rpt = &r0; rpt_next = &next_r0; break;
+        case 1: rpt = &r1; rpt_next = &next_r1; break;
+        case 2: rpt = &r2; rpt_next = &next_r2; break;
+        case 3: rpt = &r3; rpt_next = &next_r3; break;
+    }
+    int v = ram[ (*rpt)&0x7ff ];
+    switch( Y&3 ) {
+        case 1:
+            if( re==0 || re != *rpt ) // virtual shift register feature
+                *rpt = *rpt_next = (*rpt+1)&0xffff;
+            else
+                *rpt = *rpt_next = rb;
+            break;
+        case 2: *rpt = *rpt_next = (*rpt-1)&0xffff; break;
+        case 3: *rpt = *rpt_next = (*rpt+j)&0xffff; break;
+    }
+    stats.ram_reads++;
+    return v&0xffff;
 }
 
 int DSP16emu::eval() {
@@ -256,6 +289,12 @@ int DSP16emu::eval() {
             aux2 = get_register(aux);
             aux  = op&0xf;
             Yparse( aux, aux2 );
+            delta = 2;
+            break;
+        case 0xf: // R=Y
+            aux  = (op>>4)&0x3f;
+            aux2 = op&0xf;
+            set_register( aux, Yparse( aux2 ) );
             delta = 2;
             break;
         // default:

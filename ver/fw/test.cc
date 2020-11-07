@@ -51,6 +51,7 @@ public:
 
     // SIO
     int  srta() { return top.debug_srta; }
+    int  sioc() { return top.debug_sioc; }
 
     int get_ticks() { return ticks; }
 };
@@ -74,9 +75,16 @@ const int AT_R     = 1<<8;
 const int R_A0     = 1<<9;
 const int R_A1     = 1<<10;
 const int Y_R      = 1<<12;
+const int R_Y      = 1<<15;
+
+class ParseArgs {
+public:
+    ParseArgs( int argc, char *argv[]);
+};
 
 int main( int argc, char *argv[] ) {
-    srand(2000);
+    ParseArgs args( argc, argv );
+
     RTL rtl;
     ROM rom;
     rom.random( /*GOTOJA | */
@@ -86,6 +94,7 @@ int main( int argc, char *argv[] ) {
         R_A0 |
         R_A1 |
         Y_R  |
+        R_Y  |
         0
      );
     rtl.read_rom( rom.data() );
@@ -94,7 +103,7 @@ int main( int argc, char *argv[] ) {
 
     // Simulate
     int k;
-    for( k=0; k<3000 && !rtl.fault(); k++ ) {
+    for( k=0; k<3200 && !rtl.fault(); k++ ) {
         int ticks = emu.eval();
         rtl.clk(ticks<<1);
         good = compare(rtl,emu);
@@ -169,6 +178,7 @@ void ROM::random( int valid ) {
                 extra |= random_rfield() << 4; break; // aT=R
             case 10: extra = random_rfield() << 4; break; // R=imm
             case 12: // Y = R
+            case 15: // R = Y
                 extra  = random_rfield() << 4;
                 extra |= rand()%16; // Y field
                 break;
@@ -276,6 +286,7 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     g = g && rtl.a1()  == emu.a1;
     // SIO
     g = g && rtl.srta()  == emu.srta;
+    g = g && rtl.sioc()  == emu.sioc;
     return g;
 }
 
@@ -315,4 +326,17 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 
     cout << "-- SIO --\n";
     REG_DUMP(SRTA, emu.srta, rtl.srta )
+    REG_DUMP(SIOC, emu.sioc, rtl.sioc )
+
+    cout << "-- STATS --\n";
+    printf("%d RAM reads and %d RAM writes\n", emu.stats.ram_reads, emu.stats.ram_writes );
+}
+
+ParseArgs::ParseArgs( int argc, char *argv[]) {
+    if( argc==1 ) return;
+    if( argc==2 ) {
+        int n = strtol(argv[1], NULL, 0);
+        srand(n);
+        printf("Random seed = %d\n", n);
+    }
 }
