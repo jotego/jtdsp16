@@ -13,5 +13,5 @@ The instructions not used by QSound are listed below.
 00101  | Z:aT     F1      | Unsupported
 01101  | Z:R              | Unsupported
 10010  | ifc CON  F2      | Unsupported
-10101  | Z:y x=X  F1      | Used by firmware but only the *rNzp case
-11101  | Z:y x=X  F1      | Supported only for *rNzp case
+10101  | Z:y      F1      | Used by firmware but only the *rNzp case
+11101  | Z:y x=X  F1      | Unsupported

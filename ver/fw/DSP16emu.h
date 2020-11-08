@@ -48,8 +48,16 @@ public:
     int ticks;
     DSP16emu( int16_t* _rom );
     ~DSP16emu();
+    void randomize_ram();
+    int16_t *get_ram() { return ram; }
     int eval();
 };
+
+void DSP16emu::randomize_ram() {
+    for (int k=0; k<2048; k++ ) {
+        ram[k] = rand();
+    }
+}
 
 DSP16emu::DSP16emu( int16_t* _rom ) {
     pc=0;

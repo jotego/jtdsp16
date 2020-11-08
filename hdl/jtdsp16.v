@@ -16,8 +16,6 @@
     Version: 1.0
     Date: 15-7-2020 */
 
-`define JTDSP16_DEBUG
-
 module jtdsp16(
     input             rst,
     input             clk,
@@ -85,7 +83,11 @@ module jtdsp16(
     output [31:0]     debug_p,
     // SIO
     output [ 7:0]     debug_srta,
-    output [ 9:0]     debug_sioc
+    output [ 9:0]     debug_sioc,
+    // RAM programming
+    input  [10:0]     debug_ram_addr,
+    input  [15:0]     debug_ram_din,
+    input             debug_ram_we
     `endif
 );
 
@@ -340,6 +342,12 @@ jtdsp16_ram u_ram(
     .din        ( rmux          ),
     .dout       ( ram_dout      ),
     .we         ( ram_we        )
+    `ifdef JTDSP16_DEBUG
+    ,
+    .debug_ram_addr ( debug_ram_addr ),
+    .debug_ram_din  ( debug_ram_din  ),
+    .debug_ram_we   ( debug_ram_we   )
+    `endif
 );
 
 jtdsp16_ram_aau u_ram_aau(

@@ -22,11 +22,22 @@ module jtdsp16_ram(
     input      [15:0] din,
     output reg [15:0] dout,
     input             we
+    `ifdef JTDSP16_DEBUG
+    // RAM programming
+    ,
+    input  [10:0]     debug_ram_addr,
+    input  [15:0]     debug_ram_din,
+    input             debug_ram_we
+    `endif
 );
 
 reg [15:0] ram[0:2047];
 
 always @(posedge clk) begin
+    `ifdef JTDSP16_DEBUG
+    if( debug_ram_we )
+        ram[ debug_ram_addr ] <= debug_ram_din;
+    `endif
     if(we) ram[ addr ] <= din;
     dout <= ram[ addr ];
 end

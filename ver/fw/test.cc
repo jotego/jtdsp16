@@ -19,6 +19,7 @@ public:
     void reset();
     void clk( int n=1 );
     void read_rom( int16_t* data );
+    void program_ram( int16_t* data );
     bool fault();
     // access to registers
     int  pc() { return top.debug_pc; }
@@ -129,6 +130,9 @@ int main( int argc, char *argv[] ) {
      );
     rtl.read_rom( rom.data() );
     DSP16emu emu( rom.data() );
+    emu.randomize_ram();
+    rtl.program_ram( emu.get_ram() );
+
     bool good=true;
 
     // Simulate
@@ -300,6 +304,19 @@ void RTL::read_rom( int16_t* data ) {
         clk();
     }
     top.prog_we = 0;
+    reset();
+}
+
+void RTL::program_ram( int16_t* data ) {
+    int addr = 0;
+    top.debug_ram_we = 1;
+    top.rst = 1;
+    for( int j=0; j<2*1024; j++ ) {
+        top.debug_ram_addr = addr++;
+        top.debug_ram_din  = data[j];
+        clk();
+    }
+    top.debug_ram_we = 0;
     reset();
 }
 
