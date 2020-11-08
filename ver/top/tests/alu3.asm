@@ -6,3 +6,5 @@ y=0
 yl=0x40f # y = 0x40f
 a1=a0&y  # a1 = 0x400
 a0=a0^y  # a1 = 0x20f
+end:
+goto end

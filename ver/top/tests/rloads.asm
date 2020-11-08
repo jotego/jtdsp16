@@ -28,3 +28,5 @@ c0=0x10
 c1=0x11
 c2=0x12
 
+end:
+goto end

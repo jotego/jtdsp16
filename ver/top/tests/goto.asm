@@ -7,3 +7,5 @@ r2=5
 r3=6
 label:
 r1=0xcafe
+end:
+goto end

@@ -10,3 +10,5 @@ j=3
 r0=0x100
 rb=*r0++j
 re=*r0
+end:
+goto end

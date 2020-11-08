@@ -18,3 +18,5 @@ y=*r0++ # c
 a0=a0+y
 y=*r0++ # d
 a0=a0+y
+end:
+goto end
