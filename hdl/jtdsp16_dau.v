@@ -31,6 +31,7 @@ module jtdsp16_dau(
     input             rmux_load,
     input             imm_load,
     input             acc_load,
+    input             fully_load,
     input             pt_load,
     // ALU control
     input             alu_sel,
@@ -116,7 +117,7 @@ wire        tails;  // pseudorandom sequence bit clear
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
 assign up_p        = dec_en && f1_field[3:2]==2'b0;
-assign up_y        = load_y | load_yl;
+assign up_y        = load_y | load_yl | fully_load;
 assign st_a1l      = 0;
 assign st_a0l      = 0;
 assign store       = dec_en && f1_field != 4'b10 && f1_field != 4'b110 && f1_field[3:1] != 3'b101;
@@ -227,12 +228,16 @@ always @(posedge clk, posedge rst) begin
         if( up_p   ) p <= x*yh;
         if( load_x ) x <= pt_load ? pt_dout : load_data;
         if( up_y ) begin
-            if( !load_yl ) begin
-                yh <= /*load_ay1 ? a1[31:16] : (load_ay0 ? a0[15:0] :*/
-                                             load_data;
-                if( clr_yl ) yl <= 16'd0;
+            if( fully_load ) begin
+                {yh, yl} <= acc_mux[31:0];
             end else begin
-                yl <= load_data;
+                if( !load_yl ) begin
+                    yh <= /*load_ay1 ? a1[31:16] : (load_ay0 ? a0[15:0] :*/
+                                                 load_data;
+                    if( clr_yl ) yl <= 16'd0;
+                end else begin
+                    yl <= load_data;
+                end
             end
         end
         // a0

@@ -139,7 +139,8 @@ wire        short_load, long_load, acc_load, post_load, ram_load;
 wire [ 4:0] t_field, c_field;
 wire [ 5:0] dau_op_fields;
 wire [ 1:0] y_field, a_field;
-wire        dau_acc_load, dau_imm_load, dau_ram_load, dau_pt_load;
+wire        dau_acc_load, dau_imm_load, dau_ram_load, dau_pt_load,
+            dau_fully_load;
 wire        st_a0h, st_a1h;
 wire        dau_dec_en, dau_con_en, dau_rmux_load;
 
@@ -225,6 +226,7 @@ jtdsp16_ctrl u_ctrl(
     .dau_ram_load   ( dau_ram_load  ),
     .dau_acc_load   ( dau_acc_load  ),
     .dau_pt_load    ( dau_pt_load   ),
+    .dau_fully_load ( dau_fully_load),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     .con_result     ( con_result    ),
@@ -394,6 +396,7 @@ jtdsp16_dau u_dau(
     .imm_load       ( dau_imm_load  ),
     .ram_load       ( dau_ram_load  ),
     .acc_load       ( dau_acc_load  ),
+    .fully_load     ( dau_fully_load),
     .pt_load        ( dau_pt_load   ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),

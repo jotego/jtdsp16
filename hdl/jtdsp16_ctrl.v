@@ -43,6 +43,7 @@ module jtdsp16_ctrl(
     output reg        dau_ram_load,
     output reg        dau_acc_load,
     output reg        dau_pt_load,
+    output reg        dau_fully_load,
     output reg        st_a0h,
     output reg        st_a1h,
     output reg        acc_sel,
@@ -185,6 +186,7 @@ always @(posedge clk, posedge rst) begin
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
         dau_pt_load   <= 0;
+        dau_fully_load<= 0;
         rsel          <= 3'd0;
         st_a0h        <= 0;
         st_a1h        <= 0;
@@ -240,6 +242,7 @@ always @(posedge clk, posedge rst) begin
         dau_ram_load  <= 0;
         dau_acc_load  <= 0;
         dau_pt_load   <= 0;
+        dau_fully_load<= 0;
         st_a0h        <= 0;
         st_a1h        <= 0;
         acc_sel       <= 0;
@@ -366,6 +369,22 @@ always @(posedge clk, posedge rst) begin
                     inc_sel   <= pre_inc_sel;
                     step_sel  <= pre_step_sel;
                     ksel      <= pre_ksel;
+                end
+                5'b11001,       // F1, y = a0, x = *pt++[i]
+                5'b11011: begin // F1, y = a1, x = *pt++[i], 2 or 1 cycles (cache)
+                    // F1
+                    dau_dec_en    <= 1;
+                    dau_op_fields <= rom_dout[10:5];
+                    // y load
+                    a_field       <= { 1'b0, rom_dout[12]};
+                    dau_fully_load<= 1;
+                    // x load
+                    dau_pt_load   <= 1;
+                    xaau_istep    <= rom_dout[4];
+                    pt_read       <= 1;
+                    // 2-cycle version implemented for now
+                    double    <= 1;
+                    pc_halt   <= 1;
                 end
                 5'b11111: begin // F1, y = Y, x = *pt++[i], 2 or 1 cycles (cache)
                     // F1

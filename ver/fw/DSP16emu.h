@@ -20,7 +20,7 @@ class DSP16emu {
     int     sign_extend( int v, int msb=7 );
     void    Yparse( int Y, int v );
     int     Yparse( int Y, bool up_now=true );
-    void    F1parse( int op );
+    void    F1parse( int op, bool up_now=false );
     int     parse_pt( int op );
     void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 );
     int64_t extend_p();
@@ -214,7 +214,7 @@ int DSP16emu::extend_i() {
 }
 
 
-void DSP16emu::F1parse( int op ) {
+void DSP16emu::F1parse( int op, bool up_now ) {
     int64_t *ad, *next_ad, *as;
     int ov0 = (psw&0x100)!=0;
     int ov1 = (psw&0x200)!=0;
@@ -269,6 +269,7 @@ void DSP16emu::F1parse( int op ) {
             r = *as | extend_y();
             break;
         case 9:
+            //printf("as ^ y = %lX ^ %lX\n", *as, extend_y());
             r = *as ^ extend_y();
             break;
         case 10:
@@ -305,7 +306,7 @@ void DSP16emu::F1parse( int op ) {
     // store the final value
     r &= 0xF'FFFF'FFFF;
     *next_ad = r;
-    // *ad = r;
+    if( up_now ) *ad = r;
     if(flag_up) set_psw( lmi, leq, llv, lmv, ov0, ov1 );
 }
 
@@ -483,15 +484,32 @@ int DSP16emu::eval() {
                 next_yl = aux;
             delta = 1;
             break;
-        // case 25:
-        // case 27:
+        case 25: // 0x19
+        case 27:
+            if( opcode==25 ) {
+                aux  = a0 >> 16;
+                aux2 = a0;
+            } else {
+                aux  = a1 >> 16;
+                aux2 = a1;
+            }
+            aux  &=0xffff;
+            aux2 &=0xffff;
+            F1parse( op, true );
+            next_y  = y  = aux;
+            next_yl = yl = aux2;
+            //a1 = next_a1;
+            //a0 = next_a0;
+            x = next_x = parse_pt(op);
+            delta = in_cache ? 1 : 2;
+            break;
         // case 28:
         case 31: // F1 y=Y x=*pt++[i]
-            F1parse( op );
+            F1parse( op, true );
             aux = Yparse( op&0xf, !in_cache );
             //printf("next_a1 = %lX\n", next_a1);
-            a1 = next_a1;
-            a0 = next_a0;
+            // a1 = next_a1;
+            // a0 = next_a0;
             y = next_y = aux;
             if( ((auc>>6)&1)==0 ) yl=next_yl=0;
             x = next_x = parse_pt(op);
