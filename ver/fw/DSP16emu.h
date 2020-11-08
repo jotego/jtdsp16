@@ -236,6 +236,7 @@ void DSP16emu::F1parse( int op, bool up_now ) {
     int ov0 = (psw&0x100)!=0;
     int ov1 = (psw&0x200)!=0;
     int* pov;
+    int ovsat;
     int f = (op>>5)&0x3f;
     if( f&0x10 ) {
         as = &a1;
@@ -246,10 +247,12 @@ void DSP16emu::F1parse( int op, bool up_now ) {
         ad = &a1;
         next_ad = &next_a1;
         pov = &ov1;
+        ovsat = (~auc>>3)&1;
     } else {
         ad = &a0;
         next_ad = &next_a0;
         pov = &ov0;
+        ovsat = (~auc>>2)&1;
     }
     int64_t old_ad = *ad, r=*ad;
     bool flag_up = true;
@@ -260,6 +263,7 @@ void DSP16emu::F1parse( int op, bool up_now ) {
             break;
         case 1:
             r = *as + extend_p();
+            printf("F1=1  ->  %lX + %lX = %lX\n", *as, extend_p(), r);
             p = x*y;
             break;
         case 2:
@@ -311,16 +315,15 @@ void DSP16emu::F1parse( int op, bool up_now ) {
     // update flags
     int lmi = (r>>35) != 0;
     int leq = r == 0;
-    int llv = 0;
-    int lmv = 0;
-    const int sign = (r>>31)&1;
-    for( int k=32;k<35;k++ ) {
-        if( ((r>>k)&1) != sign ) lmv=1;
-    }
-    llv = lmv; // llv checks one more bit
-    if( ((r>>36)&1) != sign ) llv=1;
+    int sign_bits = (r>>31)&0x1F;
+    int llv = ((r>>35)&1) != ((r>>36)&1); // number doesn't fit in 36-bit integer
+    int lmv = sign_bits!=0 && sign_bits!=0x1F; // number doesn't fit in 32-bit integer
+    const int sign = (r>>35)&1;
     *pov = llv;
     // store the final value
+    //printf("LMV = %d - OVSAT %d (%lX)\n", lmv, ovsat, r);
+    if( lmv && ovsat ) // saturate to a 32 bit value
+        r = sign ? 0xF'8000'0000 : 0x0'7FFF'FFFF;
     r &= 0xF'FFFF'FFFF;
     *next_ad = r;
     if( up_now ) *ad = r;
@@ -498,7 +501,7 @@ void DSP16emu::parseZ( int op ) {
     *py = *pnext;
     // Delete yl if necessary
     if( ((auc>>6)&1)==0 && (op&0x10)!=0 ) {
-        printf("YL cleared\n");
+        //printf("YL cleared\n");
         next_yl = yl = 0;
     }
 }

@@ -66,7 +66,7 @@ module jtdsp16_dau(
 reg  [15:0] x, yh, yl, z;
 reg  [31:0] p;
 reg  [35:0] a1, a0;
-reg  [35:0] alu_out;
+reg  [35:0] alu_out, alu_sat;
 reg  [36:0] alu_arith, alu_special, p_ext;
 wire [36:0] alu_in;
 wire        st_a0l;
@@ -91,7 +91,7 @@ wire [35:0] ram_ext, acc_mux;
 wire [19:0] rmux_ext, acc_in;
 wire [ 3:0] flags;
 wire [15:0] load_data;
-wire        pre_ov;
+wire        pre_ov, pre_lmv;
 wire        up_p;
 wire        up_y;
 wire        up_a0h, up_a1h;
@@ -137,7 +137,9 @@ assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
 assign acc_mux     = a_field[0] ? a1 : a0;
 assign acc_dout    = a_field[1] ? acc_mux[31:16] : acc_mux[15:0]; // this is used in R=aT operations
 assign acc_in      = acc_ram ? ram_ext[35:16] : (rmux_load ? rmux_ext : alu_out[35:16]);
-assign pre_ov      = ^{alu_llv, alu_out[35:31]};
+assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit integer
+assign pre_lmv     = |alu_out[35:31] ^ &alu_out[35:31]; // number doesn't fit in 32-bit integer
+assign alu_sat     = { {5{alu_out[35]}}, {31{~alu_out[35]}}}; // saturate to 32-bit integer
 
 assign f1_st       = dec_en && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
 
@@ -248,13 +250,13 @@ always @(posedge clk, posedge rst) begin
             a0[35:16] <= acc_in;
             if( clr_a0l ) a0[15:0] <= 16'd0;
         end else if( load_a0 )
-            a0 <= alu_out;
+            a0 <= (pre_lmv & sat_a0) ? alu_sat : alu_out;
         // a1
         if( st_a1h ) begin
             a1[35:16] <= acc_in;
             if( clr_a1l ) a1[15:0] <= 16'd0;
         end else if( load_a1 )
-            a1 <= alu_out;
+            a1 <= (pre_lmv & sat_a1) ? alu_sat : alu_out;
         //a0[15: 0] <= st_a0h ? (clr_a0l ? 16'd0 : alu_out[15:0]) :
         //            (st_a0l ? alu_out[15:0] : a0[15:0]);
         //a1[15: 0] <= st_a1h ? (clr_a1l ? 16'd0 : alu_out[15:0]) :
@@ -270,7 +272,7 @@ always @(posedge clk, posedge rst) begin
             lmi <= alu_out[35];
             leq <= ~|alu_out;
             llv <= pre_ov;
-            lmv <= ^alu_out[35:31];
+            lmv <= pre_lmv;
             // Not sure whether these are always updated
             ov0 <= ~d_field & pre_ov;
             ov1 <=  d_field & pre_ov;

@@ -377,7 +377,7 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     REG_DUMP( K, emu.k,  rtl.k  )
     // DAU
     cout << "-- DAU --\n";
-    //REG_DUMP(PSW, emu.psw , rtl.psw )
+    REG_DUMP(PSW, emu.psw , rtl.psw )
     REG_DUMP( X, emu.x , rtl.x  )
     REG_DUMP( Y, emu.y , rtl.y  )
     REG_DUMP(YL, emu.yl, rtl.yl )
