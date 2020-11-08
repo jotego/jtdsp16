@@ -82,6 +82,7 @@ const int R_Y      = 1<<15;
 // Format 1:
 const int Ya1_F1     = 1<<4;
 const int Y_F1       = 1<<6;
+const int aTY_F1     = 1<<7;
 const int Yy_F1      = 1<<20;
 const int xY_F1      = 1<<22;
 const int yY_F1      = 1<<23;
@@ -119,6 +120,7 @@ int main( int argc, char *argv[] ) {
         yY_xX_F1 |
         ya0_xX_F1 |
         ya1_xX_F1 |
+        aTY_F1    |
         0
      );
     rtl.read_rom( rom.data() );
@@ -212,14 +214,9 @@ void ROM::random( int valid ) {
                 extra = rand()%0x800;
                 extra &= ~0x10;
                 break;
-            case 4:
-            case 20:
-            case 22:
-            case 23:
-            case 25:
-            case 27:
-            case 28:
-            case 31:
+            case 4:  case 7:
+            case 20: case 22: case 23: case 25: case 27:
+            case 28: case 31:
                 extra = rand()%0x800;
                 break;
             default: cout << "Error: unsupported OP for randomization\n";

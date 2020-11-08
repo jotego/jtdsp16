@@ -44,6 +44,7 @@ module jtdsp16_ctrl(
     output reg        dau_acc_load,
     output reg        dau_pt_load,
     output reg        dau_fully_load,
+    output reg        dau_acc_ram,
     output reg        st_a0h,
     output reg        st_a1h,
     output reg        acc_sel,
@@ -187,6 +188,7 @@ always @(posedge clk, posedge rst) begin
         dau_ram_load  <= 0;
         dau_pt_load   <= 0;
         dau_fully_load<= 0;
+        dau_acc_ram   <= 0;
         rsel          <= 3'd0;
         st_a0h        <= 0;
         st_a1h        <= 0;
@@ -243,6 +245,7 @@ always @(posedge clk, posedge rst) begin
         dau_acc_load  <= 0;
         dau_pt_load   <= 0;
         dau_fully_load<= 0;
+        dau_acc_ram   <= 0;
         st_a0h        <= 0;
         st_a1h        <= 0;
         acc_sel       <= 0;
@@ -346,6 +349,12 @@ always @(posedge clk, posedge rst) begin
                     dau_dec_en    <= 1;
                     dau_op_fields <= rom_dout[10:5];
                     a_field       <= rom_dout[10:9];
+                    // accumulator storing
+                    if( rom_dout[11] ) begin
+                        st_a1h      <= ~rom_dout[10];
+                        st_a0h      <=  rom_dout[10];
+                        dau_acc_ram <= 1;
+                    end
                     // Y control
                     post_load <= 1;
                     inc_sel   <= pre_inc_sel;

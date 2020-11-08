@@ -26,6 +26,7 @@ class DSP16emu {
     int64_t extend_p();
     int64_t extend_y();
     int     extend_i();
+    void    assign_acc( int aD, int v, bool up_now );
 public:
     int pc, j, k, rb, re, r0, r1, r2, r3;
     int pt, pr, pi, i;
@@ -385,6 +386,30 @@ int DSP16emu::parse_pt( int op ) {
     return v;
 }
 
+void DSP16emu::assign_acc( int aD, int v, bool up_now ) {
+    int64_t *pr, *pnext;
+    int64_t newv;
+    if( aD ) {
+        pr = &a1;
+        pnext = &next_a1;
+    } else {
+        pr = &a0;
+        pnext = &next_a0;
+    }
+    int64_t v64 = v;
+    v64 &= 0xffff;
+    v64 <<= 16;
+    newv = v64 | (*pr & 0xffff );
+    if( v &0x8000 )
+        newv |= 0xf'0000'0000; // sign extend
+    int clr = auc>>4;
+    clr >>= aD;
+    clr &=1;
+    if( !clr ) newv &= ~0xffff; // clear low
+    *pnext = newv;
+    if( up_now ) *pr = newv;
+}
+
 int DSP16emu::eval() {
     int op = read_rom(pc++) &0xffff;
     int delta=0;
@@ -466,6 +491,12 @@ int DSP16emu::eval() {
             Yparse( op&0xf, aux2 );
             update_regs();
             delta = 2;
+            break;
+        case 7: // aT[l] = Y
+            F1parse( op );
+            aux = Yparse( op&0xf, false );
+            assign_acc( ((~op)>>10)&1, aux, false );
+            delta = 1;
             break;
         case 22: // x=Y F1
             F1parse( op );

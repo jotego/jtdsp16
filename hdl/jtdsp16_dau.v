@@ -31,6 +31,7 @@ module jtdsp16_dau(
     input             rmux_load,
     input             imm_load,
     input             acc_load,
+    input             acc_ram,
     input             fully_load,
     input             pt_load,
     // ALU control
@@ -135,7 +136,7 @@ assign rmux_ext    = { {4{rmux[15]}}, rmux };
 assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
 assign acc_mux     = a_field[0] ? a1 : a0;
 assign acc_dout    = a_field[1] ? acc_mux[31:16] : acc_mux[15:0]; // this is used in R=aT operations
-assign acc_in      = rmux_load ? rmux_ext : alu_out[35:16];
+assign acc_in      = acc_ram ? ram_ext[35:16] : (rmux_load ? rmux_ext : alu_out[35:16]);
 assign pre_ov      = ^{alu_llv, alu_out[35:31]};
 
 assign f1_st       = dec_en && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
