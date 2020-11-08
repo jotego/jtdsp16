@@ -103,7 +103,7 @@ wire [31:0] debug_p;
 
 wire        cen2;   // cen divided by 2
 
-wire [15:0] rom_data, ram_data, cache_data;
+wire [15:0] pt_dout;
 wire [15:0] rom_addr;
 
 wire [ 2:0] r_field;
@@ -115,13 +115,13 @@ wire        goto_ja;
 wire        goto_b;
 wire        call_ja;
 wire        icall;
-wire        post_inc;
-wire [11:0] i_field;
+wire [11:0] i_field, pt_addr;
 wire        con_result;
 wire        irq_latch;
 wire        xaau_ram_load, xaau_imm_load, xaau_acc_load;
 wire        do_start;
 wire [10:0] do_data;
+wire        pt_read, xaau_istep;
 
 // Y-AAU
 wire [ 8:0] short_imm;
@@ -139,7 +139,7 @@ wire        short_load, long_load, acc_load, post_load, ram_load;
 wire [ 4:0] t_field, c_field;
 wire [ 5:0] dau_op_fields;
 wire [ 1:0] y_field, a_field;
-wire        dau_acc_load, dau_imm_load, dau_ram_load;
+wire        dau_acc_load, dau_imm_load, dau_ram_load, dau_pt_load;
 wire        st_a0h, st_a1h;
 wire        dau_dec_en, dau_con_en, dau_rmux_load;
 
@@ -196,14 +196,14 @@ jtdsp16_rsel u_rsel(
 jtdsp16_ctrl u_ctrl(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen2          ),
+    .cen            ( cen           ),
+    .cen2           ( cen2          ),
     .t_field        (               ),
     // ROM AAU - XAAU
     .goto_ja        ( goto_ja       ),
     .goto_b         ( goto_b        ),
     .call_ja        ( call_ja       ),
     .icall          ( icall         ),
-    .post_inc       ( post_inc      ),
     .i_field        ( i_field       ),
     .pc_halt        ( pc_halt       ),
     .xaau_ram_load  ( xaau_ram_load ),
@@ -211,6 +211,9 @@ jtdsp16_ctrl u_ctrl(
     .xaau_acc_load  ( xaau_acc_load ),
     .do_start       ( do_start      ),
     .do_data        ( do_data       ),
+    // *pt++[i] reads
+    .pt_read        ( pt_read       ),
+    .xaau_istep     ( xaau_istep    ),
     // DAU
     .dau_dec_en     ( dau_dec_en    ),
     .dau_con_en     ( dau_con_en    ),
@@ -221,6 +224,7 @@ jtdsp16_ctrl u_ctrl(
     .dau_imm_load   ( dau_imm_load  ),
     .dau_ram_load   ( dau_ram_load  ),
     .dau_acc_load   ( dau_acc_load  ),
+    .dau_pt_load    ( dau_pt_load   ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     .con_result     ( con_result    ),
@@ -267,8 +271,13 @@ jtdsp16_ctrl u_ctrl(
 
 jtdsp16_rom u_rom(
     .clk        ( clk             ),
+    .cen        ( cen2            ),
     .addr       ( rom_addr        ),
+    .pt         ( pt_addr         ),
+
     .dout       ( rom_dout        ),
+    .pt_dout    ( pt_dout         ),
+
     .ext_mode   ( ext_mode        ),
     .ext_data   ( rb_din          ),
     .ext_addr   ( ab              ),
@@ -288,11 +297,15 @@ jtdsp16_rom_aau u_rom_aau(
     .goto_b     ( goto_b        ),
     .call_ja    ( call_ja       ),
     .icall      ( icall         ),
-    .post_inc   ( post_inc      ),
     .pc_halt    ( pc_halt       ),
     .ram_load   ( xaau_ram_load ),
     .imm_load   ( xaau_imm_load ),
     .acc_load   ( xaau_acc_load ),
+    // *pt++[i] reads
+    .pt_addr    ( pt_addr       ),
+    .pt_read    ( pt_read       ),
+    .istep      ( xaau_istep    ),
+    .pt_load    ( dau_pt_load   ),  // same as DAU's
     // Do loop
     .do_start   ( do_start      ),
     .do_data    ( do_data       ),
@@ -381,6 +394,7 @@ jtdsp16_dau u_dau(
     .imm_load       ( dau_imm_load  ),
     .ram_load       ( dau_ram_load  ),
     .acc_load       ( dau_acc_load  ),
+    .pt_load        ( dau_pt_load   ),
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     // Data buses
@@ -390,6 +404,7 @@ jtdsp16_dau u_dau(
     .cache_dout     ( cache_dout    ),
     .acc_dout       ( acc_dout      ),
     .reg_dout       ( r_dau         ),
+    .pt_dout        ( pt_dout       ),
     .con_result     ( con_result    ),
     // Debug
     .debug_x        ( debug_x       ),

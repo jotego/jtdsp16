@@ -11,6 +11,7 @@ class DSP16emu {
     int next_auc, next_psw, next_c0, next_c1, next_c2, next_sioc, next_srta, next_sdx;
     int next_tdms, next_pioc, next_pdx0, next_pdx1;
     int64_t next_a0, next_a1;
+    bool in_cache;
 
     void    update_regs();
     int     get_register( int rfield );
@@ -20,9 +21,11 @@ class DSP16emu {
     void    Yparse( int Y, int v );
     int     Yparse( int Y, bool up_now=true );
     void    F1parse( int op );
+    int     parse_pt( int op );
     void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 );
     int64_t extend_p();
     int64_t extend_y();
+    int     extend_i();
 public:
     int pc, j, k, rb, re, r0, r1, r2, r3;
     int pt, pr, pi, i;
@@ -50,6 +53,7 @@ DSP16emu::DSP16emu( int16_t* _rom ) {
     next_a0 = a0 = next_a1 = a1 = 0;
     p = 0;
     ticks=0;
+    in_cache = false;
     rom = _rom;
     ram = new int16_t[2048];
     for(int k=0; k<2048; k++) ram[k]=0;
@@ -203,6 +207,13 @@ int64_t DSP16emu::extend_y() {
     return yext; // &0xF'FFFF'FFFF;
 }
 
+int DSP16emu::extend_i() {
+    int iext = i;
+    if( iext>>11 ) iext |= 0xf000;
+    return iext;
+}
+
+
 void DSP16emu::F1parse( int op ) {
     int64_t *ad, *next_ad, *as;
     int ov0 = (psw&0x100)!=0;
@@ -354,9 +365,22 @@ int DSP16emu::Yparse( int Y, bool up_now ) {
         case 3: *rpt_next = (*rpt+j)&0xffff; break;
     }
     printf("RAM read [%04X]=%04X\n", (*rpt)&0x7ff, v );
+    //printf("rpt_next=%04X\n",*rpt_next);
     if( up_now )
         *rpt = *rpt_next;
     stats.ram_reads++;
+    return v;
+}
+
+int DSP16emu::parse_pt( int op ) {
+    const int X = (op>>4)&1;
+    int v = read_rom( pt ) & 0xffff;
+    if( X )
+        pt+=extend_i();
+    else
+        pt++;
+    pt &= 0xffff;
+    next_pt = pt;
     return v;
 }
 
@@ -462,7 +486,17 @@ int DSP16emu::eval() {
         // case 25:
         // case 27:
         // case 28:
-        // case 31:
+        case 31: // F1 y=Y x=*pt++[i]
+            F1parse( op );
+            aux = Yparse( op&0xf, !in_cache );
+            //printf("next_a1 = %lX\n", next_a1);
+            a1 = next_a1;
+            a0 = next_a0;
+            y = next_y = aux;
+            if( ((auc>>6)&1)==0 ) yl=next_yl=0;
+            x = next_x = parse_pt(op);
+            delta = in_cache ? 1 : 2;
+            break;
         case 4: // F1 Y=a1
         case 28: // 0x1C
             // get old value of accumulator

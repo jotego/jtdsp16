@@ -101,7 +101,7 @@ int main( int argc, char *argv[] ) {
 
     RTL rtl;
     ROM rom;
-    rom.random( /*GOTOJA | */
+    rom.random( // GOTOJA |
         SHORTIMM |
         LONGIMM |
         AT_R |
@@ -116,6 +116,7 @@ int main( int argc, char *argv[] ) {
         Yy_F1  |
         yY_F1  |
         xY_F1  |
+        yY_xX_F1 |
         0
      );
     rtl.read_rom( rom.data() );

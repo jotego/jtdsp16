@@ -28,11 +28,15 @@ module jtdsp16_rom_aau(
     input             goto_b,
     input             call_ja,
     input             icall,
-    input             post_inc,
     input             pc_halt,
     input             ram_load,
     input             imm_load,
     input             acc_load,
+    input             pt_load,
+    // *pt++[i] reads
+    input             pt_read,
+    input             istep,
+    output     [11:0] pt_addr,
     // do loop
     input             do_start,
     input      [10:0] do_data,
@@ -70,7 +74,7 @@ reg         do_en, redo_en, last_do_en, redo_aux;
 reg  [ 6:0] do_left;
 
 wire [15:0] sequ_pc;
-reg  [15:0] next_pc;
+reg  [15:0] next_pc, next_pt;
 wire [15:0] i_ext;
 wire [ 2:0] b_field;
 wire        copy_pc;
@@ -91,7 +95,7 @@ assign      goto_pt  = goto_b && b_field==3'b10;
 assign      call_pt  = goto_b && b_field==3'b11;
 assign      copy_pc  = call_pt || call_ja;
 assign      any_load = ram_load || imm_load || acc_load;
-assign      load_pt  =  any_load && r_field==3'd0;
+assign      load_pt  = (any_load && r_field==3'd0) || pt_load;
 assign      load_pr  = (any_load && r_field==3'd1) || copy_pc;
 assign      load_pi  =  any_load && r_field==3'd2;
 assign      load_i   =  any_load && r_field==3'd3;
@@ -101,6 +105,8 @@ assign      do_endhit= sequ_pc==do_end;
 assign      do_loop  = do_endhit && do_left>7'd1;
 assign      redo     = do_start && do_data[10:7]==4'd0;
 assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_en;
+
+assign      pt_addr  = pt[11:0];
 
 // Debugging
 assign      debug_pc = pc;
@@ -113,9 +119,8 @@ always @(*) begin
     rnext =
         imm_load ? rom_dout : (
         ram_load ? ram_dout : (
-        acc_load ? acc_dout : (
-        copy_pc  ? pc       : (
-                   pt+i_ext    ))));
+        acc_load ? acc_dout : pc ));
+    next_pt = pt + (istep ? i_ext : 16'd1);
 end
 
 always @(*) begin
@@ -160,7 +165,7 @@ always @(posedge clk, posedge rst ) begin
         do_head    <= 16'd0;
     end else if(cen) begin
         last_do_en <= do_en;
-        if( load_pt  ) pt <= rnext;
+        if( load_pt  ) pt <= pt_load ? next_pt : rnext;
         if( load_pr  ) pr <= rnext;
         if( load_i   ) i  <= rnext[11:0];
 

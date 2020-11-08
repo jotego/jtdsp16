@@ -20,6 +20,7 @@ module jtdsp16_ctrl(
     input             rst,
     input             clk,
     input             cen,
+    input             cen2,
     // Instruction fields
     output reg        dau_dec_en,
     output reg        dau_con_en,
@@ -41,6 +42,7 @@ module jtdsp16_ctrl(
     output reg        dau_imm_load,
     output reg        dau_ram_load,
     output reg        dau_acc_load,
+    output reg        dau_pt_load,
     output reg        st_a0h,
     output reg        st_a1h,
     output reg        acc_sel,
@@ -62,11 +64,13 @@ module jtdsp16_ctrl(
     output reg        goto_b,
     output reg        call_ja,
     output reg        icall,
-    output reg        post_inc,
     output reg        pc_halt,
     output reg        xaau_ram_load,
     output reg        xaau_imm_load,
     output reg        xaau_acc_load,
+    // *pt++[i] reads
+    output reg        pt_read,
+    output reg        xaau_istep,
     // instruction fields
     output reg [11:0] i_field,
     // IRQ
@@ -134,6 +138,16 @@ always @(*) begin
     endcase
 end
 
+// This part needs to operate at full cen speed
+/*
+always @(posedge clk, posedge rst) begin
+    if( rst ) begin
+        pt_read <= 0;
+    end else if (cen) begin
+        pt_read  <= !double && !pc_halt && rom_dout[15:11]==5'h1f;
+    end
+end*/
+
 // Decode instruction
 always @(posedge clk, posedge rst) begin
     if(rst) begin
@@ -148,14 +162,15 @@ always @(posedge clk, posedge rst) begin
         goto_b        <= 0;
         call_ja       <= 0;
         icall         <= 0;
-        post_inc      <= 0;
         ram_we        <= 0;
         pc_halt       <= 0;
         xaau_ram_load <= 0;
         xaau_imm_load <= 0;
         xaau_acc_load <= 0;
+        xaau_istep    <= 0;
         do_data       <= 11'd0;
         do_start      <= 0;
+        pt_read       <= 0;
         // *r++ control lines:
         y_field       <= 2'b0;
         step_sel      <= 0;
@@ -169,6 +184,7 @@ always @(posedge clk, posedge rst) begin
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
+        dau_pt_load   <= 0;
         rsel          <= 3'd0;
         st_a0h        <= 0;
         st_a1h        <= 0;
@@ -183,7 +199,7 @@ always @(posedge clk, posedge rst) begin
         sio_ram_load  <= 0;
 
         fault         <= 0;
-    end else if(cen) begin
+    end else if(cen2) begin
         t_field   <= rom_dout[15:11];
         i_field   <= rom_dout[11: 0];
         x_field   <= rom_dout[    4];
@@ -212,6 +228,8 @@ always @(posedge clk, posedge rst) begin
         xaau_imm_load <= 0;
         xaau_acc_load <= 0;
         do_start      <= 0;
+        xaau_istep    <= 0;
+        pt_read       <= 0;
 
         // DAU
         dau_op_fields <= 6'd0;
@@ -221,6 +239,7 @@ always @(posedge clk, posedge rst) begin
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
         dau_acc_load  <= 0;
+        dau_pt_load   <= 0;
         st_a0h        <= 0;
         st_a1h        <= 0;
         acc_sel       <= 0;
@@ -347,6 +366,26 @@ always @(posedge clk, posedge rst) begin
                     inc_sel   <= pre_inc_sel;
                     step_sel  <= pre_step_sel;
                     ksel      <= pre_ksel;
+                end
+                5'b11111: begin // F1, y = Y, x = *pt++[i], 2 or 1 cycles (cache)
+                    // F1
+                    dau_dec_en    <= 1;
+                    dau_op_fields <= rom_dout[10:5];
+                    // y load
+                    dau_ram_load  <= 1;
+                    r_field       <= 3'd1; // y
+                    // x load
+                    dau_pt_load   <= 1;
+                    xaau_istep    <= rom_dout[4];
+                    pt_read       <= 1;
+                    // Y control
+                    post_load <= 1;
+                    inc_sel   <= pre_inc_sel;
+                    step_sel  <= pre_step_sel;
+                    ksel      <= pre_ksel;
+                    // 2-cycle version implemented for now
+                    double    <= 1;
+                    pc_halt   <= 1;
                 end
                 5'b10100, // F1, Y = y, 2 cycles
                 5'b10111, // F1, y[k]=Y, 1 cycle

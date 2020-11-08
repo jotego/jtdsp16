@@ -31,6 +31,7 @@ module jtdsp16_dau(
     input             rmux_load,
     input             imm_load,
     input             acc_load,
+    input             pt_load,
     // ALU control
     input             alu_sel,
     input             st_a0h,
@@ -41,6 +42,7 @@ module jtdsp16_dau(
     input      [15:0] rmux,
     input      [15:0] long_imm,
     input      [15:0] cache_dout,
+    input      [15:0] pt_dout,
 
     output     [15:0] acc_dout,
     output reg [15:0] reg_dout,
@@ -137,13 +139,13 @@ assign pre_ov      = ^{alu_llv, alu_out[35:31]};
 
 assign f1_st       = dec_en && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
 
-assign load_x      = (imm_load || ram_load || acc_load) && r_field==3'd0;
-assign load_y      = (imm_load || ram_load || acc_load) && r_field==3'd1;
-assign load_yl     = (imm_load || ram_load || acc_load) && r_field==3'd2;
-assign load_auc    = (imm_load || ram_load || acc_load) && r_field==3'd3;
-assign load_c0     = (imm_load || ram_load || acc_load) && r_field==3'd5;
-assign load_c1     = (imm_load || ram_load || acc_load) && r_field==3'd6;
-assign load_c2     = (imm_load || ram_load || acc_load) && r_field==3'd7;
+assign load_x      = ((imm_load || ram_load || acc_load ) && r_field==3'd0) || pt_load;
+assign load_y      = (imm_load || ram_load || acc_load ) && r_field==3'd1;
+assign load_yl     = (imm_load || ram_load || acc_load ) && r_field==3'd2;
+assign load_auc    = (imm_load || ram_load || acc_load ) && r_field==3'd3;
+assign load_c0     = (imm_load || ram_load || acc_load ) && r_field==3'd5;
+assign load_c1     = (imm_load || ram_load || acc_load ) && r_field==3'd6;
+assign load_c2     = (imm_load || ram_load || acc_load ) && r_field==3'd7;
 assign load_a0     = f1_st && !d_field;
 assign load_a1     = f1_st &&  d_field;
 assign load_data   = acc_load ? acc_dout : (imm_load ? long_imm : ram_dout);
@@ -222,12 +224,8 @@ always @(posedge clk, posedge rst) begin
         ov0 <=  0;
         { lmi, leq, llv, lmv } <= 4'd0;
     end else if(cen) begin
-        if( up_p ) p  <= x*yh;
-        if( load_x ) x <= load_data;
-        //x <= up_xram   ? ram_dout   : (
-        //     up_xrom   ? rom_dout   : (
-        //     up_xcache ? cache_dout : (
-        //                 x             )));
+        if( up_p   ) p <= x*yh;
+        if( load_x ) x <= pt_load ? pt_dout : load_data;
         if( up_y ) begin
             if( !load_yl ) begin
                 yh <= /*load_ay1 ? a1[31:16] : (load_ay0 ? a0[15:0] :*/
