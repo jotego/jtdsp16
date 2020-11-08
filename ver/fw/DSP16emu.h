@@ -22,11 +22,19 @@ class DSP16emu {
     int     Yparse( int Y, bool up_now=true );
     void    F1parse( int op, bool up_now=false );
     int     parse_pt( int op );
+    void    parseZ( int op );
     void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 );
+
     int64_t extend_p();
     int64_t extend_y();
     int     extend_i();
+
     void    assign_acc( int aD, int v, bool up_now );
+    void    step_aau_r( int* pr, int s );
+
+    void    ram_write( int a, int v );
+    int     ram_read( int a );
+
 public:
     int pc, j, k, rb, re, r0, r1, r2, r3;
     int pt, pr, pi, i;
@@ -331,8 +339,7 @@ void DSP16emu::Yparse( int Y, int v ) {
         case 2: rpt = &r2; rpt_next = &next_r2; break;
         case 3: rpt = &r3; rpt_next = &next_r3; break;
     }
-    ram[ (*rpt)&0x7ff ] = v;
-    printf("RAM write [%04X]=%04X\n", (*rpt)&0x7ff, v&0xFFFF );
+    ram_write( *rpt, v );
     switch( Y&3 ) {
         case 1:
             if( re==0 || re != *rpt ) // virtual shift register feature
@@ -343,7 +350,23 @@ void DSP16emu::Yparse( int Y, int v ) {
         case 2: *rpt = *rpt_next = (*rpt-1)&0xffff; break;
         case 3: *rpt = *rpt_next = (*rpt+j)&0xffff; break;
     }
+}
+
+int DSP16emu::ram_read( int a ) {
+    a &= 0x7ff;
+    int v = ram[ a ];
+    v &= 0xffff;
+    printf("RAM read [%04X]=%04X\n", a, v );
     stats.ram_writes++;
+    return v;
+}
+
+void DSP16emu::ram_write( int a, int v ) {
+    a &= 0x7ff;
+    v &= 0xffff;
+    ram[ a ] = v;
+    printf("RAM write [%04X]=%04X\n", a, v );
+    stats.ram_reads++;
 }
 
 int DSP16emu::Yparse( int Y, bool up_now ) {
@@ -355,7 +378,7 @@ int DSP16emu::Yparse( int Y, bool up_now ) {
         case 2: rpt = &r2; rpt_next = &next_r2; break;
         case 3: rpt = &r3; rpt_next = &next_r3; break;
     }
-    int v = ram[ (*rpt)&0x7ff ] & 0xffff;
+    int v = ram_read( *rpt );
     switch( Y&3 ) {
         case 1:
             if( re==0 || re != *rpt ) // virtual shift register feature
@@ -366,11 +389,8 @@ int DSP16emu::Yparse( int Y, bool up_now ) {
         case 2: *rpt_next = (*rpt-1)&0xffff; break;
         case 3: *rpt_next = (*rpt+j)&0xffff; break;
     }
-    printf("RAM read [%04X]=%04X\n", (*rpt)&0x7ff, v );
-    //printf("rpt_next=%04X\n",*rpt_next);
     if( up_now )
         *rpt = *rpt_next;
-    stats.ram_reads++;
     return v;
 }
 
@@ -408,6 +428,71 @@ void DSP16emu::assign_acc( int aD, int v, bool up_now ) {
     if( !clr ) newv &= ~0xffff; // clear low
     *pnext = newv;
     if( up_now ) *pr = newv;
+}
+
+void DSP16emu::step_aau_r( int* pr, int s ) {
+    // this account for the virtual shift register feature
+    if( s==1 && re!=0 && (*pr==re) ) {
+        *pr = rb;
+    } else {
+        *pr += s;
+        *pr &= 0xffff;
+    }
+}
+
+void DSP16emu::parseZ( int op ) {
+    int *py, *pnext;
+    int old;
+    if( op&0x10 ) {
+        py    = &y;
+        pnext = &next_y;
+    } else {
+        py    = &yl;
+        pnext = &next_yl;
+    }
+    old = *py;
+    // memory pointer
+    int *pr, *prn;
+    switch( (op>>2)&3 ) {
+        case 0:
+            pr  = &r0;
+            prn = &next_r0;
+            break;
+        case 1:
+            pr  = &r1;
+            prn = &next_r1;
+            break;
+        case 2:
+            pr  = &r2;
+            prn = &next_r2;
+            break;
+        case 3:
+            pr  = &r3;
+            prn = &next_r3;
+            break;
+    }
+    *pnext = ram_read( *pr );
+    int step=0;
+    switch( op&3 ) {
+        case 1: step = 1; break;
+        case 2: step =-1; break;
+        case 3: step = j; break;
+    }
+    step_aau_r( pr, step );
+    ram_write( *pr, old );
+    switch( op&3 ) {
+        case 0: step = 1; break;
+        case 2: step = 2; break;
+        case 3: step = k; break;
+    }
+    step_aau_r( pr, step );
+    *prn = *pr;
+    *py = *pnext;
+    // Delete yl if necessary
+    if( ((auc>>6)&1)==0 && (op&0x10)!=0 ) {
+        printf("YL cleared\n");
+        next_yl = yl = 0;
+    }
 }
 
 int DSP16emu::eval() {
@@ -497,6 +582,11 @@ int DSP16emu::eval() {
             aux = Yparse( op&0xf, false );
             assign_acc( ((~op)>>10)&1, aux, false );
             delta = 1;
+            break;
+        case 21: // Z:y F1
+            F1parse( op, true );
+            parseZ(op);
+            delta = 2;
             break;
         case 22: // x=Y F1
             F1parse( op );

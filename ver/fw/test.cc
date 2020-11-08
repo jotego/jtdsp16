@@ -90,10 +90,13 @@ const int ya0_xX_F1  = 1<<25;
 const int ya1_xX_F1  = 1<<27;
 const int Ya0_F1     = 1<<28;
 const int yY_xX_F1   = 1<<31;
+// Z operations
+const int Zy_F1      = 1<<21;
 
 class ParseArgs {
 public:
     bool step, extra;
+    int max;
     ParseArgs( int argc, char *argv[]);
 };
 
@@ -121,6 +124,7 @@ int main( int argc, char *argv[] ) {
         ya0_xX_F1 |
         ya1_xX_F1 |
         aTY_F1    |
+        Zy_F1     |
         0
      );
     rtl.read_rom( rom.data() );
@@ -129,7 +133,7 @@ int main( int argc, char *argv[] ) {
 
     // Simulate
     int k;
-    for( k=0; k<3200 && !rtl.fault(); k++ ) {
+    for( k=0; k<3200 && !rtl.fault() && k<args.max; k++ ) {
         int ticks = emu.eval();
         rtl.clk(ticks<<1);
         good = compare(rtl,emu);
@@ -218,6 +222,10 @@ void ROM::random( int valid ) {
             case 20: case 22: case 23: case 25: case 27:
             case 28: case 31:
                 extra = rand()%0x800;
+                break;
+            case 21: // Z:y F1
+                extra = rand()%0x800;
+                extra &= ~3;
                 break;
             default: cout << "Error: unsupported OP for randomization\n";
         }
@@ -374,11 +382,18 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
     extra = step=false;
+    max = 100'000;
     if( argc==1 ) return;
     for( int k=1; k<argc; k++ ) {
         if( argv[k][0]=='-' ) {
             if( strcmp(argv[k],"-step")==0 )  { step=true;  continue; }
             if( strcmp(argv[k],"-extra")==0 ) { extra=true; continue; }
+            if( strcmp(argv[k],"-max")==0 ) {
+                if( ++k<argc ) {
+                    max = strtol(argv[k], NULL, 0);
+                }
+                continue;
+            }
         } else {
             // parse as seed
             int n = strtol(argv[1], NULL, 0);

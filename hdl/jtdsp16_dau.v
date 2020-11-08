@@ -63,7 +63,7 @@ module jtdsp16_dau(
     output     [31:0] debug_p
 );
 
-reg  [15:0] x, yh, yl;
+reg  [15:0] x, yh, yl, z;
 reg  [31:0] p;
 reg  [35:0] a1, a0;
 reg  [35:0] alu_out;
@@ -219,6 +219,7 @@ always @(posedge clk, posedge rst) begin
         x   <= 16'd0;
         yh  <= 16'd0;
         yl  <= 16'd0;
+        z   <= 16'd0;
         a0  <= 36'd0;
         a1  <= 36'd0;
         auc <=  7'd0;
@@ -241,6 +242,7 @@ always @(posedge clk, posedge rst) begin
                 end
             end
         end
+        // z <= zyl_swap ? yl : yh; // keep a copy of y last value
         // a0
         if( st_a0h ) begin
             a0[35:16] <= acc_in;

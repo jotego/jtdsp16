@@ -368,6 +368,27 @@ always @(posedge clk, posedge rst) begin
                     dau_op_fields <= rom_dout[10:5];
                 end
 
+                5'b10101: begin // Z:y F1
+                    // F1
+                    dau_dec_en    <= 1;
+                    dau_op_fields <= rom_dout[10:5];
+                    // DAU
+                    // zyh_swap      <=  rom_dout[4];
+                    // zyl_swap      <= ~rom_dout[4];
+                    dau_ram_load  <= 1;
+                    // Register mux
+                    rsel          <= 3'b100; // DAU
+                    r_field       <= rom_dout[4] ? 3'd1 /* yh */: 3'd2 /* yl */;
+                    ram_we        <= 1;
+                    // RAM AAU
+                    y_field       <= rom_dout[3:2]; // selects register
+                    inc_sel       <= 2'd2; // +1. Only the zp case is supported
+                    step_sel      <= 0;
+                    post_load     <= 1;
+                    double        <= 1;
+                    pc_halt       <= 1;
+                end
+
                 5'b10110: begin // F1, x=Y, 1 cycle
                     dau_dec_en    <= 1;
                     dau_op_fields <= rom_dout[10:5];
