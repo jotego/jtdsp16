@@ -392,7 +392,7 @@ jtdsp16_dau u_dau(
     .cen            ( cen2          ),
     // Decoder
     .dec_en         ( dau_dec_en    ),
-    .con_en         ( dau_con_en    ),
+    .sel_special    ( 1'b0          ),
     .r_field        ( r_field       ),
     .t_field        ( t_field       ),
     .a_field        ( a_field       ),

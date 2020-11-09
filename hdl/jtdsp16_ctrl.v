@@ -204,13 +204,14 @@ always @(posedge clk, posedge rst) begin
 
         fault         <= 0;
     end else if(cen2) begin
-        t_field   <= rom_dout[15:11];
-        i_field   <= rom_dout[11: 0];
-        x_field   <= rom_dout[    4];
-        c_field   <= rom_dout[ 4: 0];
-        y_field   <= rom_dout[ 3:2];
-        a_field   <= 2'd0;
-        short_imm <= rom_dout[ 8: 0];
+        t_field       <= rom_dout[15:11];
+        i_field       <= rom_dout[11: 0];
+        x_field       <= rom_dout[    4];
+        c_field       <= rom_dout[ 4: 0];
+        y_field       <= rom_dout[ 3:2];
+        dau_op_fields <= rom_dout[10:5];
+        a_field       <= 2'd0;
+        short_imm     <= rom_dout[ 8: 0];
 
         con_check <= dau_con_en;
 
@@ -236,7 +237,6 @@ always @(posedge clk, posedge rst) begin
         pt_read       <= 0;
 
         // DAU
-        dau_op_fields <= 6'd0;
         dau_dec_en    <= 0;
         dau_con_en    <= 0;
         dau_rmux_load <= 0;
@@ -347,7 +347,6 @@ always @(posedge clk, posedge rst) begin
                 5'b00111: // aT=Y F1
                 begin
                     dau_dec_en    <= 1;
-                    dau_op_fields <= rom_dout[10:5];
                     a_field       <= rom_dout[10:9];
                     // accumulator storing
                     if( rom_dout[11] ) begin
@@ -362,16 +361,13 @@ always @(posedge clk, posedge rst) begin
                     ksel      <= pre_ksel;
                 end
 
-                5'b10011: // if CON F2
-                begin
+                5'b10011: begin // if CON F2
                     dau_con_en    <= 1;
-                    dau_op_fields <= rom_dout[10:5];
                 end
 
                 5'b10101: begin // Z:y F1
                     // F1
                     dau_dec_en    <= 1;
-                    dau_op_fields <= rom_dout[10:5];
                     // DAU
                     // zyh_swap      <=  rom_dout[4];
                     // zyl_swap      <= ~rom_dout[4];
@@ -391,7 +387,6 @@ always @(posedge clk, posedge rst) begin
 
                 5'b10110: begin // F1, x=Y, 1 cycle
                     dau_dec_en    <= 1;
-                    dau_op_fields <= rom_dout[10:5];
                     dau_ram_load  <= 1;
                     r_field       <= 3'd0; // x
                     // Y control
@@ -404,7 +399,6 @@ always @(posedge clk, posedge rst) begin
                 5'b11011: begin // F1, y = a1, x = *pt++[i], 2 or 1 cycles (cache)
                     // F1
                     dau_dec_en    <= 1;
-                    dau_op_fields <= rom_dout[10:5];
                     // y load
                     a_field       <= { 1'b0, rom_dout[12]};
                     dau_fully_load<= 1;
@@ -419,7 +413,6 @@ always @(posedge clk, posedge rst) begin
                 5'b11111: begin // F1, y = Y, x = *pt++[i], 2 or 1 cycles (cache)
                     // F1
                     dau_dec_en    <= 1;
-                    dau_op_fields <= rom_dout[10:5];
                     // y load
                     dau_ram_load  <= 1;
                     r_field       <= 3'd1; // y
@@ -461,7 +454,6 @@ always @(posedge clk, posedge rst) begin
                         end
                     endcase
                     dau_dec_en    <= 1;
-                    dau_op_fields <= rom_dout[10:5];
                     r_field   <= rom_dout[4] ? 3'd1  /* y */: 3'd2 /* yl */; // select y or yl
                     // Y control
                     post_load <= 1;

@@ -20,8 +20,8 @@ module jtdsp16_dau(
     input             rst,
     input             clk,
     input             cen,
-    input             dec_en,   // F1 decoder enable
-    input             con_en,   // condition check enable
+    input             dec_en,        // F1 decoder enable
+    input             sel_special,   // selects F2 output
     input      [ 2:0] r_field,
     input      [ 1:0] a_field,  // select acc output
     input      [ 4:0] t_field,
@@ -85,6 +85,10 @@ reg         nop;        // indicates that F1 should not alter the flags
 wire [15:0] psw;        // processor status word
 reg         ov1, ov0;   // overflow
 
+// LFSR
+reg  [31:0] lfsr;
+wire        up_lfsr;
+
 wire [31:0] y;
 wire [36:0] as, y_ext;
 wire [35:0] ram_ext, acc_mux;
@@ -98,7 +102,6 @@ wire        up_a0h, up_a1h;
 wire        ad_sel;
 wire        as_sel;
 wire        store;
-wire        sel_special;
 wire        clr_yl, clr_a1l, clr_a0l;
 wire        sat_a1, sat_a0;
 wire        load_y, load_yl;
@@ -106,14 +109,6 @@ wire        load_x, load_auc;
 wire        load_c0, load_c1, load_c2;
 wire        load_a0, load_a1;
 wire        f1_st;  // F1 store operation
-
-// Conditions
-reg         c0ge;   // counter0 >=0 (and counter gets incremented)
-reg         c0lt;   // counter0 <0  (and counter gets incremented)
-reg         c1ge;   // counter1 >=0 (and counter gets incremented)
-reg         c1lt;   // counter1 <0  (and counter gets incremented)
-wire        heads;  // pseudorandom sequence bit set
-wire        tails;  // pseudorandom sequence bit clear
 
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
@@ -124,7 +119,6 @@ assign st_a0l      = 0;
 assign store       = dec_en && f1_field != 4'b10 && f1_field != 4'b110 && f1_field[3:1] != 3'b101;
 assign as          = s_field ? {a1[35],a1} : {a0[35],a0};
 assign y_ext       = { {5{y[31]}}, y };
-assign sel_special = 0; //t_field == 5'h12 || t_field == 5'h13;
 assign psw         = { flags, 2'b0, ov1, ov0, a1[35:32], a0[35:32] };
 assign clr_yl      = ~auc[6];
 assign clr_a1l     = ~auc[5];
@@ -172,48 +166,36 @@ assign debug_p   = p;
 
 // Condition check
 always @(*) begin
-    case(c_field)
-        5'd0: con_result =  lmi;
-        5'd1: con_result = ~lmi;
-        5'd2: con_result =  leq;
-        5'd3: con_result = ~leq;
-        5'd4: con_result =  llv;
-        5'd5: con_result = ~llv;
-        5'd6: con_result =  lmv;
-        5'd7: con_result = ~lmv;
-        //5'd8: con_result = heads;
-        //5'd9: con_result = ~heads;
-        5'd10: con_result = ~c0[7]; // >=0
-        5'd11: con_result =  c0[7]; // < 0
-        5'd12: con_result = ~c1[7]; // >=0
-        5'd13: con_result =  c1[7]; // < 0
-        5'd14: con_result = 1;
-        5'd15: con_result = 0;
-        5'd16: con_result = ~lmi & ~leq;
-        5'd17: con_result =  lmi |  leq;
-        default: con_result = 1; // should be 0?
+    case(c_field[4:1])
+        4'd0: con_result =  lmi;
+        4'd1: con_result =  leq;
+        4'd2: con_result =  llv;
+        4'd3: con_result =  lmv;
+        4'd4: con_result = lfsr[31];
+        4'd5: con_result = ~c0[7]; // >=0
+        4'd6: con_result = ~c1[7]; // >=0
+        4'd7: con_result = 1;
+        4'd8: con_result = ~lmi & ~leq;
+        default: con_result = 0; // should be 0?
     endcase
-end
-
-always @(posedge clk, posedge rst) begin
-    if( rst ) begin
-        c0       <= 8'd0;
-        c1       <= 8'd0;
-        c2       <= 8'd0;
-    end else if(cen) begin
-        if( con_en ) begin
-            if( c_field>=5'd10 && c_field<=5'd11 ) c0<=c0+8'd1;
-            if( c_field>=5'd12 && c_field<=5'd13 ) c1<=c1+8'd1;
-        end
-    end
+    if( c_field[0] ) con_result = ~con_result;
 end
 
 function [36:0] round;
     input [36:0] a;
     /* verilator lint_off WIDTH */
-    round = { a[35:16] + a[15] , 16'd0 };
+    round = { a[36:16] + a[15] , 16'd0 };
     /* verilator lint_on WIDTH */
 endfunction
+
+always @(posedge clk, posedge rst) begin
+    if( rst ) begin
+        lfsr <= 32'hcafe_cafe;
+    end else if( cen ) begin
+        if( up_lfsr )
+            lfsr <= { lfsr[30:0], lfsr[31]^lfsr[21]^lfsr[1]^lfsr[0] };
+    end
+end
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin

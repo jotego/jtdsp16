@@ -23,10 +23,13 @@ class DSP16emu {
     void    Yparse_write( int Y, int v );
     int     Yparse_read( int Y, bool up_now=true );
 
-    void    F1parse( int op, bool up_now=false );
+    void    F1parse( int op, bool up_now=false ) { F12parse( op, false, up_now); }
+    void    F2parse( int op, bool up_now=false ) { F12parse( op, true, up_now); }
+    void    F12parse( int op, bool special, bool up_now=false );
     int     parse_pt( int op );
     void    parseZ( int op );
     void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1, bool up_now );
+    bool    CONparse( int op );
 
     int64_t extend_p();
     int64_t extend_y();
@@ -241,8 +244,28 @@ int DSP16emu::extend_i() {
     return iext;
 }
 
+bool DSP16emu::CONparse( int op ) {
+    bool lmi = psw&0x8000,
+         leq = psw&0x4000,
+         llv = psw&0x2000,
+         lmv = psw&0x1000;
+    bool v = false;
+    switch( (op>>1)&0xf ) {
+        case 0: v = lmi;
+        case 1: v = leq;
+        case 2: v = llv;
+        case 3: v = lmv;
+        case 4: v = false; // change to LFSR!
+        case 5: v = c0&0x80==0; // positive
+        case 6: v = c1&0x80==0; // positive
+        case 7: v = true;
+        case 8: v = !lmi && !leq;
+    }
+    if( op&1 ) v = !v;
+    return v;
+}
 
-void DSP16emu::F1parse( int op, bool up_now ) {
+void DSP16emu::F12parse( int op, bool special, bool up_now ) {
     int64_t *ad, *next_ad, as;
     int ov0 = (psw&0x100)!=0;
     int ov1 = (psw&0x200)!=0;
@@ -272,40 +295,87 @@ void DSP16emu::F1parse( int op, bool up_now ) {
         as |= 0x10'0000'0000; // sign extend to 36 bits
     switch( f&0xf ) {
         case 0:
-            r = extend_p();
-            p = x*y;
+            if( special ) {
+                r =  as >> 1;
+                if( as>>35 ) r |= 1L << 36; // keep sign
+            } else {
+                r = extend_p();
+                p = x*y;
+            }
             break;
         case 1:
-            r = as + extend_p();
-            //printf("F1=1  ->  %lX + %lX = %lX\n", as, extend_p(), r);
-            p = x*y;
+            if( special ) {
+                r = as << 1;
+                r &= 0x1F'FFFF'FFFF;
+            } else {
+                r = as + extend_p();
+                //printf("F1=1  ->  %lX + %lX = %lX\n", as, extend_p(), r);
+                p = x*y;
+            }
             break;
         case 2:
-            p = x*y;
-            flag_up = false;
-            no_r = true;
+            if( special ) {
+                r =  as >> 4;
+                if( as>>35 ) r |= 0xFL << 33; // keep sign
+            } else {
+                p = x*y;
+                flag_up = false;
+                no_r = true;
+            }
             break;
         case 3:
-            r = as - extend_p();
-            p = x*y;
+            if( special ) {
+                r = as << 4;
+                r &= 0x1F'FFFF'FFFF;
+            } else {
+                r = as - extend_p();
+                p = x*y;
+            }
             break;
         case 4:
-            r = extend_p();
+            if( special ) {
+                r = as >> 8;
+                if( as>>35 ) r |= 0xFFL << 29; // keep sign
+            } else {
+                r = extend_p();
+            }
             break;
         case 5:
-            r = as + extend_p();
+            if( special ) {
+                r = as << 8;
+                r &= 0x1F'FFFF'FFFF;
+            } else {
+                r = as + extend_p();
+            }
             break;
         case 6:
-            flag_up = false;
-            no_r = true;
+            if( special ) {
+                r = as >> 16;
+                if( as>>35 ) r |= 0xFFFFL << 21; // keep sign
+            } else {
+                flag_up = false;
+                no_r = true;
+            }
             break;
         case 7:
-            r = as - extend_p();
+            if( special ) {
+                r = as << 16;
+                r &= 0x1F'FFFF'FFFF;
+            } else {
+                r = as - extend_p();
+            }
             break;
         case 8:
-            r = as | extend_y();
+            if( special ) {
+                r = extend_p();
+            } else {
+                r = as | extend_y();
+            }
             break;
         case 9:
+            if( special ) {
+                r += (as & 0x1F'FFFF'0000) + 0x1'0000; // aDh = aSh+1
+            }
             r = as ^ extend_y();
             //printf("as ^ y => %lX = %lX ^ %lX\n", r, as, extend_y());
             break;
@@ -314,23 +384,34 @@ void DSP16emu::F1parse( int op, bool up_now ) {
             no_r = true;
             break;
         case 11:
-            r = as - extend_y();
+            if( special ) { // round function
+                r=as & ~0xFFFFL;
+                if( (as>>15)&1 ) r += 0x1'0000; // round up
+            }
+            else {
+                r = as - extend_y();
+            }
             //printf("as - y => %lX = %lX - %lX\n", r, as, extend_y());
             no_r = true;
             break;
         case 12:
-            r = extend_y();
+            r = extend_y(); // same function for special and non special
             //printf("           *********           r = extend_y  = %lX\n", r );
             break;
         case 13:
             //printf("as + y = %lX + %lX\n", as, extend_y());
-            r = as + extend_y();
+            r = special ? 1L : as + extend_y();
             break;
         case 14:
-            r = as & extend_y();
+            r = special ? as : as & extend_y();
             break;
         case 15:
-            r = as - extend_y();
+            if( special ) {
+                r = ~as + 1;
+                r &= 0x1F'FFFF'FFFF;
+            } else {
+                r = as - extend_y();
+            }
             break;
     }
     // update flags
@@ -342,8 +423,8 @@ void DSP16emu::F1parse( int op, bool up_now ) {
     int lmi = sign;
     *pov = llv;
     // store the final value
-    // printf("Flags = %d%d%d%d - OVSAT %d - a%d<-a%d (F1=%X) - (%lX)\n", lmi, leq, llv, lmv,
-    //         ovsat, (f>>5)&1, (f>>4)&1, f&0xf, r);
+    if( verbose ) printf("Flags = %d%d%d%d - OVSAT %d - a%d<-a%d (F1=%X) - (%lX)\n", lmi, leq, llv, lmv,
+             ovsat, (f>>5)&1, (f>>4)&1, f&0xf, r);
     if( lmv && ovsat ) {// saturate to a 32 bit value
     //     printf("Saturation\n");
         r = sign ? 0xF'8000'0000 : 0x0'7FFF'FFFF;
