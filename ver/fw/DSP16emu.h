@@ -42,6 +42,7 @@ public:
     int auc, psw, c0, c1, c2, sioc, srta, sdx;
     int tdms, pioc, pdx0, pdx1;
     int64_t a0, a1;
+    bool verbose;
 
     EmuStats stats;
 
@@ -60,6 +61,7 @@ void DSP16emu::randomize_ram() {
 }
 
 DSP16emu::DSP16emu( int16_t* _rom ) {
+    verbose = false;
     pc=0;
     j = k = rb = re = r0 = r1 = r2 = r3 = 0;
     next_j = next_k = next_rb = next_re = next_r0 = next_r1 = next_r2 = next_r3 = 0;
@@ -329,7 +331,7 @@ void DSP16emu::F1parse( int op, bool up_now ) {
             break;
     }
     // update flags
-    int leq = r == 0;
+    int leq = (r&0xF'FFFF'FFFFL) == 0;
     int sign_bits = (r>>31)&0x1F;
     int llv = ((r>>35)&1) != ((r>>36)&1); // number doesn't fit in 36-bit integer
     int lmv = sign_bits!=0 && sign_bits!=0x1F; // number doesn't fit in 32-bit integer
@@ -337,8 +339,8 @@ void DSP16emu::F1parse( int op, bool up_now ) {
     int lmi = sign;
     *pov = llv;
     // store the final value
-    printf("Flags = %d%d%d%d - OVSAT %d - a%d<-a%d (F1=%X) - (%lX)\n", lmi, leq, llv, lmv,
-            ovsat, (f>>5)&1, (f>>4)&1, f&0xf, r);
+    // printf("Flags = %d%d%d%d - OVSAT %d - a%d<-a%d (F1=%X) - (%lX)\n", lmi, leq, llv, lmv,
+    //         ovsat, (f>>5)&1, (f>>4)&1, f&0xf, r);
     if( lmv && ovsat ) {// saturate to a 32 bit value
     //     printf("Saturation\n");
         r = sign ? 0xF'8000'0000 : 0x0'7FFF'FFFF;
@@ -390,7 +392,7 @@ int DSP16emu::ram_read( int a ) {
     a &= 0x7ff;
     int v = ram[ a ];
     v &= 0xffff;
-    printf("RAM read [%04X]=%04X\n", a, v );
+    if( verbose ) printf("RAM read [%04X]=%04X\n", a, v );
     stats.ram_writes++;
     return v;
 }
@@ -399,7 +401,7 @@ void DSP16emu::ram_write( int a, int v ) {
     a &= 0x7ff;
     v &= 0xffff;
     ram[ a ] = v;
-    printf("RAM write [%04X]=%04X\n", a, v );
+    if( verbose ) printf("RAM write [%04X]=%04X\n", a, v );
     stats.ram_reads++;
 }
 
@@ -538,7 +540,7 @@ int DSP16emu::eval() {
 
     next_pi = pc;
     update_regs();
-    printf("OP=%04X (0x%X=%d)\n",op, opcode, opcode );
+    if(verbose) printf("OP=%04X (0x%X=%d)\n",op, opcode, opcode );
     switch( opcode ) {
         case 0: // goto JA
         case 1:
@@ -659,9 +661,7 @@ int DSP16emu::eval() {
             break;
         // case 28:
         case 31: // F1 y=Y x=*pt++[i]
-            printf("before F1 parse a0=%lX\n",a0);
             F1parse( op, true );
-            printf("after F1 parse a0=%lX\n",a0);
             aux = Yparse( op&0xf, !in_cache );
             //printf("next_a1 = %lX\n", next_a1);
             y = next_y = aux;

@@ -96,7 +96,7 @@ const int Zy_F1      = 1<<21;
 
 class ParseArgs {
 public:
-    bool step, extra;
+    bool step, extra, verbose;
     int max;
     ParseArgs( int argc, char *argv[]);
 };
@@ -131,6 +131,7 @@ int main( int argc, char *argv[] ) {
     rtl.read_rom( rom.data() );
     DSP16emu emu( rom.data() );
     emu.randomize_ram();
+    emu.verbose = args.verbose;
     rtl.program_ram( emu.get_ram() );
 
     bool good=true;
@@ -158,7 +159,7 @@ int main( int argc, char *argv[] ) {
         dump(rtl, emu);
         return 1;
     }
-    dump(rtl, emu);
+    if( args.verbose ) dump(rtl, emu);
     printf("PASSED %d operations\n", k);
     return 0;
 }
@@ -402,13 +403,14 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 }
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
-    extra = step=false;
+    extra = step = verbose = false;
     max = 100'000;
     if( argc==1 ) return;
     for( int k=1; k<argc; k++ ) {
         if( argv[k][0]=='-' ) {
             if( strcmp(argv[k],"-step")==0 )  { step=true;  continue; }
             if( strcmp(argv[k],"-extra")==0 ) { extra=true; continue; }
+            if( strcmp(argv[k],"-v")==0 ) { verbose=true; continue; }
             if( strcmp(argv[k],"-max")==0 ) {
                 if( ++k<argc ) {
                     max = strtol(argv[k], NULL, 0);
