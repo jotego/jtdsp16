@@ -18,8 +18,11 @@ class DSP16emu {
     void    set_register( int rfield, int v );
     int64_t assign_high( int clr_mask, int64_t& dest, int val );
     int     sign_extend( int v, int msb=7 );
-    void    Yparse( int Y, int v );
-    int     Yparse( int Y, bool up_now=true );
+
+    int     Yparse( int Y, bool up_now );
+    void    Yparse_write( int Y, int v );
+    int     Yparse_read( int Y, bool up_now=true );
+
     void    F1parse( int op, bool up_now=false );
     int     parse_pt( int op );
     void    parseZ( int op );
@@ -366,26 +369,51 @@ void DSP16emu::set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1, bo
     if( up_now ) psw=next_psw;
 }
 
-void DSP16emu::Yparse( int Y, int v ) {
+int DSP16emu::Yparse( int Y, bool up_now ) {
     int* rpt;
     int* rpt_next;
+    if( verbose ) {
+        printf("Access to *r%d", (Y>>2)&&3);
+        switch( Y&3 ) {
+            case 0: puts(""); break;
+            case 1: puts("++"); break;
+            case 2: puts("--"); break;
+            case 3: puts("++j"); break;
+        }
+    }
     switch( (Y>>2)&3 ) {
         case 0: rpt = &r0; rpt_next = &next_r0; break;
         case 1: rpt = &r1; rpt_next = &next_r1; break;
         case 2: rpt = &r2; rpt_next = &next_r2; break;
         case 3: rpt = &r3; rpt_next = &next_r3; break;
     }
-    ram_write( *rpt, v );
+    int delta;
     switch( Y&3 ) {
-        case 1:
-            if( re==0 || re != *rpt ) // virtual shift register feature
-                *rpt = *rpt_next = (*rpt+1)&0xffff;
-            else
-                *rpt = *rpt_next = rb;
-            break;
-        case 2: *rpt = *rpt_next = (*rpt-1)&0xffff; break;
-        case 3: *rpt = *rpt_next = (*rpt+j)&0xffff; break;
+        case 0: delta=0;  break;
+        case 1: delta=1;  break;
+        case 2: delta=-1; break;
+        case 3: delta=j;  break;
     }
+    if( re==0 || re != *rpt || delta!=1 ) // virtual shift register feature
+        *rpt_next = (*rpt+delta)&0xffff;
+    else
+        *rpt_next = rb;
+
+    int retval = *rpt;
+    if( up_now )
+        *rpt = *rpt_next;
+    return retval;
+}
+
+void DSP16emu::Yparse_write( int Y, int v ) {
+    int addr = Yparse( Y, true );
+    ram_write( addr, v );
+}
+
+int DSP16emu::Yparse_read( int Y, bool up_now ) {
+    int addr = Yparse( Y, up_now );
+    int v = ram_read( addr );
+    return v;
 }
 
 int DSP16emu::ram_read( int a ) {
@@ -403,31 +431,6 @@ void DSP16emu::ram_write( int a, int v ) {
     ram[ a ] = v;
     if( verbose ) printf("RAM write [%04X]=%04X\n", a, v );
     stats.ram_reads++;
-}
-
-int DSP16emu::Yparse( int Y, bool up_now ) {
-    int* rpt;
-    int* rpt_next;
-    switch( (Y>>2)&3 ) {
-        case 0: rpt = &r0; rpt_next = &next_r0; break;
-        case 1: rpt = &r1; rpt_next = &next_r1; break;
-        case 2: rpt = &r2; rpt_next = &next_r2; break;
-        case 3: rpt = &r3; rpt_next = &next_r3; break;
-    }
-    int v = ram_read( *rpt );
-    switch( Y&3 ) {
-        case 1:
-            if( re==0 || re != *rpt ) // virtual shift register feature
-                *rpt_next = (*rpt+1)&0xffff;
-            else
-                *rpt_next = rb;
-            break;
-        case 2: *rpt_next = (*rpt-1)&0xffff; break;
-        case 3: *rpt_next = (*rpt+j)&0xffff; break;
-    }
-    if( up_now )
-        *rpt = *rpt_next;
-    return v;
 }
 
 int DSP16emu::parse_pt( int op ) {
@@ -593,7 +596,7 @@ int DSP16emu::eval() {
             aux  = (op>>4)&0x3f;
             aux2 = get_register(aux);
             aux  = op&0xf;
-            Yparse( aux, aux2 );
+            Yparse_write( aux, aux2 );
             // printf("Y = R [%X] = %X\n",aux,aux2);
             delta = 2;
             break;
@@ -602,7 +605,7 @@ int DSP16emu::eval() {
             aux2 = op&0xf;
             //printf("R=Y [%02X] = %X\n", aux, aux2);
             //printf("next a0 = %lX\n", next_a0 );
-            set_register( aux, Yparse( aux2 ) );
+            set_register( aux, Yparse_read( aux2 ) );
             delta = 2;
             break;
         // F1 operations:
@@ -610,13 +613,13 @@ int DSP16emu::eval() {
             aux2 = (op&0x10) ? y : yl;
             aux2 &= 0xffff;
             F1parse( op );
-            Yparse( op&0xf, aux2 );
+            Yparse_write( op&0xf, aux2 );
             update_regs();
             delta = 2;
             break;
         case 7: // aT[l] = Y
             F1parse( op );
-            aux = Yparse( op&0xf, false );
+            aux = Yparse_read( op&0xf, false );
             assign_acc( ((~op)>>10)&1, aux, false );
             delta = 1;
             break;
@@ -627,13 +630,13 @@ int DSP16emu::eval() {
             break;
         case 22: // x=Y F1
             F1parse( op );
-            aux = Yparse( op&0xf, false );
+            aux = Yparse_read( op&0xf, false );
             next_x = aux;
             delta = 1;
             break;
         case 23: // y=Y F1
             F1parse( op );
-            aux = Yparse( op&0xf, false );
+            aux = Yparse_read( op&0xf, false );
             if( op&0x10 ) {
                 next_y = aux;
                 if( ((auc>>6)&1)==0 ) next_yl=0;
@@ -662,7 +665,7 @@ int DSP16emu::eval() {
         // case 28:
         case 31: // F1 y=Y x=*pt++[i]
             F1parse( op, true );
-            aux = Yparse( op&0xf, !in_cache );
+            aux = Yparse_read( op&0xf, !in_cache );
             //printf("next_a1 = %lX\n", next_a1);
             y = next_y = aux;
             if( ((auc>>6)&1)==0 ) yl=next_yl=0;
@@ -678,13 +681,13 @@ int DSP16emu::eval() {
                 aux2 = (op&0x10) ? (a0>>16) : a0;
             aux2 &= 0xffff;
             F1parse( op );
-            Yparse( op&0xf, aux2 );
+            Yparse_write( op&0xf, aux2 );
             update_regs();
             delta = 2;
             break;
         case 6: // F1 Y
             F1parse( op );
-            Yparse( op&0xf, false );
+            Yparse_read( op&0xf, false );
             delta = 1;
             break;
         // default:

@@ -97,7 +97,7 @@ const int Zy_F1      = 1<<21;
 class ParseArgs {
 public:
     bool step, extra, verbose;
-    int max;
+    int max, seed;
     ParseArgs( int argc, char *argv[]);
 };
 
@@ -155,7 +155,7 @@ int main( int argc, char *argv[] ) {
         return 1;
     }
     if( !good ) {
-        printf("ERROR: emulator and RTL diverged after %d operations \n", k);
+        printf("ERROR: emulator and RTL diverged after %d operations (seed=%d) \n", k, args.seed);
         dump(rtl, emu);
         return 1;
     }
@@ -404,6 +404,7 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
     extra = step = verbose = false;
+    seed=0;
     max = 100'000;
     if( argc==1 ) return;
     for( int k=1; k<argc; k++ ) {
@@ -419,9 +420,9 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
             }
         } else {
             // parse as seed
-            int n = strtol(argv[1], NULL, 0);
-            srand(n);
-            printf("Random seed = %d\n", n);
+            seed = strtol(argv[1], NULL, 0);
         }
     }
+    srand(seed);
+    printf("Random seed = %d\n", seed);
 }
