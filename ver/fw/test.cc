@@ -145,7 +145,7 @@ int main( int argc, char *argv[] ) {
             if(args.extra) rtl.clk(2);
             break;
         }
-        if( args.step ) dump(rtl, emu);
+        if( args.step ) { dump(rtl, emu); putchar('\n'); }
     }
 
     // Close down

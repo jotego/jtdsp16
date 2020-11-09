@@ -219,14 +219,15 @@ int64_t DSP16emu::extend_p() {
         case 1: psh >>= 2; break;
         case 2: psh <<= 2; break;
     }
-    return psh; // &0xF'FFFF'FFFF;
+    return psh &0x1F'FFFF'FFFF;
 }
 
 int64_t DSP16emu::extend_y() {
     int64_t yext = (int16_t)y; // sign extension here is automatic
     yext<<=16;
     yext|=yl;
-    return yext; // &0xF'FFFF'FFFF;
+    yext &= 0x1F'FFFF'FFFFL;
+    return yext;
 }
 
 int DSP16emu::extend_i() {
@@ -263,7 +264,7 @@ void DSP16emu::F1parse( int op, bool up_now ) {
     int64_t old_ad = *ad, r=*ad;
     bool flag_up = true;
     if ( as >> 35 )
-        as |= 0xF0'0000'0000; // sign extend
+        as |= 0x10'0000'0000; // sign extend to 36 bits
     switch( f&0xf ) {
         case 0:
             r = extend_p();
@@ -271,7 +272,7 @@ void DSP16emu::F1parse( int op, bool up_now ) {
             break;
         case 1:
             r = as + extend_p();
-            printf("F1=1  ->  %lX + %lX = %lX\n", as, extend_p(), r);
+            //printf("F1=1  ->  %lX + %lX = %lX\n", as, extend_p(), r);
             p = x*y;
             break;
         case 2:
@@ -300,8 +301,8 @@ void DSP16emu::F1parse( int op, bool up_now ) {
             r = as | extend_y();
             break;
         case 9:
-            //printf("as ^ y = %lX ^ %lX\n", as, extend_y());
             r = as ^ extend_y();
+            //printf("as ^ y => %lX = %lX ^ %lX\n", r, as, extend_y());
             break;
         case 10:
             r = as & extend_y();
@@ -309,11 +310,12 @@ void DSP16emu::F1parse( int op, bool up_now ) {
             break;
         case 11:
             r = as - extend_y();
+            //printf("as - y => %lX = %lX - %lX\n", r, as, extend_y());
             no_r = true;
             break;
         case 12:
             r = extend_y();
-            printf("           *********           r = extend_y  = %lX\n", r );
+            //printf("           *********           r = extend_y  = %lX\n", r );
             break;
         case 13:
             //printf("as + y = %lX + %lX\n", as, extend_y());
@@ -335,7 +337,8 @@ void DSP16emu::F1parse( int op, bool up_now ) {
     int lmi = sign;
     *pov = llv;
     // store the final value
-    // printf("LLV = %d - LMV = %d - OVSAT %d - LEQ %d - (%lX)\n", llv, lmv, ovsat, leq, r);
+    printf("Flags = %d%d%d%d - OVSAT %d - a%d<-a%d (F1=%X) - (%lX)\n", lmi, leq, llv, lmv,
+            ovsat, (f>>5)&1, (f>>4)&1, f&0xf, r);
     if( lmv && ovsat ) {// saturate to a 32 bit value
     //     printf("Saturation\n");
         r = sign ? 0xF'8000'0000 : 0x0'7FFF'FFFF;
@@ -356,8 +359,8 @@ void DSP16emu::set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1, bo
           ((lmv&1)<<12) |
           ((ov1&1)<< 9) |
           ((ov0&1)<< 4) |
-          (((a1>>32)&0xf)<<5) |
-           ((a0>>32)&0xf);
+          (((next_a1>>32)&0xf)<<5) |
+           ((next_a0>>32)&0xf);
     if( up_now ) psw=next_psw;
 }
 
@@ -535,7 +538,7 @@ int DSP16emu::eval() {
 
     next_pi = pc;
     update_regs();
-    printf("OP=%04X (%2X)\n",op, opcode );
+    printf("OP=%04X (0x%X=%d)\n",op, opcode, opcode );
     switch( opcode ) {
         case 0: // goto JA
         case 1:
