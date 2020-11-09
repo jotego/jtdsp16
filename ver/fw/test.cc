@@ -48,7 +48,7 @@ public:
     int  c1() { return top.debug_c1; }
     int  c2() { return top.debug_c2; }
 
-    int64_t p() { return top.debug_p; }
+    int  p() { return top.debug_p; }
 
     int64_t a0() { return top.debug_a0; }
     int64_t a1() { return top.debug_a1; }
@@ -338,7 +338,7 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     g = g && rtl.j()  == emu.j;
     g = g && rtl.k()  == emu.k;
     // DAU
-    //g = g && rtl.psw() == emu.psw;
+    g = g && ( (rtl.psw()&0xf000) == (emu.psw&0xf000));
     g = g && rtl.x()   == emu.x;
     g = g && rtl.y()   == emu.y;
     g = g && rtl.yl()  == emu.yl;
@@ -346,6 +346,10 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     g = g && rtl.c1()  == emu.c1;
     g = g && rtl.c2()  == emu.c2;
     g = g && rtl.a0()  == emu.a0;
+    if( rtl.a0() != emu.a0 ) {
+        printf("RTL A0 = %010lX\n",rtl.a0());
+        printf("Emu A0 = %010lX\n",emu.a0);
+    }
     g = g && rtl.a1()  == emu.a1;
     // SIO
     g = g && rtl.srta()  == emu.srta;
@@ -354,7 +358,7 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
 }
 
 #define REG_DUMP( r, emu, rtl ) printf("%4s - %04X - %04X %c\n", #r, emu , rtl(), emu!=rtl() ? '*' : ' ' );
-#define REG_DUMPL( r, emu, rtl ) printf("%4s - %09lX - %09lX %c\n", #r, emu&0xF'FFFF'FFFF , rtl()&0xF'FFFF'FFFF, emu!=rtl() ? '*' : ' ' );
+#define REG_DUMPL( r, emu, rtl ) printf("%4s - %09lX - %09lX %c\n", #r, emu/*&0xF'FFFF'FFFF*/ , rtl()/*&0xF'FFFF'FFFF*/, emu!=rtl() ? '*' : ' ' );
 
 void dump( RTL& rtl, DSP16emu& emu ) {
     printf("      EMU -  RTL \n");
@@ -385,7 +389,7 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     REG_DUMP(C1, emu.c1, rtl.c1 )
     REG_DUMP(C2, emu.c2, rtl.c2 )
     REG_DUMP(AUC, emu.auc, rtl.auc )
-    REG_DUMPL(P,  emu.p,  rtl.p  )
+    REG_DUMP(P,  emu.p,  rtl.p  )
     REG_DUMPL(A0, emu.a0, rtl.a0 )
     REG_DUMPL(A1, emu.a1, rtl.a1 )
 

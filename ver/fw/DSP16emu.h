@@ -23,7 +23,7 @@ class DSP16emu {
     void    F1parse( int op, bool up_now=false );
     int     parse_pt( int op );
     void    parseZ( int op );
-    void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 );
+    void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1, bool up_now );
 
     int64_t extend_p();
     int64_t extend_y();
@@ -198,10 +198,15 @@ void DSP16emu::set_register( int rfield, int v ) {
 }
 
 int64_t DSP16emu::assign_high( int clr_mask, int64_t& dest, int val ) {
-    const int64_t mask36 = 0xF'FFFF'FFFF;
-    dest &= ~(0xffff<<16);
+    const int64_t mask36 = 0xF'FFFF'FFFFL;
+    dest &= ~(0xffffL<<16);
     val  &= 0xffff;
     dest |= (val<<16);
+    // sign extension
+    if( (dest>>31)&1 )
+        dest |= 0xF'0000'0000;
+    else
+        dest &= 0x0'FFFF'FFFF;
     if( ((auc>>4) & clr_mask)==0 )
         dest &= ~0xffff; // clear low bits
     dest &= mask36;
@@ -232,16 +237,17 @@ int DSP16emu::extend_i() {
 
 
 void DSP16emu::F1parse( int op, bool up_now ) {
-    int64_t *ad, *next_ad, *as;
+    int64_t *ad, *next_ad, as;
     int ov0 = (psw&0x100)!=0;
     int ov1 = (psw&0x200)!=0;
     int* pov;
     int ovsat;
     int f = (op>>5)&0x3f;
+    bool no_r = false;
     if( f&0x10 ) {
-        as = &a1;
+        as = a1;
     } else {
-        as = &a0;
+        as = a0;
     }
     if( f&0x20 ) {
         ad = &a1;
@@ -256,82 +262,95 @@ void DSP16emu::F1parse( int op, bool up_now ) {
     }
     int64_t old_ad = *ad, r=*ad;
     bool flag_up = true;
+    if ( as >> 35 )
+        as |= 0xF0'0000'0000; // sign extend
     switch( f&0xf ) {
         case 0:
             r = extend_p();
             p = x*y;
             break;
         case 1:
-            r = *as + extend_p();
-            printf("F1=1  ->  %lX + %lX = %lX\n", *as, extend_p(), r);
+            r = as + extend_p();
+            printf("F1=1  ->  %lX + %lX = %lX\n", as, extend_p(), r);
             p = x*y;
             break;
         case 2:
             p = x*y;
             flag_up = false;
+            no_r = true;
             break;
         case 3:
-            r = *as - extend_p();
+            r = as - extend_p();
             p = x*y;
             break;
         case 4:
             r = extend_p();
             break;
         case 5:
-            r = *as + extend_p();
+            r = as + extend_p();
             break;
         case 6:
             flag_up = false;
+            no_r = true;
             break;
         case 7:
-            r = *as - extend_p();
+            r = as - extend_p();
             break;
         case 8:
-            r = *as | extend_y();
+            r = as | extend_y();
             break;
         case 9:
-            //printf("as ^ y = %lX ^ %lX\n", *as, extend_y());
-            r = *as ^ extend_y();
+            //printf("as ^ y = %lX ^ %lX\n", as, extend_y());
+            r = as ^ extend_y();
             break;
         case 10:
-            *as & extend_y();
+            r = as & extend_y();
+            no_r = true;
             break;
         case 11:
-            *as - extend_y();
+            r = as - extend_y();
+            no_r = true;
             break;
         case 12:
             r = extend_y();
+            printf("           *********           r = extend_y  = %lX\n", r );
             break;
         case 13:
-            r = *as + extend_y();
+            //printf("as + y = %lX + %lX\n", as, extend_y());
+            r = as + extend_y();
             break;
         case 14:
-            r = *as & extend_y();
+            r = as & extend_y();
             break;
         case 15:
-            r = *as - extend_y();
+            r = as - extend_y();
             break;
     }
     // update flags
-    int lmi = (r>>35) != 0;
     int leq = r == 0;
     int sign_bits = (r>>31)&0x1F;
     int llv = ((r>>35)&1) != ((r>>36)&1); // number doesn't fit in 36-bit integer
     int lmv = sign_bits!=0 && sign_bits!=0x1F; // number doesn't fit in 32-bit integer
     const int sign = (r>>35)&1;
+    int lmi = sign;
     *pov = llv;
     // store the final value
-    //printf("LMV = %d - OVSAT %d (%lX)\n", lmv, ovsat, r);
-    if( lmv && ovsat ) // saturate to a 32 bit value
+    // printf("LLV = %d - LMV = %d - OVSAT %d - LEQ %d - (%lX)\n", llv, lmv, ovsat, leq, r);
+    if( lmv && ovsat ) {// saturate to a 32 bit value
+    //     printf("Saturation\n");
         r = sign ? 0xF'8000'0000 : 0x0'7FFF'FFFF;
-    r &= 0xF'FFFF'FFFF;
-    *next_ad = r;
-    if( up_now ) *ad = r;
-    if(flag_up) set_psw( lmi, leq, llv, lmv, ov0, ov1 );
+    }
+    r &= 0x0F'FFFF'FFFFL;
+    if( !no_r ) {
+        *next_ad = r;
+        if( up_now ) *ad = r;
+    }
+    if(flag_up) set_psw( lmi, leq, llv, lmv, ov0, ov1, up_now );
 }
 
-void DSP16emu::set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 ) {
-    psw = ((lmi&1)<<15) |
+void DSP16emu::set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1, bool up_now ) {
+    next_psw =
+          ((lmi&1)<<15) |
           ((leq&1)<<14) |
           ((llv&1)<<13) |
           ((lmv&1)<<12) |
@@ -339,6 +358,7 @@ void DSP16emu::set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1 ) {
           ((ov0&1)<< 4) |
           (((a1>>32)&0xf)<<5) |
            ((a0>>32)&0xf);
+    if( up_now ) psw=next_psw;
 }
 
 void DSP16emu::Yparse( int Y, int v ) {
@@ -433,6 +453,7 @@ void DSP16emu::assign_acc( int aD, int v, bool up_now ) {
     newv = v64 | (*pr & 0xffff );
     if( v &0x8000 )
         newv |= 0xf'0000'0000; // sign extend
+    newv &= 0xF'FFFF'FFFFL;
     int clr = auc>>4;
     clr >>= aD;
     clr &=1;
@@ -630,18 +651,16 @@ int DSP16emu::eval() {
             F1parse( op, true );
             next_y  = y  = aux;
             next_yl = yl = aux2;
-            //a1 = next_a1;
-            //a0 = next_a0;
             x = next_x = parse_pt(op);
             delta = in_cache ? 1 : 2;
             break;
         // case 28:
         case 31: // F1 y=Y x=*pt++[i]
+            printf("before F1 parse a0=%lX\n",a0);
             F1parse( op, true );
+            printf("after F1 parse a0=%lX\n",a0);
             aux = Yparse( op&0xf, !in_cache );
             //printf("next_a1 = %lX\n", next_a1);
-            // a1 = next_a1;
-            // a0 = next_a0;
             y = next_y = aux;
             if( ((auc>>6)&1)==0 ) yl=next_yl=0;
             x = next_x = parse_pt(op);
@@ -658,7 +677,6 @@ int DSP16emu::eval() {
             F1parse( op );
             Yparse( op&0xf, aux2 );
             update_regs();
-            // printf("(F1 Y=a1) next a0=%lX\n",next_a0);
             delta = 2;
             break;
         case 6: // F1 Y
