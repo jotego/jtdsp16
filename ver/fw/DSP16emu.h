@@ -7,9 +7,10 @@ class DSP16emu {
     int16_t read_rom(int a);
     int next_j, next_k, next_rb, next_re, next_r0, next_r1, next_r2, next_r3;
     int next_pt, next_pr, next_pi, next_i;
-    int next_x,  next_y,  next_yl;
+    int next_x,  next_y,  next_yl, next_p;
     int next_auc, next_psw, next_c0, next_c1, next_c2, next_sioc, next_srta, next_sdx;
     int next_tdms, next_pioc, next_pdx0, next_pdx1;
+    int lfsr;
     int64_t next_a0, next_a1;
     bool in_cache;
 
@@ -41,6 +42,7 @@ class DSP16emu {
     void    ram_write( int a, int v );
     int     ram_read( int a );
 
+    bool    next_lfsr();
 public:
     int pc, j, k, rb, re, r0, r1, r2, r3;
     int pt, pr, pi, i;
@@ -66,6 +68,17 @@ void DSP16emu::randomize_ram() {
     }
 }
 
+#define LFSR_N(a) ((lfsr>>a)&1)
+
+bool DSP16emu::next_lfsr() {
+    bool r = LFSR_N(31);
+    int lsb = LFSR_N(31) ^ LFSR_N(21) ^ LFSR_N(1) ^ LFSR_N(0);
+    if( verbose ) printf("LFSR = %X\n", lfsr );
+    lfsr <<= 1;
+    lfsr |= lsb&1;
+    return r;
+}
+
 DSP16emu::DSP16emu( int16_t* _rom ) {
     verbose = false;
     pc=0;
@@ -79,6 +92,7 @@ DSP16emu::DSP16emu( int16_t* _rom ) {
     p = 0;
     ticks=0;
     in_cache = false;
+    lfsr = 0xcafe'cafe;
     rom = _rom;
     ram = new int16_t[2048];
     for(int k=0; k<2048; k++) ram[k]=0;
@@ -135,6 +149,7 @@ void DSP16emu::update_regs() {
 
     a0   = next_a0;
     a1   = next_a1;
+    p    = next_p;
 }
 
 int DSP16emu::get_register( int rfield ) {
@@ -251,17 +266,18 @@ bool DSP16emu::CONparse( int op ) {
          lmv = psw&0x1000;
     bool v = false;
     switch( (op>>1)&0xf ) {
-        case 0: v = lmi;
-        case 1: v = leq;
-        case 2: v = llv;
-        case 3: v = lmv;
-        case 4: v = false; // change to LFSR!
-        case 5: v = c0&0x80==0; // positive
-        case 6: v = c1&0x80==0; // positive
-        case 7: v = true;
-        case 8: v = !lmi && !leq;
+        case 0: v = lmi; break;
+        case 1: v = leq; break;
+        case 2: v = llv; break;
+        case 3: v = lmv; break;
+        case 4: v = next_lfsr(); break;
+        case 5: v = (c0&0x80)==0; break; // positive
+        case 6: v = (c1&0x80)==0; break; // positive
+        case 7: v = true; break;
+        case 8: v = !lmi && !leq; break;
     }
     if( op&1 ) v = !v;
+    if( verbose ) printf("\tCON 0x%X = %d\n", op&0x1f, v );
     return v;
 }
 
@@ -301,17 +317,18 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
                 if(verbose) printf("F2=0: r=%lX as=%lX\n", r, as );
             } else {
                 r = extend_p();
-                p = x*y;
+                next_p = x*y;
             }
             break;
         case 1:
             if( special ) {
                 r = as << 1;
                 r &= 0x1F'FFFF'FFFF;
+                if( (r>>31)&1 ) r |=0x1F'0000'0000L;
             } else {
                 r = as + extend_p();
                 //printf("F1=1  ->  %lX + %lX = %lX\n", as, extend_p(), r);
-                p = x*y;
+                next_p = x*y;
             }
             break;
         case 2:
@@ -319,7 +336,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
                 r =  as >> 4;
                 if( as>>35 ) r |= 0xFL << 33; // keep sign
             } else {
-                p = x*y;
+                next_p = x*y;
                 flag_up = false;
                 no_r = true;
             }
@@ -328,9 +345,10 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
             if( special ) {
                 r = as << 4;
                 r &= 0x1F'FFFF'FFFF;
+                if( (r>>31)&1 ) r |=0x1F'0000'0000L;
             } else {
                 r = as - extend_p();
-                p = x*y;
+                next_p = x*y;
             }
             break;
         case 4:
@@ -345,6 +363,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
             if( special ) {
                 r = as << 8;
                 r &= 0x1F'FFFF'FFFF;
+                if( (r>>31)&1 ) r |=0x1F'0000'0000L;
             } else {
                 r = as + extend_p();
             }
@@ -362,6 +381,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
             if( special ) {
                 r = as << 16;
                 r &= 0x1F'FFFF'FFFF;
+                if( (r>>31)&1 ) r |=0x1F'0000'0000L;
             } else {
                 r = as - extend_p();
             }
@@ -401,7 +421,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
             break;
         case 13:
             //printf("as + y = %lX + %lX\n", as, extend_y());
-            r = special ? 1L : as + extend_y();
+            r = as + (special ? 1L : extend_y());
             break;
         case 14:
             r = special ? as : as & extend_y();
@@ -433,8 +453,11 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
     r &= 0x0F'FFFF'FFFFL;
     if( !no_r ) {
         *next_ad = r;
-        if( up_now ) *ad = r;
+        if( up_now ) {
+            *ad = r;
+        }
     }
+    if( up_now ) p = next_p;
     if(flag_up) set_psw( lmi, leq, llv, lmv, ov0, ov1, up_now );
 }
 

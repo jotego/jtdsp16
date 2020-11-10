@@ -72,10 +72,10 @@ wire [36:0] alu_in;
 wire        st_a0l;
 wire        st_a1l;
 
-wire [ 3:0] f1_field;
-wire [ 3:0] f2_field;
+wire [ 3:0] f_field;
 wire        s_field;  // source
 wire        d_field;  // destination
+wire        special_ok; // special operation F2 is ok to store as CON was true
 
 // Control registers
 reg  [ 7:0] c0, c1, c2;
@@ -111,7 +111,7 @@ wire        f1_st, f2_st;  // F1/2 store operation
 
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
-assign up_p        = dec_en && f1_field[3:2]==2'b0;
+assign up_p        = dec_en && f_field[3:2]==2'b0 && !special;
 assign up_y        = load_y | load_yl | fully_load;
 assign st_a1l      = 0;
 assign st_a0l      = 0;
@@ -133,8 +133,9 @@ assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit inte
 assign pre_lmv     = |alu_out[35:31] ^ &alu_out[35:31]; // number doesn't fit in 32-bit integer
 assign alu_sat     = { {5{alu_out[35]}}, {31{~alu_out[35]}}}; // saturate to 32-bit integer
 
-assign f1_st       = dec_en && !special && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
-assign f2_st       = dec_en &&  special; // reserved case 10 is not treated differently
+assign f1_st       = dec_en && !special && (f_field!=4'd2 && f_field!=4'd6 && f_field!=4'd10 && f_field!=4'd11 );
+assign special_ok  = special && con_result;
+assign f2_st       = dec_en &&  special_ok; // reserved case 10 is not treated differently
 
 assign load_x      = ((imm_load || ram_load || acc_load ) && r_field==3'd0) || pt_load;
 assign load_y      = (imm_load || ram_load || acc_load ) && r_field==3'd1;
@@ -147,7 +148,7 @@ assign load_a0     = (f1_st || f2_st) && !d_field;
 assign load_a1     = (f1_st || f2_st) &&  d_field;
 assign load_data   = acc_load ? acc_dout : (imm_load ? long_imm : ram_dout);
 
-assign { d_field, s_field, f1_field } = op_fields;
+assign { d_field, s_field, f_field } = op_fields;
 
 
 // Debug
@@ -253,7 +254,7 @@ always @(posedge clk, posedge rst) begin
         // special registers
         if( load_auc ) auc <= load_data[6:0];
         // Flags
-        if(dec_en && (!f1_nop || special)) begin
+        if(dec_en && ( (!special && !f1_nop) || f2_st)) begin
             lmi <= alu_out[35];
             leq <= ~|alu_out;
             llv <= pre_ov;
@@ -266,7 +267,7 @@ always @(posedge clk, posedge rst) begin
 end
 
 always @(*) begin
-    case( f1_field )
+    case( f_field )
         4'd0, 4'd4: alu_arith = p_ext;
         4'd1, 4'd5: alu_arith = as+p_ext;
         4'd3, 4'd7: alu_arith = as-p_ext;
@@ -279,12 +280,12 @@ always @(*) begin
         4'd14:      alu_arith = as & y_ext;
         default: alu_arith = 37'd0;
     endcase
-    f1_nop = f1_field==4'd2 || f1_field==4'd6; // do not modify flags
+    f1_nop = f_field==4'd2 || f_field==4'd6; // do not modify flags
 end
 
 /////// F2 field
 always @(*) begin
-    case( f2_field )
+    case( f_field )
         4'd0:  alu_special = { as[36], as[36:1] };
         4'd1:  alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift by 1
         4'd2:  alu_special = { {4{as[36]}}, as[36:4] };
