@@ -396,9 +396,9 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
         case 9:
             if( special ) {
                 r += (as & 0x1F'FFFF'0000) + 0x1'0000; // aDh = aSh+1
+                printf("as + 1'0000 => %lX = %lX + 1'0000 \n", r, as );
             }
             r = as ^ extend_y();
-            //printf("as ^ y => %lX = %lX ^ %lX\n", r, as, extend_y());
             break;
         case 10:
             r = as & extend_y();
