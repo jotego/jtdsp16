@@ -285,11 +285,11 @@ end
 /////// F2 field
 always @(*) begin
     case( f2_field )
-        4'd0:  alu_special = as >>> 1;
+        4'd0:  alu_special = { as[36], as[36:1] };
         4'd1:  alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift by 1
-        4'd2:  alu_special = as >>> 4;
+        4'd2:  alu_special = { {4{as[36]}}, as[36:4] };
         4'd3:  alu_special = { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
-        4'd4:  alu_special = as >>> 8;
+        4'd4:  alu_special = { {8{as[36]}}, as[36:8] };
         4'd5:  alu_special = { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
         4'd6:  alu_special = as >>> 16;
         4'd7:  alu_special = { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16

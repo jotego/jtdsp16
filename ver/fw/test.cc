@@ -356,6 +356,7 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     g = g && rtl.c1()  == emu.c1;
     g = g && rtl.c2()  == emu.c2;
     g = g && rtl.a0()  == emu.a0;
+    g = g && rtl.p()  == emu.p ;
     if( rtl.a0() != emu.a0 ) {
         printf("RTL A0 = %010lX\n",rtl.a0());
         printf("Emu A0 = %010lX\n",emu.a0);

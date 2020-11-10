@@ -289,7 +289,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
         pov = &ov0;
         ovsat = (~auc>>2)&1;
     }
-    int64_t old_ad = *ad, r=*ad;
+    int64_t r=*ad;
     bool flag_up = true;
     if ( as >> 35 )
         as |= 0x10'0000'0000; // sign extend to 36 bits
@@ -298,6 +298,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
             if( special ) {
                 r =  as >> 1;
                 if( as>>35 ) r |= 1L << 36; // keep sign
+                if(verbose) printf("F2=0: r=%lX as=%lX\n", r, as );
             } else {
                 r = extend_p();
                 p = x*y;
