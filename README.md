@@ -15,3 +15,4 @@ The instructions not used by QSound are listed below.
 10010  | ifc CON  F2      | Unsupported
 10101  | Z:y      F1      | Used by firmware but only the *rNzp case
 11101  | Z:y x=X  F1      | Unsupported
+110101 | icall            | Unsupported

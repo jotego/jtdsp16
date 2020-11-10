@@ -23,7 +23,6 @@ module jtdsp16_ctrl(
     input             cen2,
     // Instruction fields
     output reg        dau_dec_en,
-    output reg        dau_con_en,
     output reg [ 4:0] t_field,
     output reg [ 4:0] c_field,
     output reg [ 2:0] r_field,
@@ -45,6 +44,7 @@ module jtdsp16_ctrl(
     output reg        dau_pt_load,
     output reg        dau_fully_load,
     output reg        dau_acc_ram,
+    output reg        dau_special,
     output reg        st_a0h,
     output reg        st_a1h,
     output reg        acc_sel,
@@ -105,15 +105,14 @@ module jtdsp16_ctrl(
 );
 
 reg       x_field;
-reg       double;
-reg       con_check;
+reg       double, con_check;
 wire      con_ok;
 // Y control
 reg       pre_step_sel, pre_ksel;
 reg [1:0] pre_inc_sel;
 
 assign    long_imm = rom_dout;
-assign    con_ok   = ~dau_con_en | con_result;
+assign    con_ok   = ~con_check | con_result;
 assign    no_int   = ~double;
 
 always @(*) begin
@@ -166,6 +165,7 @@ always @(posedge clk, posedge rst) begin
         icall         <= 0;
         ram_we        <= 0;
         pc_halt       <= 0;
+        con_check     <= 0;
         xaau_ram_load <= 0;
         xaau_imm_load <= 0;
         xaau_acc_load <= 0;
@@ -182,17 +182,16 @@ always @(posedge clk, posedge rst) begin
         a_field       <= 2'd0;
         c_field       <= 5'd0;
         dau_dec_en    <= 0;
-        dau_con_en    <= 0;
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
         dau_pt_load   <= 0;
         dau_fully_load<= 0;
+        dau_special   <= 0;
         dau_acc_ram   <= 0;
         rsel          <= 3'd0;
         st_a0h        <= 0;
         st_a1h        <= 0;
-        con_check     <= 0;
         acc_sel       <= 0;
         // Parallel port
         pio_imm_load  <= 0;
@@ -213,8 +212,6 @@ always @(posedge clk, posedge rst) begin
         a_field       <= 2'd0;
         short_imm     <= rom_dout[ 8: 0];
 
-        con_check <= dau_con_en;
-
         // disable all control signals
         short_load    <= 0;
         long_load     <= 0;
@@ -224,6 +221,7 @@ always @(posedge clk, posedge rst) begin
         double        <= 0;
         post_load     <= 0;
         pc_halt       <= 0;
+        con_check     <= 0;
 
         // XAAU
         goto_ja       <= 0;
@@ -238,7 +236,6 @@ always @(posedge clk, posedge rst) begin
 
         // DAU
         dau_dec_en    <= 0;
-        dau_con_en    <= 0;
         dau_rmux_load <= 0;
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
@@ -246,6 +243,7 @@ always @(posedge clk, posedge rst) begin
         dau_pt_load   <= 0;
         dau_fully_load<= 0;
         dau_acc_ram   <= 0;
+        dau_special   <= 0;
         st_a0h        <= 0;
         st_a1h        <= 0;
         acc_sel       <= 0;
@@ -362,7 +360,9 @@ always @(posedge clk, posedge rst) begin
                 end
 
                 5'b10011: begin // if CON F2
-                    dau_con_en    <= 1;
+                    dau_dec_en    <= 1;
+                    a_field       <= rom_dout[10:9];
+                    dau_special   <= 1;
                 end
 
                 5'b10101: begin // Z:y F1
@@ -461,8 +461,9 @@ always @(posedge clk, posedge rst) begin
                     step_sel  <= pre_step_sel;
                     ksel      <= pre_ksel;
                 end
-                5'b11010: begin // conditional branch
-                    dau_con_en    <= 1;
+                5'b11010: begin
+                    if( !rom_dout[10] ) con_check <= 1; // conditional branch
+                    // else trigger icall - not implemented
                 end
                 5'b01110: begin // do
                     do_data  <= rom_dout[10:0];

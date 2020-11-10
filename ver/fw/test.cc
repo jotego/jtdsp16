@@ -91,6 +91,8 @@ const int ya0_xX_F1  = 1<<25;
 const int ya1_xX_F1  = 1<<27;
 const int Ya0_F1     = 1<<28;
 const int yY_xX_F1   = 1<<31;
+// F2
+const int IF_CON_F2  = 1<<19;
 // Z operations
 const int Zy_F1      = 1<<21;
 
@@ -126,6 +128,8 @@ int main( int argc, char *argv[] ) {
         ya1_xX_F1 |
         aTY_F1    |
         Zy_F1     |
+        // F2
+        IF_CON_F2 |
         0
      );
     rtl.read_rom( rom.data() );
@@ -231,6 +235,11 @@ void ROM::random( int valid ) {
             case 21: // Z:y F1
                 extra = rand()%0x800;
                 extra &= ~3;
+                break;
+            case 19: // if CON F2
+                do {
+                    extra = rand()%0x800;
+                } while( ((extra>>5) &0xf)==10 ); // avoid reserved F2 value
                 break;
             default: cout << "Error: unsupported OP for randomization\n";
         }

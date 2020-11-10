@@ -21,7 +21,7 @@ module jtdsp16_dau(
     input             clk,
     input             cen,
     input             dec_en,        // F1 decoder enable
-    input             sel_special,   // selects F2 output
+    input             special,   // selects F2 output
     input      [ 2:0] r_field,
     input      [ 1:0] a_field,  // select acc output
     input      [ 4:0] t_field,
@@ -81,13 +81,13 @@ wire        d_field;  // destination
 reg  [ 7:0] c0, c1, c2;
 reg  [ 6:0] auc;        // arithmetic unit control
 reg         lmi, leq, llv, lmv, alu_llv;
-reg         nop;        // indicates that F1 should not alter the flags
+reg         f1_nop;        // indicates that F1 should not alter the flags
 wire [15:0] psw;        // processor status word
 reg         ov1, ov0;   // overflow
 
 // LFSR
 reg  [31:0] lfsr;
-wire        up_lfsr;
+reg         up_lfsr;
 
 wire [31:0] y;
 wire [36:0] as, y_ext;
@@ -101,14 +101,13 @@ wire        up_y;
 wire        up_a0h, up_a1h;
 wire        ad_sel;
 wire        as_sel;
-wire        store;
 wire        clr_yl, clr_a1l, clr_a0l;
 wire        sat_a1, sat_a0;
 wire        load_y, load_yl;
 wire        load_x, load_auc;
 wire        load_c0, load_c1, load_c2;
 wire        load_a0, load_a1;
-wire        f1_st;  // F1 store operation
+wire        f1_st, f2_st;  // F1/2 store operation
 
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
@@ -116,7 +115,6 @@ assign up_p        = dec_en && f1_field[3:2]==2'b0;
 assign up_y        = load_y | load_yl | fully_load;
 assign st_a1l      = 0;
 assign st_a0l      = 0;
-assign store       = dec_en && f1_field != 4'b10 && f1_field != 4'b110 && f1_field[3:1] != 3'b101;
 assign as          = s_field ? {a1[35],a1} : {a0[35],a0};
 assign y_ext       = { {5{y[31]}}, y };
 assign psw         = { flags, 2'b0, ov1, ov0, a1[35:32], a0[35:32] };
@@ -135,7 +133,8 @@ assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit inte
 assign pre_lmv     = |alu_out[35:31] ^ &alu_out[35:31]; // number doesn't fit in 32-bit integer
 assign alu_sat     = { {5{alu_out[35]}}, {31{~alu_out[35]}}}; // saturate to 32-bit integer
 
-assign f1_st       = dec_en && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
+assign f1_st       = dec_en && !special && (f1_field!=4'd2 && f1_field!=4'd6 && f1_field!=4'd10 && f1_field!=4'd11 );
+assign f2_st       = dec_en &&  special; // reserved case 10 is not treated differently
 
 assign load_x      = ((imm_load || ram_load || acc_load ) && r_field==3'd0) || pt_load;
 assign load_y      = (imm_load || ram_load || acc_load ) && r_field==3'd1;
@@ -144,8 +143,8 @@ assign load_auc    = (imm_load || ram_load || acc_load ) && r_field==3'd3;
 assign load_c0     = (imm_load || ram_load || acc_load ) && r_field==3'd5;
 assign load_c1     = (imm_load || ram_load || acc_load ) && r_field==3'd6;
 assign load_c2     = (imm_load || ram_load || acc_load ) && r_field==3'd7;
-assign load_a0     = f1_st && !d_field;
-assign load_a1     = f1_st &&  d_field;
+assign load_a0     = (f1_st || f2_st) && !d_field;
+assign load_a1     = (f1_st || f2_st) &&  d_field;
 assign load_data   = acc_load ? acc_dout : (imm_load ? long_imm : ram_dout);
 
 assign { d_field, s_field, f1_field } = op_fields;
@@ -166,12 +165,16 @@ assign debug_p   = p;
 
 // Condition check
 always @(*) begin
+    up_lfsr = 0;
     case(c_field[4:1])
         4'd0: con_result =  lmi;
         4'd1: con_result =  leq;
         4'd2: con_result =  llv;
         4'd3: con_result =  lmv;
-        4'd4: con_result = lfsr[31];
+        4'd4: begin
+            con_result = lfsr[31];
+            up_lfsr    = 1;
+        end
         4'd5: con_result = ~c0[7]; // >=0
         4'd6: con_result = ~c1[7]; // >=0
         4'd7: con_result = 1;
@@ -250,7 +253,7 @@ always @(posedge clk, posedge rst) begin
         // special registers
         if( load_auc ) auc <= load_data[6:0];
         // Flags
-        if(dec_en && !nop) begin
+        if(dec_en && (!f1_nop || special)) begin
             lmi <= alu_out[35];
             leq <= ~|alu_out;
             llv <= pre_ov;
@@ -276,28 +279,28 @@ always @(*) begin
         4'd14:      alu_arith = as & y_ext;
         default: alu_arith = 37'd0;
     endcase
-    nop = f1_field==4'd2 || f1_field==4'd6; // do not modify flags
+    f1_nop = f1_field==4'd2 || f1_field==4'd6; // do not modify flags
 end
 
 /////// F2 field
 always @(*) begin
     case( f2_field )
-        4'd0: alu_special = as >>> 1;
-        4'd1: alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift by 1
-        4'd2: alu_special = as >>> 4;
-        4'd3: alu_special = { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
-        4'd4: alu_special = as >>> 8;
-        4'd5: alu_special = { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
-        4'd6: alu_special = as >>> 16;
-        4'd7: alu_special = { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
-        4'd8: alu_special = p_ext;
-        4'd9: alu_special = as + 37'h10000;
+        4'd0:  alu_special = as >>> 1;
+        4'd1:  alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift by 1
+        4'd2:  alu_special = as >>> 4;
+        4'd3:  alu_special = { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
+        4'd4:  alu_special = as >>> 8;
+        4'd5:  alu_special = { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
+        4'd6:  alu_special = as >>> 16;
+        4'd7:  alu_special = { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
+        4'd8:  alu_special = p_ext;
+        4'd9:  alu_special = as + 37'h1_0000;
         4'd11: alu_special = round(as);
         4'd12: alu_special = y_ext;
         4'd13: alu_special = as + 37'd1;
         4'd14: alu_special = as;
         4'd15: alu_special = -as;
-        default: alu_special = 37'd0;
+        default: alu_special = 37'd0; // case 10 is reserved
     endcase
 end
 
@@ -310,7 +313,7 @@ always @(*) begin
 end
 
 always @(*) begin
-    {alu_llv, alu_out} = sel_special ? alu_special : alu_arith;
+    {alu_llv, alu_out} = special ? alu_special : alu_arith;
 end
 
 always @(*) begin

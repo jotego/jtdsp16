@@ -423,8 +423,8 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
     int lmi = sign;
     *pov = llv;
     // store the final value
-    if( verbose ) printf("Flags = %d%d%d%d - OVSAT %d - a%d<-a%d (F1=%X) - (%lX)\n", lmi, leq, llv, lmv,
-             ovsat, (f>>5)&1, (f>>4)&1, f&0xf, r);
+    if( verbose ) printf("Flags = %d%d%d%d - OVSAT %d - a%d<-a%d (F%d=%X) - (%lX)\n", lmi, leq, llv, lmv,
+             ovsat, (f>>5)&1, (f>>4)&1, special?2:1, f&0xf, r);
     if( lmv && ovsat ) {// saturate to a 32 bit value
     //     printf("Saturation\n");
         r = sign ? 0xF'8000'0000 : 0x0'7FFF'FFFF;
@@ -624,7 +624,7 @@ int DSP16emu::eval() {
 
     next_pi = pc;
     update_regs();
-    if(verbose) printf("OP=%04X (0x%X=%d)\n",op, opcode, opcode );
+    if(verbose) printf("********* OP=%04X (0x%X=%d)\n",op, opcode, opcode );
     switch( opcode ) {
         case 0: // goto JA
         case 1:
@@ -688,6 +688,13 @@ int DSP16emu::eval() {
             //printf("next a0 = %lX\n", next_a0 );
             set_register( aux, Yparse_read( aux2 ) );
             delta = 2;
+            break;
+        // F2
+        case 0x13: // 19
+            if( CONparse(op) ) {
+                F2parse( op )   ;
+            }
+            delta = 1;
             break;
         // F1 operations:
         case 0x14: // 20 Y=y[l] F1
