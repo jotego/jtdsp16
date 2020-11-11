@@ -106,6 +106,7 @@ initial begin
 end
 `endif
 
+`ifdef JTDSP16_DIV
 // Port A
 always @(posedge clk) begin
     if( we_A ) mem[addr_A] <= din_A;
@@ -116,5 +117,15 @@ end
 always @(posedge clk) begin
     dout_B <= mem[addr_B];
 end
+`else
+always @( we_A, addr_A, din_A ) begin
+    if( we_A ) mem[addr_A] = din_A;
+    dout_A = mem[addr_A];
+end
+
+always @( addr_B ) begin
+    dout_B = mem[addr_B];
+end
+`endif
 
 endmodule

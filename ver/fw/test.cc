@@ -98,7 +98,7 @@ const int Zy_F1      = 1<<21;
 
 class ParseArgs {
 public:
-    bool step, extra, verbose;
+    bool step, extra, verbose, random;
     int max, seed;
     ParseArgs( int argc, char *argv[]);
 };
@@ -108,36 +108,39 @@ int main( int argc, char *argv[] ) {
 
     RTL rtl;
     ROM rom;
-    rom.random( // GOTOJA |
-        SHORTIMM |
-        LONGIMM |
-        AT_R |
-        R_A0 |
-        R_A1 |
-        Y_R  |
-        R_Y  |
-        // F1 operations
-        Y_F1 |
-        Ya1_F1 |
-        Ya0_F1 |
-        Yy_F1  |
-        yY_F1  |
-        xY_F1  |
-        yY_xX_F1 |
-        ya0_xX_F1 |
-        ya1_xX_F1 |
-        aTY_F1    |
-        Zy_F1     |
-        // F2
-        IF_CON_F2 |
-        0
-     );
+    if( args.random ) {
+        rom.random( // GOTOJA |
+            SHORTIMM |
+            LONGIMM |
+            AT_R |
+            R_A0 |
+            R_A1 |
+            Y_R  |
+            R_Y  |
+            // F1 operations
+            Y_F1 |
+            Ya1_F1 |
+            Ya0_F1 |
+            Yy_F1  |
+            yY_F1  |
+            xY_F1  |
+            yY_xX_F1 |
+            ya0_xX_F1 |
+            ya1_xX_F1 |
+            aTY_F1    |
+            Zy_F1     |
+            // F2
+            IF_CON_F2 |
+            0
+         );
+    };
     rtl.read_rom( rom.data() );
     DSP16emu emu( rom.data() );
-    emu.randomize_ram();
+    if( args.random ) {
+        emu.randomize_ram();
+        rtl.program_ram( emu.get_ram() );
+    }
     emu.verbose = args.verbose;
-    rtl.program_ram( emu.get_ram() );
-
     bool good=true;
 
     // Simulate
@@ -417,10 +420,12 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
     extra = step = verbose = false;
     seed=0;
     max = 100'000;
+    random = true;
     if( argc==1 ) return;
     for( int k=1; k<argc; k++ ) {
         if( argv[k][0]=='-' ) {
             if( strcmp(argv[k],"-step")==0 )  { step=true;  continue; }
+            if( strcmp(argv[k],"-fw")==0 )  { random=false;  continue; } // firmware sim
             if( strcmp(argv[k],"-extra")==0 ) { extra=true; continue; }
             if( strcmp(argv[k],"-v")==0 ) { verbose=true; continue; }
             if( strcmp(argv[k],"-max")==0 ) {

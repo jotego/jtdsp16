@@ -23,4 +23,5 @@ Original chip runned at 60MHz clock with an internal clock divider by 2. In this
 
 **JTDSP16_DIV**
 
+This causes currently problems with the memories and cannot be used.
 

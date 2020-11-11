@@ -33,6 +33,7 @@ module jtdsp16_ram(
 
 reg [15:0] ram[0:2047];
 
+`ifdef JTDSP16_DIV
 always @(posedge clk) begin
     `ifdef JTDSP16_DEBUG
     if( debug_ram_we )
@@ -41,5 +42,14 @@ always @(posedge clk) begin
     if(we) ram[ addr ] <= din;
     dout <= ram[ addr ];
 end
+`else
+always @(debug_ram_we, debug_ram_addr, debug_ram_din, we, addr, din ) begin
+    if( debug_ram_we )
+        ram[ debug_ram_addr ] = debug_ram_din;
+    else if(we)
+        ram[ addr ] = din;
+    dout = ram[addr];
+end
+`endif
 
 endmodule
