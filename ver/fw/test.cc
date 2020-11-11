@@ -270,7 +270,7 @@ bool RTL::fault() {
 void RTL::reset() {
     top.rst       = 1;
     top.clk       = 0;
-    top.cen       = 1;
+    top.clk_en    = 1;
     top.pbus_in   = 0;
     top.di        = 0;
     top.ick       = 0;

@@ -20,7 +20,6 @@ module jtdsp16_ctrl(
     input             rst,
     input             clk,
     input             cen,
-    input             cen2,
     // Instruction fields
     output reg        dau_dec_en,
     output reg [ 4:0] t_field,
@@ -139,16 +138,6 @@ always @(*) begin
     endcase
 end
 
-// This part needs to operate at full cen speed
-/*
-always @(posedge clk, posedge rst) begin
-    if( rst ) begin
-        pt_read <= 0;
-    end else if (cen) begin
-        pt_read  <= !double && !pc_halt && rom_dout[15:11]==5'h1f;
-    end
-end*/
-
 // Decode instruction
 always @(posedge clk, posedge rst) begin
     if(rst) begin
@@ -202,7 +191,7 @@ always @(posedge clk, posedge rst) begin
         sio_ram_load  <= 0;
 
         fault         <= 0;
-    end else if(cen2) begin
+    end else if(cen) begin
         t_field       <= rom_dout[15:11];
         i_field       <= rom_dout[11: 0];
         x_field       <= rom_dout[    4];

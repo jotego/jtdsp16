@@ -132,7 +132,7 @@ end
 jtdsp16 UUT(
     .rst        ( rst       ),
     .clk        ( clk       ),
-    .cen        ( cen       ),
+    .clk_en     ( cen       ),
     .ext_mode   ( 1'b0      ),
     // Parallel I/O
     .pbus_in    ( pbus_in   ),

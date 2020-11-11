@@ -59,7 +59,7 @@ always @(posedge clk) begin
 end
 */
 
-jtdsp16_dualport u_msb(
+jtdsp16_dualport #(1) u_msb(
     .clk    ( clk       ),
     .addr_A ( rom_addr  ),
     .we_A   ( prog_msb  ),
@@ -70,7 +70,7 @@ jtdsp16_dualport u_msb(
     .dout_B ( pt_msb    )
 );
 
-jtdsp16_dualport u_lsb(
+jtdsp16_dualport #(0) u_lsb(
     .clk    ( clk       ),
     .addr_A ( rom_addr  ),
     .we_A   ( prog_lsb  ),
@@ -93,7 +93,18 @@ module jtdsp16_dualport(
     output reg  [ 7:0] dout_B
 );
 
+parameter MSB=0;
+
 reg  [ 7:0] mem[0:4095];
+
+`ifdef JTDSP16_FWLOAD
+initial begin
+    if( MSB==0 )
+        $readmemh( "dsp16fw_lsb.hex", mem );
+    else
+        $readmemh( "dsp16fw_msb.hex", mem );
+end
+`endif
 
 // Port A
 always @(posedge clk) begin

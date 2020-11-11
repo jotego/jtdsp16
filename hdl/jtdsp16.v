@@ -19,7 +19,7 @@
 module jtdsp16(
     input             rst,
     input             clk,
-    input             cen,
+    input             clk_en,
 
     output            cen_cko,      // clock output, interpret as clock enable signal
     output     [15:0] ab,           // address bus
@@ -103,7 +103,7 @@ wire [35:0] debug_a1, debug_a0;
 wire [31:0] debug_p;
 `endif
 
-wire        cen2;   // cen divided by 2
+wire        cen;   // cen divided by 2
 
 wire [15:0] pt_dout;
 wire [15:0] rom_addr;
@@ -175,13 +175,18 @@ wire [15:0] r_pio;
 // interrupts
 wire        no_int;
 
-assign cen_cko = cen2;  // clock output, input clock divided by 2
 
+`ifdef JTDSP16_DIV
 jtdsp16_div u_div(
     .clk            ( clk           ),
-    .cen            ( cen           ),
-    .cen2           ( cen2          )
+    .cen            ( clk_en        ),
+    .cendiv         ( cen           )
 );
+assign cen_cko = cen ;  // clock output, input clock divided by 2
+`else
+assign cen     = clk_en;
+assign cen_cko = cen;  // clock output, input clock divided by 2
+`endif
 
 jtdsp16_rsel u_rsel(
     .r_xaau  ( r_xaau    ),
@@ -200,7 +205,6 @@ jtdsp16_ctrl u_ctrl(
     .rst            ( rst           ),
     .clk            ( clk           ),
     .cen            ( cen           ),
-    .cen2           ( cen2          ),
     .t_field        (               ),
     // ROM AAU - XAAU
     .goto_ja        ( goto_ja       ),
@@ -276,7 +280,7 @@ jtdsp16_ctrl u_ctrl(
 
 jtdsp16_rom u_rom(
     .clk        ( clk             ),
-    .cen        ( cen2            ),
+    .cen        ( cen             ),
     .addr       ( rom_addr        ),
     .pt         ( pt_addr         ),
 
@@ -296,7 +300,7 @@ jtdsp16_rom u_rom(
 jtdsp16_rom_aau u_rom_aau(
     .rst        ( rst           ),
     .clk        ( clk           ),
-    .cen        ( cen2          ),
+    .cen        ( cen           ),
     // instruction types
     .goto_ja    ( goto_ja       ),
     .goto_b     ( goto_b        ),
@@ -353,7 +357,7 @@ jtdsp16_ram u_ram(
 jtdsp16_ram_aau u_ram_aau(
     .rst        ( rst           ),
     .clk        ( clk           ),
-    .cen        ( cen2          ),
+    .cen        ( cen           ),
     .r_field    ( r_field       ),
     .y_field    ( y_field       ),
     .rmux       ( rmux          ),
@@ -389,7 +393,7 @@ jtdsp16_ram_aau u_ram_aau(
 jtdsp16_dau u_dau(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen2          ),
+    .cen            ( cen           ),
     // Decoder
     .dec_en         ( dau_dec_en    ),
     .special        ( dau_special   ),
@@ -436,7 +440,7 @@ jtdsp16_dau u_dau(
 jtdsp16_pio u_pio(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen2          ),
+    .cen            ( cen           ),
     // Parallel I/O
     .pbus_in        ( pbus_in       ),
     .pbus_out       ( pbus_out      ),
@@ -461,7 +465,7 @@ jtdsp16_pio u_pio(
 jtdsp16_sio u_sio(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen2          ),
+    .cen            ( cen           ),
     // DSP16 pins
     .ock            ( ock           ),  // serial output clock
     .sio_do         ( sdo           ),   // serial data output

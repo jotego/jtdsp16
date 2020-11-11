@@ -22,23 +22,23 @@
 module jtdsp16_div(
     input      clk,
     input      cen,
-    output reg cen2
+    output reg cendiv
 );
 
 reg toggle;
 
 `ifdef SIMULATION
 initial begin
-    cen2   = 0;
+    cendiv = 0;
     toggle = 0;
 end
 `endif
 
 always @(posedge clk) begin
-    cen2 <= 0;
+    cendiv <= 0;
     if( cen ) begin
         toggle <= ~toggle;
-        cen2   <= toggle;
+        cendiv <= toggle;
     end
 end
 
