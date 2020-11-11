@@ -84,6 +84,7 @@ reg         lmi, leq, llv, lmv, alu_llv;
 reg         f1_nop;        // indicates that F1 should not alter the flags
 wire [15:0] psw;        // processor status word
 reg         ov1, ov0;   // overflow
+reg         ah_only;    // used for F2 operation #9
 
 // LFSR
 reg  [31:0] lfsr;
@@ -196,7 +197,7 @@ always @(posedge clk, posedge rst) begin
     if( rst ) begin
         lfsr <= 32'hcafe_cafe;
     end else if( cen ) begin
-        if( up_lfsr )
+        if( up_lfsr && special)
             lfsr <= { lfsr[30:0], lfsr[31]^lfsr[21]^lfsr[1]^lfsr[0] };
     end
 end
@@ -235,18 +236,18 @@ always @(posedge clk, posedge rst) begin
         if( st_a0h ) begin
             a0[35:16] <= acc_in;
             if( clr_a0l ) a0[15:0] <= 16'd0;
-        end else if( load_a0 )
+        end else if( load_a0 ) begin
             a0 <= (pre_lmv & sat_a0) ? alu_sat : alu_out;
+            if( special && ah_only ) a0[15:0] <= 16'd0;
+        end
         // a1
         if( st_a1h ) begin
             a1[35:16] <= acc_in;
             if( clr_a1l ) a1[15:0] <= 16'd0;
-        end else if( load_a1 )
+        end else if( load_a1 ) begin
             a1 <= (pre_lmv & sat_a1) ? alu_sat : alu_out;
-        //a0[15: 0] <= st_a0h ? (clr_a0l ? 16'd0 : alu_out[15:0]) :
-        //            (st_a0l ? alu_out[15:0] : a0[15:0]);
-        //a1[15: 0] <= st_a1h ? (clr_a1l ? 16'd0 : alu_out[15:0]) :
-        //            (st_a1l ? alu_out[15:0] : a1[15:0]);
+            if( special && ah_only ) a1[15:0] <= 16'd0;
+        end
         // Counters
         if( load_c0 ) c0 <= load_data[7:0];
         if( load_c1 ) c1 <= load_data[7:0];
@@ -256,7 +257,8 @@ always @(posedge clk, posedge rst) begin
         // Flags
         if(dec_en && ( (!special && !f1_nop) || f2_st)) begin
             lmi <= alu_out[35];
-            leq <= ~|alu_out;
+            leq <=  (special&&ah_only) ? ~|alu_out[35:16] // assume AL is all zeros
+                                       : ~|alu_out;
             llv <= pre_ov;
             lmv <= pre_lmv;
             // Not sure whether these are always updated
@@ -266,6 +268,7 @@ always @(posedge clk, posedge rst) begin
     end
 end
 
+// F1 operations
 always @(*) begin
     case( f_field )
         4'd0, 4'd4: alu_arith = p_ext;
@@ -283,19 +286,23 @@ always @(*) begin
     f1_nop = f_field==4'd2 || f_field==4'd6; // do not modify flags
 end
 
-/////// F2 field
+// F2 operations
 always @(*) begin
+    ah_only = 0;
     case( f_field )
         4'd0:  alu_special = { as[36], as[36:1] };
-        4'd1:  alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift by 1
+        4'd1:  alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift << by 1
         4'd2:  alu_special = { {4{as[36]}}, as[36:4] };
         4'd3:  alu_special = { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
         4'd4:  alu_special = { {8{as[36]}}, as[36:8] };
         4'd5:  alu_special = { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
-        4'd6:  alu_special = as >>> 16;
+        4'd6:  alu_special = { {16{as[36]}}, as[36:16] }; // as >>> 16
         4'd7:  alu_special = { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
         4'd8:  alu_special = p_ext;
-        4'd9:  alu_special = as + 37'h1_0000;
+        4'd9:  begin
+            alu_special = as + 37'h1_0000;
+            ah_only = 1;
+        end
         4'd11: alu_special = round(as);
         4'd12: alu_special = y_ext;
         4'd13: alu_special = as + 37'd1;

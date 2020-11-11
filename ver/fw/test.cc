@@ -239,7 +239,8 @@ void ROM::random( int valid ) {
             case 19: // if CON F2
                 do {
                     extra = rand()%0x800;
-                } while( ((extra>>5) &0xf)==10 ); // avoid reserved F2 value
+                } while( ((extra>>5) &0xf)==10 || (extra&0x1f)>17 ); // avoid reserved F2 value
+                    // and avoid wrong CON values
                 break;
             default: cout << "Error: unsupported OP for randomization\n";
         }
@@ -430,7 +431,7 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
             }
         } else {
             // parse as seed
-            seed = strtol(argv[1], NULL, 0);
+            seed = strtol(argv[k], NULL, 0);
         }
     }
     srand(seed);
