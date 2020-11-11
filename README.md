@@ -17,10 +17,3 @@ The instructions not used by QSound are listed below.
 11101  | Z:y x=X  F1      | Unsupported
 110101 | icall            | Unsupported
 
-# Clock Divider
-
-Original chip runned at 60MHz clock with an internal clock divider by 2. In this design nothing needs to run at full speed so the internal clock divider is by-passed by default. It can be enabled by declaring the macro:
-
-**JTDSP16_DIV**
-
-

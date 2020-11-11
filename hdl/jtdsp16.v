@@ -176,17 +176,12 @@ wire [15:0] r_pio;
 wire        no_int;
 
 
-`ifdef JTDSP16_DIV
 jtdsp16_div u_div(
     .clk            ( clk           ),
     .cen            ( clk_en        ),
     .cendiv         ( cen           )
 );
 assign cen_cko = cen ;  // clock output, input clock divided by 2
-`else
-assign cen     = clk_en;
-assign cen_cko = cen;  // clock output, input clock divided by 2
-`endif
 
 jtdsp16_rsel u_rsel(
     .r_xaau  ( r_xaau    ),
