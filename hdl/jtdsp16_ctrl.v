@@ -80,6 +80,7 @@ module jtdsp16_ctrl(
     // cache
     output reg        do_start,
     output reg [10:0] do_data,
+    input             do_flush,
     // X load control
     output            up_xram,
     output            up_xrom,
@@ -247,7 +248,7 @@ always @(posedge clk, posedge rst) begin
         sio_acc_load  <= 0;
         sio_ram_load  <= 0;
 
-        if(!double) begin
+        if(!double && !do_flush) begin
             casez( rom_dout[15:11] ) // T
                 5'b0000?: begin // goto JA
                     goto_ja <= con_ok;
@@ -464,6 +465,9 @@ always @(posedge clk, posedge rst) begin
                 default: fault<=1;
             endcase
         end
+        /*else if( do_flush ) begin
+            pc_halt <= 1;
+        end*/
     end
 end
 

@@ -61,10 +61,10 @@ int main( int argc, char *argv[] ) {
 int random_tests( ParseArgs& args ) {
     RTL rtl;
     ROM rom;
-    rom.random( // GOTOJA |
+    if( rom.random( // GOTOJA |
         SHORTIMM |
         LONGIMM |
-        // DO_REDO |
+        DO_REDO |
         AT_R |
         R_A0 |
         R_A1 |
@@ -85,7 +85,7 @@ int random_tests( ParseArgs& args ) {
         // F2
         IF_CON_F2 |
         0
-     );
+     ) ) return 1;
     rtl.read_rom( rom.data() );
     DSP16emu emu( rom.data() );
     emu.randomize_ram();
@@ -148,7 +148,7 @@ int random_rfield() {
     return r;
 }
 
-void ROM::random( int valid ) {
+int ROM::random( int valid ) {
     if(valid==0) valid=~0;
     // the cache mask avoids illegal instructions for the cache and also
     // the long immediate instruction because it complicates the random ROM filling
@@ -161,7 +161,7 @@ void ROM::random( int valid ) {
         int r =0;
         do {
             r = rand()%32;
-        } while( ((1<<r) & valid) == 0 && (!incache || ((1<<r) & cache_mask)  ));
+        } while( ((1<<r) & valid) == 0 || (incache && ((1<<r) & cache_mask)==0  ));
         //printf("%04X - %X\n",r, ((1<<r) & valid));
         int op;
         op  = r << 11;
@@ -210,7 +210,14 @@ void ROM::random( int valid ) {
                 } while( ((extra>>5) &0xf)==10 || (extra&0x1f)>17 ); // avoid reserved F2 value
                     // and avoid wrong CON values
                 break;
-            default: cout << "Error: unsupported OP " << r << " for randomization\n";
+            default:
+                printf("Error: unsupported OP 0x%X (%d) for randomization\n", r, r);
+                for( int j=0; j<k; j++ ) {
+                    printf("%04X ", rom[j]&0xFFFF );
+                    if( (j&7)==7 ) putchar('\n');
+                }
+                putchar('\n');
+                return 1;
         }
         extra &= 0x7ff;
         op |= extra;
@@ -218,6 +225,7 @@ void ROM::random( int valid ) {
         rom[k] = op;
         if(incache>0) incache--;
     }
+    return 0;
 }
 
 /////////////////////////

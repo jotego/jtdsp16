@@ -40,6 +40,7 @@ module jtdsp16_rom_aau(
     // do loop
     input             do_start,
     input      [10:0] do_data,
+    output reg        do_flush,
     // instruction fields
     input      [ 2:0] r_field,
     input      [11:0] i_field,
@@ -101,11 +102,11 @@ assign      load_pi  =  any_load && r_field==3'd2;
 assign      load_i   =  any_load && r_field==3'd3;
 
 assign      rom_addr = pc;
-assign      do_endhit= sequ_pc==do_end;
+assign      do_endhit= sequ_pc>do_end;
 assign      do_loop  = do_endhit && do_left>7'd1;
 assign      redo     = do_start && do_data[10:7]==4'd0;
 assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_en;
-assign      dis_shadow= enter_int || icall || redo;
+assign      dis_shadow= enter_int || icall || redo || do_start;
 
 assign      pt_addr  = pt[11:0];
 
@@ -163,9 +164,11 @@ always @(posedge clk, posedge rst ) begin
         do_left <= 7'd0;
         last_do_en <= 0;
         do_end     <= 0;
+        do_flush   <= 0;
         do_head    <= 16'd0;
     end else if(cen) begin
         last_do_en <= do_en;
+        do_flush   <= 0;
         if( load_pt  ) pt <= pt_load ? next_pt : rnext;
         if( load_pr  ) pr <= rnext;
         if( load_i   ) i  <= rnext[11:0];
@@ -180,7 +183,7 @@ always @(posedge clk, posedge rst ) begin
         pc <= next_pc;
         if( load_pi )
             pi <= rnext;
-        else if( shadow )
+        else if( shadow && !do_start)
             pi <= sequ_pc;
 
         if( do_start ) begin
@@ -204,7 +207,8 @@ always @(posedge clk, posedge rst ) begin
                 if( do_left > 7'd0 )
                     do_left <= do_left-7'd1;
                 if( do_left==7'd1 ) begin
-                    do_en   <= 0;
+                    do_en    <= 0;
+                    do_flush <= 1;
                 end
             end
         end

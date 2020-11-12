@@ -13,8 +13,8 @@ class DSP16emu {
     int lfsr;
     int64_t next_a0, next_a1;
     // Cache
-    bool in_cache, cache_first, cache_left;
-    int  cache_start, cache_end;
+    bool in_cache,cache_first;
+    int  cache_start, cache_end, cache_left;
 
     void    update_regs();
     int     get_register( int rfield );
@@ -33,6 +33,7 @@ class DSP16emu {
     void    parseZ( int op );
     void    set_psw( int lmi, int leq, int llv, int lmv, int ov0, int ov1, bool up_now );
     bool    CONparse( int op );
+    bool    processDo();
 
     int64_t extend_p();
     int64_t extend_y();
@@ -658,15 +659,35 @@ void DSP16emu::parseZ( int op ) {
     }
 }
 
+bool DSP16emu::processDo() {
+    if( in_cache && pc>cache_end ) {
+        cache_left--;
+        if( cache_left>0 ) {
+            pc = cache_start;
+            cache_first = false;
+            if( verbose ) printf("Cache loop rollover to %04X (%d left)\n", cache_start, cache_left);
+            return false; // last instruction ran
+        } else {
+            if( verbose ) printf("Cache loop end\n");
+            in_cache = false;
+            return true;
+        }
+    }
+    else return false;
+}
+
 int DSP16emu::eval() {
     int op = read_rom(pc++) &0xffff;
     int delta=0;
     int aux, aux2;
     const int opcode = (op>>11) & 0x1f;
 
+    if( verbose ) printf("*********");
+    bool last_loop = processDo();
+
     if(!in_cache) next_pi = pc;
+    if(verbose) printf("OP=%04X (0x%X=%d)\n",op, opcode, opcode );
     update_regs();
-    if(verbose) printf("********* OP=%04X (0x%X=%d)\n",op, opcode, opcode );
     switch( opcode ) {
         case 0: // goto JA
         case 1:
@@ -732,6 +753,8 @@ int DSP16emu::eval() {
                 cache_first=true;
             }
             cache_left = op&0x7f;
+            if( verbose ) printf("Cache loop starts (NI=%d, loops=%d). Repeat %04X-%04X\n",
+                aux, cache_left-1, cache_start, cache_end );
             delta = 1;
             break;
         case 0xf: // R=Y
@@ -834,6 +857,10 @@ int DSP16emu::eval() {
             delta = 1;
             break;
         // default:
+    }
+    if( last_loop ) {
+        delta++;
+        update_regs();
     }
     ticks += delta;
     return delta;

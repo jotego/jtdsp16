@@ -59,7 +59,7 @@ class ROM {
 public:
     ROM();
     ~ROM();
-    void random( int valid );
+    int random( int valid );
     int16_t *data() { return rom; }
 };
 
