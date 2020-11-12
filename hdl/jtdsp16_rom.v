@@ -16,7 +16,12 @@
     Version: 1.0
     Date: 15-7-2020 */
 
-// ROM. Not clocked
+// ROM is used as dual port to allow for dual access in cache mode
+// Original hardware must have used two different memories for this
+// each one using only a single port
+// Note that one port is used for programming too
+// rst should be set high during programming
+// during rst the ROM will continuously output the data for address 0
 
 module jtdsp16_rom(
     input             clk,
@@ -48,7 +53,7 @@ assign     ext_addr  = addr;
 assign     dout      = ext_mode ? ext_data : ((addr[15:12]==4'd0) ? rom_dout : ext_data);
 //assign     read_addr = cen ? pt[11:0] : addr[11:0];
 
-assign     rom_addr  = prog_we ? prog_addr[12:1] : addr[11:0];
+assign     rom_addr  = prog_we ? prog_addr[12:1] : pt;
 assign     prog_msb  = prog_we &  prog_addr[0];
 assign     prog_lsb  = prog_we & ~prog_addr[0];
 /*
@@ -61,24 +66,26 @@ end
 
 jtdsp16_dualport #(1) u_msb(
     .clk    ( clk       ),
+    // PT and programming
     .addr_A ( rom_addr  ),
     .we_A   ( prog_msb  ),
     .din_A  ( prog_data ),
-    .dout_A ( rom_msb   ),
-    // PT
-    .addr_B ( pt        ),
-    .dout_B ( pt_msb    )
+    .dout_A ( pt_msb    ),
+    // PC
+    .addr_B ( addr[11:0]),
+    .dout_B ( rom_msb   )
 );
 
 jtdsp16_dualport #(0) u_lsb(
     .clk    ( clk       ),
+    // PT and programming
     .addr_A ( rom_addr  ),
     .we_A   ( prog_lsb  ),
     .din_A  ( prog_data ),
-    .dout_A ( rom_lsb   ),
-    // PT
-    .addr_B ( pt        ),
-    .dout_B ( pt_lsb    )
+    .dout_A ( pt_lsb    ),
+    // PC
+    .addr_B ( addr[11:0]),
+    .dout_B ( rom_lsb   )
 );
 
 endmodule

@@ -154,7 +154,8 @@ jtdsp16 UUT(
 );
 
 `ifndef NODUMP
-always @(negedge prog_we) begin
+//always @(negedge prog_we) begin
+initial begin
     $dumpfile("test.lxt");
     $dumpvars;
 end

@@ -66,11 +66,12 @@ module jtdsp16_dau(
 reg  [15:0] x, yh, yl, z;
 reg  [31:0] p;
 reg  [35:0] a1, a0;
-reg  [35:0] alu_out, alu_sat;
+reg  [35:0] alu_out;
 reg  [36:0] alu_arith, alu_special, p_ext;
 wire [36:0] alu_in;
 wire        st_a0l;
 wire        st_a1l;
+wire [35:0] alu_sat;
 
 wire [ 3:0] f_field;
 wire        s_field;  // source
@@ -212,6 +213,9 @@ always @(posedge clk, posedge rst) begin
         a0  <= 36'd0;
         a1  <= 36'd0;
         auc <=  7'd0;
+        c0  <=  8'd0;
+        c1  <=  8'd0;
+        c2  <=  8'd0;
         ov1 <=  0;
         ov0 <=  0;
         { lmi, leq, llv, lmv } <= 4'd0;

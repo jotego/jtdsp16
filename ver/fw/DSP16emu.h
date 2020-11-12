@@ -12,7 +12,9 @@ class DSP16emu {
     int next_tdms, next_pioc, next_pdx0, next_pdx1;
     int lfsr;
     int64_t next_a0, next_a1;
-    bool in_cache;
+    // Cache
+    bool in_cache, cache_first, cache_left;
+    int  cache_start, cache_end;
 
     void    update_regs();
     int     get_register( int rfield );
@@ -91,12 +93,13 @@ DSP16emu::DSP16emu( int16_t* _rom ) {
     next_a0 = a0 = next_a1 = a1 = 0;
     p = 0;
     ticks=0;
-    in_cache = false;
     lfsr = 0xcafe'cafe;
     rom = _rom;
     ram = new int16_t[2048];
     for(int k=0; k<2048; k++) ram[k]=0;
     stats.ram_reads = stats.ram_writes = 0;
+    // Cache
+    cache_first = in_cache = false; cache_left = cache_start = cache_end = 0;
 }
 
 DSP16emu::~DSP16emu() {
@@ -661,7 +664,7 @@ int DSP16emu::eval() {
     int aux, aux2;
     const int opcode = (op>>11) & 0x1f;
 
-    next_pi = pc;
+    if(!in_cache) next_pi = pc;
     update_regs();
     if(verbose) printf("********* OP=%04X (0x%X=%d)\n",op, opcode, opcode );
     switch( opcode ) {
@@ -719,6 +722,17 @@ int DSP16emu::eval() {
             Yparse_write( aux, aux2 );
             // printf("Y = R [%X] = %X\n",aux,aux2);
             delta = 2;
+            break;
+        case 0xe: // 14, Do/Redo
+            in_cache = true;
+            aux = (op>>7)&0xf;
+            if( aux!=0 ) {
+                cache_start=pc;
+                cache_end=pc+aux;
+                cache_first=true;
+            }
+            cache_left = op&0x7f;
+            delta = 1;
             break;
         case 0xf: // R=Y
             aux  = (op>>4)&0x3f;

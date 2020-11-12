@@ -1,7 +1,8 @@
 // #include "verilated.h"
 #include "Vjtdsp16.h"
 #include "DSP16emu.h"
-#include "verilated_vcd_c.h"
+#include "common.h"
+#include "playfiles.h"
 
 #include <iostream>
 #include <iomanip>
@@ -10,64 +11,6 @@
 
 using namespace std;
 
-class RTL {
-    vluint64_t ticks, sim_time, half_period;
-    VerilatedVcdC vcd;
-public:
-    Vjtdsp16 top;
-    RTL();
-    void reset();
-    void clk( int n=1 );
-    void read_rom( int16_t* data );
-    void program_ram( int16_t* data );
-    bool fault();
-    // access to registers
-    int  pc() { return top.debug_pc; }
-    int  pt() { return top.debug_pt; }
-    int  pr() { return top.debug_pr; }
-    int  pi() { return top.debug_pi; }
-    int  i()  { return top.debug_i;  }
-
-    int  re() { return top.debug_re; }
-    int  rb() { return top.debug_rb; }
-    int  j()  { return top.debug_j; }
-    int  k()  { return top.debug_k; }
-    int  r0() { return top.debug_r0; }
-    int  r1() { return top.debug_r1; }
-    int  r2() { return top.debug_r2; }
-    int  r3() { return top.debug_r3; }
-
-    // DAU
-    int  psw(){ return top.debug_psw;}
-    int  auc(){ return top.debug_auc;}
-    int  x()  { return top.debug_x;  }
-    int  y()  { return top.debug_y;  }
-    int  yl() { return top.debug_yl; }
-
-    int  c0() { return top.debug_c0; }
-    int  c1() { return top.debug_c1; }
-    int  c2() { return top.debug_c2; }
-
-    int  p() { return top.debug_p; }
-
-    int64_t a0() { return top.debug_a0; }
-    int64_t a1() { return top.debug_a1; }
-
-    // SIO
-    int  srta() { return top.debug_srta; }
-    int  sioc() { return top.debug_sioc; }
-
-    int get_ticks() { return ticks; }
-};
-
-class ROM {
-    int16_t *rom;
-public:
-    ROM();
-    ~ROM();
-    void random( int valid );
-    int16_t *data() { return rom; }
-};
 
 bool compare( RTL& rtl, DSP16emu& emu );
 void dump( RTL& rtl, DSP16emu& emu );
@@ -79,6 +22,7 @@ const int AT_R     = 1<<8;
 const int R_A0     = 1<<9;
 const int R_A1     = 1<<10;
 const int Y_R      = 1<<12;
+const int DO_REDO  = 1<<14;
 const int R_Y      = 1<<15;
 // Format 1:
 const int Ya1_F1     = 1<<4;
@@ -98,19 +42,29 @@ const int Zy_F1      = 1<<21;
 
 class ParseArgs {
 public:
-    bool step, extra, verbose;
+    bool step, extra, verbose, playback;
     int max, seed;
     ParseArgs( int argc, char *argv[]);
 };
 
+int random_tests( ParseArgs& args );
+
 int main( int argc, char *argv[] ) {
     ParseArgs args( argc, argv );
 
+    if( args.playback )
+        return playfiles();
+    else
+        return random_tests(args);
+}
+
+int random_tests( ParseArgs& args ) {
     RTL rtl;
     ROM rom;
     rom.random( // GOTOJA |
         SHORTIMM |
         LONGIMM |
+        // DO_REDO |
         AT_R |
         R_A0 |
         R_A1 |
@@ -196,12 +150,18 @@ int random_rfield() {
 
 void ROM::random( int valid ) {
     if(valid==0) valid=~0;
+    // the cache mask avoids illegal instructions for the cache and also
+    // the long immediate instruction because it complicates the random ROM filling
+    // and it is never used inside the cache in the QSound firmware, so I don't test it
+    const int cache_mask = (~( (1<<30) | (1<<10) | (1<<14) | (1<<1) | 1| (1<<16) | (1<<17) | (1<<24) | (1<<26) ))&0xFFFF'FFFF;
+    int incache = 0;
+    bool cache_ready = false;
 
     for( int k=0; k<4*1024; k++ ) {
         int r =0;
         do {
             r = rand()%32;
-        } while( ((1<<r) & valid) == 0 );
+        } while( ((1<<r) & valid) == 0 && (!incache || ((1<<r) & cache_mask)  ));
         //printf("%04X - %X\n",r, ((1<<r) & valid));
         int op;
         op  = r << 11;
@@ -217,8 +177,16 @@ void ROM::random( int valid ) {
                 extra  = (rand()%2) << 10;
                 extra |= random_rfield() << 4; break; // aT=R
             case 10: extra = random_rfield() << 4; break; // R=imm
-            case 12: // Y = R
-            case 15: // R = Y
+            case 14: // Do / Redo
+                extra = rand()%0x800;
+                while( ((extra>>7)&0xf) == 0 && !cache_ready )
+                    extra |= (rand()%16)<<7; // The first cache use cannot be a Redo
+                while( (extra&0x7f) < 2 )
+                    extra |= rand()%128;
+                incache = ((extra>>7)&0xf);
+                if( incache > 0 ) incache++; // because 1 will be subtracted at the bottom of this for loop
+                break;
+            case 12: /* Y = R */ case 15: // R = Y
                 extra  = random_rfield() << 4;
                 extra |= rand()%16; // Y field
                 break;
@@ -242,12 +210,13 @@ void ROM::random( int valid ) {
                 } while( ((extra>>5) &0xf)==10 || (extra&0x1f)>17 ); // avoid reserved F2 value
                     // and avoid wrong CON values
                 break;
-            default: cout << "Error: unsupported OP for randomization\n";
+            default: cout << "Error: unsupported OP " << r << " for randomization\n";
         }
         extra &= 0x7ff;
         op |= extra;
         //printf("%04X = %04X\n", k, op );
         rom[k] = op;
+        if(incache>0) incache--;
     }
 }
 
@@ -414,7 +383,7 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 }
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
-    extra = step = verbose = false;
+    extra = step = verbose = playback = false;
     seed=0;
     max = 100'000;
     if( argc==1 ) return;
@@ -423,6 +392,7 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
             if( strcmp(argv[k],"-step")==0 )  { step=true;  continue; }
             if( strcmp(argv[k],"-extra")==0 ) { extra=true; continue; }
             if( strcmp(argv[k],"-v")==0 ) { verbose=true; continue; }
+            if( strcmp(argv[k],"-play")==0 ) { playback=true; continue; }
             if( strcmp(argv[k],"-max")==0 ) {
                 if( ++k<argc ) {
                     max = strtol(argv[k], NULL, 0);
