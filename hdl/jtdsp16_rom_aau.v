@@ -41,6 +41,7 @@ module jtdsp16_rom_aau(
     input             do_start,
     input      [10:0] do_data,
     output reg        do_flush,
+    output reg        do_en,
     // instruction fields
     input      [ 2:0] r_field,
     input      [11:0] i_field,
@@ -71,7 +72,7 @@ reg  [15:0] pc,     // Program Counter
             rnext,
             do_head, redo_out, do_end;
 reg         shadow;     // normal execution or inside IRQ
-reg         do_en, redo_en, last_do_en, redo_aux;
+reg         redo_en, last_do_en, redo_aux;
 reg  [ 6:0] do_left;
 
 wire [15:0] sequ_pc;
@@ -134,9 +135,9 @@ always @(*) begin
     endcase
 
     if( do_en ) begin
-        next_pc = do_endhit ?
-                ( do_left==7'd1 ? redo_out : do_head ) : (
-              pc_halt ? pc : sequ_pc );
+        next_pc = pc_halt ? pc : (
+                do_endhit ?
+                ( do_left==7'd1 ? redo_out : do_head ) : sequ_pc );
     end else begin
         next_pc =
             enter_int ? 16'd1 : (

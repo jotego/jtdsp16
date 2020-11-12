@@ -81,6 +81,7 @@ module jtdsp16_ctrl(
     output reg        do_start,
     output reg [10:0] do_data,
     input             do_flush,
+    input             do_en,
     // X load control
     output            up_xram,
     output            up_xrom,

@@ -21,6 +21,7 @@ class DSP16emu {
     void    set_register( int rfield, int v );
     int64_t assign_high( int clr_mask, int64_t& dest, int val );
     int     sign_extend( int v, int msb=7 );
+    void    disasm(int op);
 
     int     Yparse( int Y, bool up_now );
     void    Yparse_write( int Y, int v );
@@ -676,6 +677,41 @@ bool DSP16emu::processDo() {
     else return false;
 }
 
+void DSP16emu::disasm(int op) {
+    const char* s;
+    switch( (op>>11)&0x1f ) {
+        case 0: case 1: s="goto JA"; break;
+        case 2: case 3: s="R=M (short)"; break;
+        case 4: s="F1 Y = a1[l]"; break;
+        case 5: s="F1 Z:aT[l]"; break;
+        case 6: s="F1 Y"; break;
+        case 7: s="F1 aT[l]=Y"; break;
+        case 8: s="at=R"; break;
+        case 9: case 11: s="R=aS"; break;
+        case 10: s="R=N (long)"; break;
+        case 12: s="Y=R"; break;
+        case 13: s="Z:R"; break;
+        case 14: printf("do/redo NI=%d, K=%d\n", (op>>7)&0xf, op&0x7f); s=nullptr; break;
+        case 15: s="R=Y"; break;
+        case 16: case 17: s="call JA"; break;
+        case 18: s="ifc CON F2"; break;
+        case 19: s="if  CON F2"; break;
+        case 20: s="F1 Y=y[l]"; break;
+        case 21: s="F1 Z:y[l]"; break;
+        case 22: s="F1 x=Y"; break;
+        case 23: s="F1 y[l]=Y"; break;
+        case 24: s="goto B"; break;
+        case 25: s="F1 y=a0 x=*pt++[i]"; break;
+        case 26: s="if CON goto"; break;
+        case 27: s="F1 y=a1 x=*pt++[i]"; break;
+        case 28: s="F1 Y = a0[l]"; break;
+        case 29: s="F1 Z:y  x=*pt++[i]"; break;
+        case 30: s="Reserved"; break;
+        case 31: s="F1 y=Y  x=*pt++[i]"; break;
+    }
+    if( s!=nullptr) puts(s);
+}
+
 int DSP16emu::eval() {
     int op = read_rom(pc++) &0xffff;
     int delta=0;
@@ -686,7 +722,10 @@ int DSP16emu::eval() {
     bool last_loop = processDo();
 
     if(!in_cache) next_pi = pc;
-    if(verbose) printf("OP=%04X (0x%X=%d)\n",op, opcode, opcode );
+    if(verbose) {
+        printf("OP=%04X (0x%X=%d) --> ",op, opcode, opcode );
+        disasm( op );
+    }
     update_regs();
     switch( opcode ) {
         case 0: // goto JA
@@ -736,7 +775,7 @@ int DSP16emu::eval() {
             //printf("R = imm    [%X] = %X\n", aux, aux2);
             set_register( aux, aux2 );
             break;
-        case 0xc: // Y=R
+        case 0xc: // 12, Y=R
             aux  = (op>>4)&0x3f;
             aux2 = get_register(aux);
             aux  = op&0xf;
@@ -750,11 +789,14 @@ int DSP16emu::eval() {
             if( aux!=0 ) {
                 cache_start=pc;
                 cache_end=pc+aux;
-                cache_first=true;
+            } else {
+                pc = cache_start; // re-do
             }
+            cache_first=true;
             cache_left = op&0x7f;
             if( verbose ) printf("Cache loop starts (NI=%d, loops=%d). Repeat %04X-%04X\n",
-                aux, cache_left-1, cache_start, cache_end );
+                aux, cache_left, cache_start, cache_end );
+            update_regs();
             delta = 1;
             break;
         case 0xf: // R=Y
@@ -826,7 +868,8 @@ int DSP16emu::eval() {
             next_y  = y  = aux;
             next_yl = yl = aux2;
             x = next_x = parse_pt(op);
-            delta = in_cache ? 1 : 2;
+            // delta = in_cache ? 1 : 2;
+            delta = 2;
             break;
         // case 28:
         case 31: // F1 y=Y x=*pt++[i]
@@ -836,7 +879,8 @@ int DSP16emu::eval() {
             y = next_y = aux;
             if( ((auc>>6)&1)==0 ) yl=next_yl=0;
             x = next_x = parse_pt(op);
-            delta = in_cache ? 1 : 2;
+            // delta = in_cache ? 1 : 2;
+            delta = 2;
             break;
         case 4: // F1 Y=a1
         case 28: // 0x1C
@@ -859,6 +903,7 @@ int DSP16emu::eval() {
         // default:
     }
     if( last_loop ) {
+        if( verbose ) printf("Extra tick added for last loop\n");
         delta++;
         update_regs();
     }
