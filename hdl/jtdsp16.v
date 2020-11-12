@@ -118,7 +118,7 @@ wire        goto_b;
 wire        call_ja;
 wire        icall;
 wire [11:0] i_field, pt_addr;
-wire        con_result;
+wire        con_result, con_check;
 wire        irq_latch;
 wire        xaau_ram_load, xaau_imm_load, xaau_acc_load;
 wire        do_start;
@@ -232,6 +232,7 @@ jtdsp16_ctrl u_ctrl(
     .st_a0h         ( st_a0h        ),
     .st_a1h         ( st_a1h        ),
     .con_result     ( con_result    ),
+    .con_check      ( con_check     ),
     .acc_sel        ( acc_sel       ),
     // X load control
     .up_xram        ( up_xram       ),
@@ -389,6 +390,8 @@ jtdsp16_dau u_dau(
     .rst            ( rst           ),
     .clk            ( clk           ),
     .cen            ( cen           ),
+    .pc_halt        ( pc_halt       ),
+    .con_check      ( con_check     ),
     // Decoder
     .dec_en         ( dau_dec_en    ),
     .special        ( dau_special   ),

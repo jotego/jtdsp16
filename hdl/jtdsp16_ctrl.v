@@ -22,6 +22,7 @@ module jtdsp16_ctrl(
     input             cen,
     // Instruction fields
     output reg        dau_dec_en,
+    output reg        con_check,
     output reg [ 4:0] t_field,
     output reg [ 4:0] c_field,
     output reg [ 2:0] r_field,
@@ -104,7 +105,7 @@ module jtdsp16_ctrl(
 );
 
 reg       x_field;
-reg       double, con_check;
+reg       double;
 wire      con_ok;
 // Y control
 reg       pre_step_sel, pre_ksel;

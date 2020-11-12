@@ -20,6 +20,7 @@ module jtdsp16_dau(
     input             rst,
     input             clk,
     input             cen,
+    input             pc_halt,
     input             dec_en,        // F1 decoder enable
     input             special,   // selects F2 output
     input      [ 2:0] r_field,
@@ -49,6 +50,7 @@ module jtdsp16_dau(
     output     [15:0] acc_dout,
     output reg [15:0] reg_dout,
     output reg        con_result,
+    input             con_check,
     // Debug
     output     [15:0] debug_x,
     output     [15:0] debug_y,
@@ -108,9 +110,12 @@ wire        sat_a1, sat_a0;
 wire        load_y, load_yl;
 wire        load_x, load_auc;
 wire        load_c0, load_c1, load_c2;
+reg         inc_c0, inc_c1;
+wire        inc_cen;
 wire        load_a0, load_a1;
 wire        f1_st, f2_st;  // F1/2 store operation
 
+assign inc_cen     = special | con_check;
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
 assign up_p        = dec_en && f_field[3:2]==2'b0 && !special;
@@ -169,6 +174,8 @@ assign debug_p   = p;
 // Condition check
 always @(*) begin
     up_lfsr = 0;
+    inc_c0  = 0;
+    inc_c1  = 0;
     case(c_field[4:1])
         4'd0: con_result =  lmi;
         4'd1: con_result =  leq;
@@ -178,8 +185,14 @@ always @(*) begin
             con_result = lfsr[31];
             up_lfsr    = 1;
         end
-        4'd5: con_result = ~c0[7]; // >=0
-        4'd6: con_result = ~c1[7]; // >=0
+        4'd5: begin
+            con_result = ~c0[7]; // >=0
+            inc_c0     = inc_cen;
+        end
+        4'd6: begin
+            con_result = ~c1[7]; // >=0
+            inc_c1     = inc_cen;
+        end
         4'd7: con_result = 1;
         4'd8: con_result = ~lmi & ~leq;
         default: con_result = 0; // should be 0?
@@ -254,7 +267,11 @@ always @(posedge clk, posedge rst) begin
         end
         // Counters
         if( load_c0 ) c0 <= load_data[7:0];
+        else if( inc_c0 && !pc_halt ) c0 <= c0 + 8'd1;
+
         if( load_c1 ) c1 <= load_data[7:0];
+        else if( inc_c1 && !pc_halt ) c1 <= c1 + 8'd1;
+
         if( load_c2 ) c2 <= load_data[7:0];
         // special registers
         if( load_auc ) auc <= load_data[6:0];

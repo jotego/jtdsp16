@@ -274,8 +274,8 @@ bool DSP16emu::CONparse( int op ) {
         case 2: v = llv; break;
         case 3: v = lmv; break;
         case 4: v = next_lfsr(); break;
-        case 5: v = (c0&0x80)==0; break; // positive
-        case 6: v = (c1&0x80)==0; break; // positive
+        case 5: v = (c0&0x80)==0; next_c0 = c0+1; break; // positive
+        case 6: v = (c1&0x80)==0; next_c1 = c1+1; break; // positive
         case 7: v = true; break;
         case 8: v = !lmi && !leq; break;
         default: printf("\tCON value (%d) is out of range ********\n", op&0x1f );
