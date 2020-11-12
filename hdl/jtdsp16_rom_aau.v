@@ -83,7 +83,7 @@ wire        any_load;
 
 wire        ret, iret, goto_pt, call_pt;
 wire        do_endhit, redo, do_loop;
-wire        enter_int;
+wire        enter_int, dis_shadow;
 
 assign      sequ_pc  = pc+1'd1;
 assign      i_ext    = { {4{i[11]}}, i };
@@ -105,6 +105,7 @@ assign      do_endhit= sequ_pc==do_end;
 assign      do_loop  = do_endhit && do_left>7'd1;
 assign      redo     = do_start && do_data[10:7]==4'd0;
 assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_en;
+assign      dis_shadow= enter_int || icall || redo;
 
 assign      pt_addr  = pt[11:0];
 
@@ -170,16 +171,17 @@ always @(posedge clk, posedge rst ) begin
         if( load_i   ) i  <= rnext[11:0];
 
         // Interrupt processing
-        if( enter_int || icall || redo ) begin
+        if( dis_shadow ) begin
             shadow <= 0;
         end else if( iret || (last_do_en && !do_en) ) shadow <= 1;
         iack <= enter_int;
 
         // Update PC
         pc <= next_pc;
-        if( shadow || load_pi ) begin
-            pi <= load_pi ? rnext : next_pc;
-        end
+        if( load_pi )
+            pi <= rnext;
+        else if( shadow )
+            pi <= sequ_pc;
 
         if( do_start ) begin
             if(do_data[10:7]!=4'd0) begin

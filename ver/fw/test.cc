@@ -305,7 +305,7 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     // ROM AAU
     g = g && rtl.pc() == emu.pc;
     g = g && rtl.pr() == emu.pr;
-    g = g && rtl.pi() == emu.pi;
+    //g = g && rtl.pi() == emu.pi;
     g = g && rtl.pt() == emu.pt;
     g = g && rtl.i()  == emu.i;
     // RAM AAU

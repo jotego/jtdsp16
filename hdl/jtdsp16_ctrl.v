@@ -251,7 +251,7 @@ always @(posedge clk, posedge rst) begin
             casez( rom_dout[15:11] ) // T
                 5'b0000?: begin // goto JA
                     goto_ja <= con_ok;
-                    pc_halt <= ~con_ok;
+                    pc_halt <= 1;
                     double  <= 1;
                 end
 
@@ -262,13 +262,13 @@ always @(posedge clk, posedge rst) begin
 
                 5'b1000?: begin // call JA
                     call_ja <= con_ok;
-                    pc_halt <= ~con_ok;
+                    pc_halt <= 1;
                     double  <= 1;
                 end
 
                 5'b11000: begin // goto B (ret, iret, goto pt, call pt)
                     goto_b  <= con_ok || (rom_dout[10:8]==3'b1); // iret is always executed
-                    pc_halt <= ~con_ok;
+                    pc_halt <= 1;
                     double  <= 1;
                 end
 
