@@ -1,6 +1,15 @@
-# jtdsp16
+# JTDSP16
 
-Verilog core compatible with ATT WE DSP16, famous for being the heart of CAPCOM Q-Sound games
+Verilog core compatible with ATT WE DSP16, famous for being the heart of CAPCOM Q-Sound games. Unless explicitely stated, the design follows the official documentation from ATT.
+
+Designed by Jose Tejada (aka jotego).
+
+You can show your appreciation through
+* [Patreon](https://patreon.com/topapate), by supporting releases
+* [Paypal](https://paypal.me/topapate), with a donation
+
+You can contact the author via Twitter at @topapate.
+
 
 # Macros
 
@@ -71,7 +80,11 @@ F1 Z:y  x=*pt++[i] | 29    | Yes         |  2
 Reserved           | 30    |             |
 F1 y=Y  x=*pt++[i] | 31    | Yes         |  2 / 1 in cache
 
-# Cache tests
+# The Cache
+
+The cache does not accept instructions that alter the program flow or that take two memory words (i.e. the long immediate instruction).
+
+## Cache tests
 
 Item        | Values         | Meaning
 ------------|----------------|----------------------------------
@@ -85,3 +98,17 @@ NI | K | Ticks | Out Double
 ---|---|-------|------------
 1  | 1 |  Odd  | No
 1  | 1 |  Odd  | No
+
+## Related Projects
+
+Other sound chips from the same author
+
+Chip                   | Repository
+-----------------------|------------
+YM2203, YM2612, YM2610 | [JT12](https://github.com/jotego/jt12)
+YM2151                 | [JT51](https://github.com/jotego/jt51)
+YM3526                 | [JTOPL](https://github.com/jotego/jtopl)
+YM2149                 | [JT49](https://github.com/jotego/jt49)
+sn76489an              | [JT89](https://github.com/jotego/jt89)
+OKI 6295               | [JT6295](https://github.com/jotego/jt6295)
+OKI MSM5205            | [JT5205](https://github.com/jotego/jt5205)

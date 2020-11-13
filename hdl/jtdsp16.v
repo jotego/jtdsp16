@@ -211,10 +211,9 @@ jtdsp16_ctrl u_ctrl(
     .xaau_ram_load  ( xaau_ram_load ),
     .xaau_imm_load  ( xaau_imm_load ),
     .xaau_acc_load  ( xaau_acc_load ),
+    // Cache
     .do_start       ( do_start      ),
     .do_data        ( do_data       ),
-    .do_flush       ( do_flush      ),
-    .do_en          ( do_en         ),
     // *pt++[i] reads
     .pt_read        ( pt_read       ),
     .xaau_istep     ( xaau_istep    ),
@@ -270,7 +269,6 @@ jtdsp16_ctrl u_ctrl(
     .sio_ram_load   ( sio_ram_load  ),
     // Data buses
     .rom_dout       ( rom_dout      ),
-    .cache_dout     ( cache_dout    ),
     .ext_dout       ( rb_din        ),
     // Debug
     .fault          ( fault         )
@@ -420,7 +418,6 @@ jtdsp16_dau u_dau(
     .ram_dout       ( ram_dout      ),
     .rom_dout       ( rom_dout      ),
     .long_imm       ( long_imm      ),
-    .cache_dout     ( cache_dout    ),
     .acc_dout       ( acc_dout      ),
     .reg_dout       ( r_dau         ),
     .pt_dout        ( pt_dout       ),

@@ -44,7 +44,6 @@ module jtdsp16_dau(
     input      [15:0] rom_dout,
     input      [15:0] rmux,
     input      [15:0] long_imm,
-    input      [15:0] cache_dout,
     input      [15:0] pt_dout,
 
     output     [15:0] acc_dout,

@@ -80,8 +80,6 @@ module jtdsp16_ctrl(
     // cache
     output reg        do_start,
     output reg [10:0] do_data,
-    input             do_flush,
-    input             do_en,
     // X load control
     output            up_xram,
     output            up_xrom,
@@ -99,7 +97,6 @@ module jtdsp16_ctrl(
 
     // Data buses
     input      [15:0] rom_dout,
-    output     [15:0] cache_dout,
     input      [15:0] ext_dout,
 
     // Debug
@@ -113,9 +110,24 @@ wire      con_ok;
 reg       pre_step_sel, pre_ksel;
 reg [1:0] pre_inc_sel;
 
+// do/redo loops
+reg [6:0] do_k_cnt, do_k;
+reg [3:0] do_ni_cnt, do_ni;
+reg       do_cnt_ld, do_redo, do_incache;
+wire      do_1stloop, do_out, do_busy;
+
+reg       sch_double;
+
 assign    long_imm = rom_dout;
 assign    con_ok   = ~con_check | con_result;
 assign    no_int   = ~double;
+
+// do/redo
+assign    do_busy    = do_k_cnt!=7'd0;
+assign    do_1stloop = do_ni_cnt==4'd1 && do_k_cnt==do_k && do_busy;
+assign    do_out     = do_busy && (
+                        (do_ni_cnt==4'd1 && do_k_cnt==7'd1) ||
+                        (do_ni==4'd0 && do_k_cnt==7'd2) );
 
 always @(*) begin
     pre_step_sel = 0;
@@ -141,6 +153,25 @@ always @(*) begin
     endcase
 end
 
+// DO counter
+always @(posedge clk, posedge rst) begin
+    if(rst) begin
+        do_ni_cnt <= 4'd0;
+        do_k_cnt  <= 7'd0;
+    end else if(cen) begin
+        if( do_cnt_ld ) begin
+            do_ni_cnt <= do_ni;
+            do_k_cnt  <= do_k;
+        end else if(!double) begin
+            do_ni_cnt <= do_ni_cnt==4'd0 ? do_ni : do_ni_cnt-4'd1;
+            if( do_ni_cnt==4'd0 && do_k_cnt!=7'd0 ) begin
+                do_k_cnt <= do_k_cnt-7'd1;
+            end
+        end
+    end
+end
+
+
 // Decode instruction
 always @(posedge clk, posedge rst) begin
     if(rst) begin
@@ -165,6 +196,12 @@ always @(posedge clk, posedge rst) begin
         do_data       <= 11'd0;
         do_start      <= 0;
         pt_read       <= 0;
+        // Cache
+        do_cnt_ld     <= 0;
+        do_redo       <= 0;
+        do_ni         <= 4'd0;
+        do_k          <= 7'd0;
+        do_incache    <= 0;
         // *r++ control lines:
         y_field       <= 2'b0;
         step_sel      <= 0;
@@ -193,6 +230,7 @@ always @(posedge clk, posedge rst) begin
         sio_acc_load  <= 0;
         sio_ram_load  <= 0;
 
+        sch_double    <= 0;
         fault         <= 0;
     end else if(cen) begin
         t_field       <= rom_dout[15:11];
@@ -214,6 +252,7 @@ always @(posedge clk, posedge rst) begin
         post_load     <= 0;
         pc_halt       <= 0;
         con_check     <= 0;
+        sch_double    <= 0;
 
         // XAAU
         goto_ja       <= 0;
@@ -225,6 +264,9 @@ always @(posedge clk, posedge rst) begin
         do_start      <= 0;
         xaau_istep    <= 0;
         pt_read       <= 0;
+
+        // Cache
+        do_cnt_ld     <= 0;
 
         // DAU
         dau_dec_en    <= 0;
@@ -249,13 +291,13 @@ always @(posedge clk, posedge rst) begin
         sio_acc_load  <= 0;
         sio_ram_load  <= 0;
 
-        if(!double && !do_flush) begin
+        if( !double ) begin
             casez( rom_dout[15:11] ) // T
                 5'b0000?: begin // goto JA
                     goto_ja <= con_ok;
                     pc_halt <= 1;
                     double  <= 1;
-                    if( do_en ) fault <= 1; // illegal instruction
+                    if( do_busy ) fault <= 1; // illegal instruction
                 end
 
                 5'b0001?: begin // short imm j, k, rb, re
@@ -267,14 +309,14 @@ always @(posedge clk, posedge rst) begin
                     call_ja <= con_ok;
                     pc_halt <= 1;
                     double  <= 1;
-                    if( do_en ) fault <= 1; // illegal instruction
+                    if( do_busy ) fault <= 1; // illegal instruction
                 end
 
                 5'b11000: begin // goto B (ret, iret, goto pt, call pt)
                     goto_b  <= con_ok || (rom_dout[10:8]==3'b1); // iret is always executed
                     pc_halt <= 1;
                     double  <= 1;
-                    if( do_en ) fault <= 1; // illegal instruction
+                    if( do_busy ) fault <= 1; // illegal instruction
                 end
 
                 5'b01000: begin // aT=R
@@ -308,7 +350,7 @@ always @(posedge clk, posedge rst) begin
                     pio_imm_load  <= rom_dout[9:6]==4'b0111; // Parallel I/O
                     r_field       <= rom_dout[6:4];
                     double        <= 1;
-                    if( do_en ) fault <= 1; // illegal instruction
+                    if( do_busy ) fault <= 1; // illegal instruction
                 end
 
                 5'b01111, // R=Y RAM load to r0-r3
@@ -462,17 +504,36 @@ always @(posedge clk, posedge rst) begin
                     // else trigger icall - not implemented
                 end
                 5'b01110: begin // do
-                    do_data  <= rom_dout[10:0];
                     do_start <= 1;
-                    pc_halt  <= rom_dout[10:7]==4'd0;
-                    double   <= rom_dout[10:7]==4'd0;
+                    do_data  <= rom_dout[10:0];
+                    do_k     <= rom_dout[ 6:0];
+                    do_cnt_ld <= 1;
+                    if( rom_dout[10:7]==4'd0 ) begin // redo
+                        pc_halt   <= 1;
+                        double    <= 1;
+                        do_redo   <= 1;
+                    end else begin // do
+                        do_ni     <= rom_dout[10:7]-4'd1;
+                        do_redo   <= 0;
+                        if( rom_dout[10:7]==4'd1 ) begin
+                            // when NI=1 the next instruction must be executed
+                            // in two cycles but there is no time to catch it
+                            // via the do_1stloop signal
+                            sch_double <= 1;
+                        end
+                    end
                 end
                 default: fault<=1;
             endcase
         end
-        /*else if( do_flush ) begin
+        if( (do_1stloop && !do_redo) || do_out || sch_double ) begin
+            // last instruction of 1st loop in DO takes two cycles
+            // last instruction of whole DO/REDO sequence takes two cycles
+            if( do_1stloop ) do_incache <= 1;
+            else if( do_out ) do_incache <= 0;
             pc_halt <= 1;
-        end*/
+            double  <= 1;
+        end
     end
 end
 
