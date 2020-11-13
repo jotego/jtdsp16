@@ -64,7 +64,7 @@ int random_tests( ParseArgs& args ) {
     if( rom.random( // GOTOJA |
         SHORTIMM |
         LONGIMM |
-        DO_REDO |
+        //DO_REDO |
         AT_R |
         R_A0 |
         R_A1 |

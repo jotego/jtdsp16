@@ -42,7 +42,7 @@ The files must be in the simulation directory.
 
 Nemonic            |  T    | Cacheable   | Cycles
 -------------------|-------|-------------|---------
-goto JA            | 0/1   | No          |  2
+goto JA            | 0/1   |      No     |  2
 R=M (short)        | 2/3   | Yes         |  1
 F1 Y = a1[l]       | 4     | Yes         |  2
 F1 Z:aT[l]         | 5     | Yes         |  2
@@ -50,23 +50,38 @@ F1 Y               | 6     | Yes         |  1
 F1 aT[l]=Y         | 7     | Yes         |  1
 at=R               | 8     | Yes         |  2
 R=aS               | 9/11  | Yes         |  2
-R=N (long)         | 10    | Yes         |  2
+R=N (long)         | 10    |       No    |  2
 Y=R                | 12    | Yes         |  2
 Z:R                | 13    | Yes         |  2
-do/redo            | 14    | No          |  1
+do/redo            | 14    |       No    |  1
 R=Y                | 15    | Yes         |  2
-call JA            | 16/17 | No          |  2
+call JA            | 16/17 |       No    |  2
 ifc CON F2         | 18    | Yes         |  1
 if  CON F2         | 19    | Yes         |  1
 F1 Y=y[l]          | 20    | Yes         |  2
 F1 Z:y[l]          | 21    | Yes         |  2
 F1 x=Y             | 22    | Yes         |  1
 F1 y[l]=Y          | 23    | Yes         |  1
-goto B             | 24    | No          |  2
+goto B             | 24    |       No    |  2
 F1 y=a0 x=*pt++[i] | 25    | Yes         |  2 / 1 in cache
-if CON goto        | 26    | No          |  1+2
+if CON goto        | 26    |       No    |  1+2
 F1 y=a1 x=*pt++[i] | 27    | Yes         |  2 / 1 in cache
 F1 Y = a0[l]       | 28    | Yes         |  2
 F1 Z:y  x=*pt++[i] | 29    | Yes         |  2
 Reserved           | 30    |             |
 F1 y=Y  x=*pt++[i] | 31    | Yes         |  2 / 1 in cache
+
+# Cache tests
+
+Item        | Values         | Meaning
+------------|----------------|----------------------------------
+NI          | 1,2 or 15      | number of instructions
+K           | 2 or 127       | number of loops
+Ticks       | odd or even    | count of clock cycles needed for instructions in the loop
+Out Double  | yes or no      | first instruction out of the loop take two cycles
+Redo        | yes or no      | the loop is executed as a do or as a redo
+
+NI | K | Ticks | Out Double
+---|---|-------|------------
+1  | 1 |  Odd  | No
+1  | 1 |  Odd  | No

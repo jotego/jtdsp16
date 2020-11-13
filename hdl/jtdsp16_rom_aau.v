@@ -69,10 +69,15 @@ reg  [15:0] pc,     // Program Counter
             pr,     // Program Return
             pi,     // Program Interrupt
             pt,     // Table Pointer
-            rnext,
-            do_head, redo_out, do_end;
+            rnext;
 reg         shadow;     // normal execution or inside IRQ
-reg         redo_en, last_do_en, redo_aux;
+
+// Do loops
+reg  [15:0] do_head, redo_out;
+wire [15:0] do_addr;
+reg  [ 4:0] do_pc, next_do_pc;
+reg  [ 3:0] do_ni;
+reg         redo_en, last_do_en, redo_aux, do_record;
 reg  [ 6:0] do_left;
 
 wire [15:0] sequ_pc;
@@ -84,8 +89,9 @@ wire        load_pt, load_pi, load_pr ,load_i;
 wire        any_load;
 
 wire        ret, iret, goto_pt, call_pt;
-wire        do_endhit, redo, do_loop;
 wire        enter_int, dis_shadow;
+
+wire        do_endhit, do_prehit, redo, do_loop;
 
 assign      sequ_pc  = pc+1'd1;
 assign      i_ext    = { {4{i[11]}}, i };
@@ -102,14 +108,20 @@ assign      load_pr  = (any_load && r_field==3'd1) || copy_pc;
 assign      load_pi  =  any_load && r_field==3'd2;
 assign      load_i   =  any_load && r_field==3'd3;
 
-assign      rom_addr = pc;
-assign      do_endhit= sequ_pc>do_end;
-assign      do_loop  = do_endhit && do_left>7'd1;
-assign      redo     = do_start && do_data[10:7]==4'd0;
+assign      rom_addr = do_en ? do_addr : pc;
+
+assign      do_endhit= do_pc == {1'b0, do_ni};
+assign      do_prehit= do_pc == {1'b0, do_ni} && do_left==7'd1;
 assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_en;
 assign      dis_shadow= enter_int || icall || redo || do_start;
-
 assign      pt_addr  = pt[11:0];
+
+// Do loop
+assign      do_addr  = do_head + { 12'd0, do_pc[3:0] };
+assign      do_loop  = do_endhit && do_left>7'd1;
+assign      redo     = do_start && do_data[10:7]==4'd0;
+//assign      do_flush = do_prehit;
+
 
 // Debugging
 assign      debug_pc = pc;
@@ -135,9 +147,7 @@ always @(*) begin
     endcase
 
     if( do_en ) begin
-        next_pc = pc_halt ? pc : (
-                do_endhit ?
-                ( do_left==7'd1 ? redo_out : do_head ) : sequ_pc );
+        next_pc = pc;
     end else begin
         next_pc =
             enter_int ? 16'd1 : (
@@ -148,6 +158,8 @@ always @(*) begin
             iret                 ? pi : (
             pc_halt              ? pc : sequ_pc ))))));
     end
+
+    next_do_pc = pc_halt ? do_pc : ( do_pc[3:0]==do_ni ? 5'd0 : (do_pc + 5'd1));
 end
 
 always @(posedge clk, posedge rst ) begin
@@ -157,19 +169,21 @@ always @(posedge clk, posedge rst ) begin
         pi      <= 16'd0;
         pt      <= 16'd0;
         i       <= 12'd0;
-        do_en   <= 0;
-        redo_en <= 0;
-        redo_out<= 16'd0;
         shadow  <= 1;
         iack    <= 1;
+        // Do registers
+        do_en   <= 0;
+        do_ni   <= 4'd0;
+        redo_en <= 0;
+        redo_out<= 16'd0;
         do_left <= 7'd0;
         last_do_en <= 0;
-        do_end     <= 0;
-        do_flush   <= 0;
+        do_record  <= 0;
         do_head    <= 16'd0;
+        do_pc      <= 5'd0;
     end else if(cen) begin
         last_do_en <= do_en;
-        do_flush   <= 0;
+        do_flush <= do_en & do_prehit;
         if( load_pt  ) pt <= pt_load ? next_pt : rnext;
         if( load_pr  ) pr <= rnext;
         if( load_i   ) i  <= rnext[11:0];
@@ -181,7 +195,8 @@ always @(posedge clk, posedge rst ) begin
         iack <= enter_int;
 
         // Update PC
-        pc <= next_pc;
+        pc    <= next_pc;
+        do_pc <= next_do_pc;
         if( load_pi )
             pi <= rnext;
         else if( shadow && !do_start)
@@ -190,28 +205,31 @@ always @(posedge clk, posedge rst ) begin
         if( do_start ) begin
             if(do_data[10:7]!=4'd0) begin
                 do_head  <= pc;
-                do_end   <= pc + {12'd0,do_data[10:7]};
-                redo_out <= pc + {12'd0,do_data[10:7]};
+                do_ni    <= do_data[10:7]-4'd1;
                 redo_aux <= 0;
-                if( do_data[10:7]==4'd1 )
-                    pc <= pc;
             end else begin
                 redo_out <= pc;
                 pc       <= do_head;
                 redo_aux <= 1;
             end
-            do_left  <= do_data[6:0];
-            do_en    <= 1;
+            do_pc    <= do_data[10:7] == 4'd0 ? 5'd0 : 5'd1;
+            do_left  <= do_data[6:0];// - 7'd1;// (do_data[10:7] == 4'd0 ? 7'd1 : 7'd0);
+            do_record<= 1;
+            // do_en    <= 1;
         end else begin
-            redo_aux <= 0;
-            if( do_en && do_endhit && !pc_halt && !redo_aux) begin
-                if( do_left > 7'd0 )
+            if( do_endhit ) begin
+                if( do_record ) begin
+                    do_record <= 0;
+                    do_en <= 1; // execution from cache will start in next iteration
+                end
+                if( do_en && do_left > 7'd0 ) begin
                     do_left <= do_left-7'd1;
-                if( do_left==7'd1 ) begin
-                    do_en    <= 0;
-                    do_flush <= 1;
                 end
             end
+            if( do_prehit ) begin
+                do_en    <= 0;
+            end
+            // redo_aux <= 0;
         end
     end
 end

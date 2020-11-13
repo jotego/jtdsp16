@@ -255,6 +255,7 @@ always @(posedge clk, posedge rst) begin
                     goto_ja <= con_ok;
                     pc_halt <= 1;
                     double  <= 1;
+                    if( do_en ) fault <= 1; // illegal instruction
                 end
 
                 5'b0001?: begin // short imm j, k, rb, re
@@ -266,12 +267,14 @@ always @(posedge clk, posedge rst) begin
                     call_ja <= con_ok;
                     pc_halt <= 1;
                     double  <= 1;
+                    if( do_en ) fault <= 1; // illegal instruction
                 end
 
                 5'b11000: begin // goto B (ret, iret, goto pt, call pt)
                     goto_b  <= con_ok || (rom_dout[10:8]==3'b1); // iret is always executed
                     pc_halt <= 1;
                     double  <= 1;
+                    if( do_en ) fault <= 1; // illegal instruction
                 end
 
                 5'b01000: begin // aT=R
@@ -305,6 +308,7 @@ always @(posedge clk, posedge rst) begin
                     pio_imm_load  <= rom_dout[9:6]==4'b0111; // Parallel I/O
                     r_field       <= rom_dout[6:4];
                     double        <= 1;
+                    if( do_en ) fault <= 1; // illegal instruction
                 end
 
                 5'b01111, // R=Y RAM load to r0-r3
