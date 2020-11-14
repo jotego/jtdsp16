@@ -39,7 +39,9 @@ module jtdsp16_rom_aau(
     output     [11:0] pt_addr,
     // do loop
     input             do_start,
+    input             do_redo,
     input             do_out,
+    input             do_short,
     input      [10:0] do_data,
     input      [ 3:0] do_pc,
     // instruction fields
@@ -179,7 +181,7 @@ always @(posedge clk, posedge rst ) begin
 
         if( do_start ) begin
             do_incache <= 1;
-            do_head    <= pc[11:0]-1'd1;
+            if( !do_redo ) do_head <= pc[11:0] - (do_short ? 1'd0 : 1'd1 );
         end else if( do_out )
             do_incache <= 0;
 

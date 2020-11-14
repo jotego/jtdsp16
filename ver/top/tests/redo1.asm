@@ -4,9 +4,7 @@ do 4 {
     a1=a1+y
 }
 
-r0=0xcafe
-redo 6
-r1=0xbee
+redo 4
 
 end:
 goto end

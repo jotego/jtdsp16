@@ -80,6 +80,8 @@ module jtdsp16_ctrl(
     // cache
     output            do_start,
     output            do_out,
+    output reg        do_short,
+    output reg        do_redo,
     output reg [10:0] do_data,
     output     [ 3:0] do_pc,
     // X load control
@@ -115,10 +117,8 @@ reg [1:0] pre_inc_sel;
 // do/redo loops
 reg [6:0] do_k_cnt, do_k;
 reg [3:0] do_ni_cnt, do_ni;
-reg       do_cnt_ld, do_redo, do_incache;
+reg       do_cnt_ld, do_incache, do_1done;
 wire      do_1stloop, do_busy, do_over;
-
-reg       sch_double;
 
 assign    long_imm = rom_dout;
 assign    con_ok   = ~con_check | con_result;
@@ -127,9 +127,9 @@ assign    no_int   = ~double;
 // do/redo
 assign    do_over    = do_ni_cnt == do_ni;
 assign    do_pc      = do_ni_cnt;
-assign    do_start   = do_1stloop;
+assign    do_start   = (!do_redo && do_1stloop) || (do_redo && !do_busy);
 assign    do_busy    = do_k_cnt!=7'd0;
-assign    do_1stloop = do_ni_cnt==4'd1 && do_k_cnt==do_k && do_busy;
+assign    do_1stloop = ((do_ni_cnt==4'd1 && do_k_cnt==do_k && do_busy) || do_short) && !do_1done;
 assign    do_out     = do_busy && do_over && do_k_cnt==7'd1;
 //                       ((do_ni_cnt==4'd1 && do_k_cnt==7'd1) ||
 //                        (do_ni==4'd0 && do_k_cnt==7'd2) );
@@ -165,7 +165,7 @@ always @(posedge clk, posedge rst) begin
         do_k_cnt  <= 7'd0;
     end else if(cen) begin
         if( do_cnt_ld ) begin
-            do_ni_cnt <= do_ni;
+            do_ni_cnt <= (do_redo||do_short) ? 4'd0 : 4'd1;
             do_k_cnt  <= do_k;
         end else if(!double) begin
             do_ni_cnt <= do_over ? 4'd0 : do_ni_cnt+4'd1;
@@ -206,6 +206,7 @@ always @(posedge clk, posedge rst) begin
         do_ni         <= 4'd0;
         do_k          <= 7'd0;
         do_incache    <= 0;
+        do_1done      <= 0;
         // *r++ control lines:
         y_field       <= 2'b0;
         step_sel      <= 0;
@@ -234,7 +235,7 @@ always @(posedge clk, posedge rst) begin
         sio_acc_load  <= 0;
         sio_ram_load  <= 0;
 
-        sch_double    <= 0;
+        do_short    <= 0;
         fault         <= 0;
     end else if(cen) begin
         t_field       <= rom_dout[15:11];
@@ -256,7 +257,7 @@ always @(posedge clk, posedge rst) begin
         post_load     <= 0;
         pc_halt       <= 0;
         con_check     <= 0;
-        sch_double    <= 0;
+        do_short    <= 0;
 
         // XAAU
         goto_ja       <= 0;
@@ -508,12 +509,13 @@ always @(posedge clk, posedge rst) begin
                 end
                 5'b01110: begin // do
                     do_data  <= rom_dout[10:0];
-                    do_k     <= rom_dout[ 6:0];
                     do_cnt_ld <= 1;
+                    do_1done  <= 0;
                     if( rom_dout[10:7]==4'd0 ) begin // redo
                         pc_halt   <= 1;
                         double    <= 1;
                         do_redo   <= 1;
+                        do_k      <= rom_dout[ 6:0];
                     end else begin // do
                         do_ni     <= rom_dout[10:7]-4'd1;
                         do_redo   <= 0;
@@ -521,20 +523,27 @@ always @(posedge clk, posedge rst) begin
                             // when NI=1 the next instruction must be executed
                             // in two cycles but there is no time to catch it
                             // via the do_1stloop signal
-                            sch_double <= 1;
+                            do_short <= 1;
+                            do_k     <= rom_dout[ 6:0]-7'd1;
+                        end else begin
+                            do_k     <= rom_dout[ 6:0];
                         end
                     end
                 end
                 default: fault<=1;
             endcase
         end
-        if( (do_1stloop && !do_redo) || do_out || sch_double ) begin
+        if( (do_1stloop && !do_redo) || do_out ) begin
             // last instruction of 1st loop in DO takes two cycles
             // last instruction of whole DO/REDO sequence takes two cycles
             if( do_1stloop ) do_incache <= 1;
-            else if( do_out ) do_incache <= 0;
-            pc_halt <= 1;
-            double  <= 1;
+            else if( do_out ) begin
+                do_incache <= 0;
+                do_redo    <= 0;
+            end
+            pc_halt  <= 1;
+            double   <= 1;
+            do_1done <= 1;
         end
     end
 end
