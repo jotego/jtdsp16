@@ -262,9 +262,12 @@ int assemble( ifstream& fin, Bin& bin ) {
         } else
         if( strchr(line,'=') ) {
             char *dest, *orig;
+            bool move=false;
 
-            if( strncmp(line,"move",4)==0 )
-                line+=4; // "move" is simply ignored
+            if( strncmp(line,"move",4)==0 ) {
+                line+=4;
+                move=true;
+            }
 
             dest = strtok(line, " \t=");
             if( dest==NULL ) continue;
@@ -275,7 +278,7 @@ int assemble( ifstream& fin, Bin& bin ) {
             // cout << "Orig = " << orig << " Dest = " << dest << '\n';
             int rfield=make_rfield(dest);
             //cout << "DEST=" << dest << '\n';
-            if( is_imm(orig, aux) ) {
+            if( is_imm(orig, aux)  && !move ) {
                 if( rfield==-1 ) BAD_LINE(("(imm) Bad register name "+string(dest)))
                 if( aux < 512 && aux>=-257 && rfield<8 && rfield>=0 ) {
                     // Short immediate
@@ -300,10 +303,19 @@ int assemble( ifstream& fin, Bin& bin ) {
             } else
             if( is_ram(dest, aux) ) { // Write to RAM
                 rfield=make_rfield(orig);
-                if( rfield==-1 ) BAD_LINE(("(ram write) Bad register name "+string(orig)))
-                opcode = 0xC << 11;
-                opcode |= (rfield)<<4;
-                opcode |= aux;
+                if( rfield==-1 ) {
+                    int as;
+                    if( !is_aTR(orig, as) ) BAD_LINE(("(ram write) Bad register name "+string(orig)))
+                    opcode = ( as ? 4 : 28) << 11;
+                    opcode |= aux;
+                    opcode |= (6<<5); // F1 NOP
+                    opcode |= 0x10; // select high part of a0/a1
+
+                } else {
+                    opcode = 0xC << 11;
+                    opcode |= (rfield)<<4;
+                    opcode |= aux;
+                }
                 cache.push(opcode);
             } else
             if( is_aTR(dest, aux)) {

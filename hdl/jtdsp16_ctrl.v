@@ -82,6 +82,7 @@ module jtdsp16_ctrl(
     output            do_out,
     output reg        do_short,
     output reg        do_redo,
+    output reg        do_save,
     output reg [10:0] do_data,
     output     [ 3:0] do_pc,
     // X load control
@@ -129,8 +130,8 @@ assign    do_over    = do_ni_cnt == do_ni;
 assign    do_pc      = do_ni_cnt;
 assign    do_start   = (!do_redo && do_1stloop) || (do_redo && !do_busy);
 assign    do_busy    = do_k_cnt!=7'd0;
-assign    do_1stloop = ((do_ni_cnt==4'd1 && do_k_cnt==do_k && do_busy) || do_short) && !do_1done;
-assign    do_out     = do_busy && do_over && do_k_cnt==7'd1;
+assign    do_1stloop = ((do_over && do_k_cnt==do_k && do_busy) || do_short) && !do_1done;
+assign    do_out     = do_busy && do_over && do_k_cnt==7'd1 && !double;
 //                       ((do_ni_cnt==4'd1 && do_k_cnt==7'd1) ||
 //                        (do_ni==4'd0 && do_k_cnt==7'd2) );
 
@@ -207,6 +208,7 @@ always @(posedge clk, posedge rst) begin
         do_k          <= 7'd0;
         do_incache    <= 0;
         do_1done      <= 0;
+        do_save       <= 0;
         // *r++ control lines:
         y_field       <= 2'b0;
         step_sel      <= 0;
@@ -271,6 +273,7 @@ always @(posedge clk, posedge rst) begin
 
         // Cache
         do_cnt_ld     <= 0;
+        do_save       <= 0;
 
         // DAU
         dau_dec_en    <= 0;
@@ -519,6 +522,7 @@ always @(posedge clk, posedge rst) begin
                     end else begin // do
                         do_ni     <= rom_dout[10:7]-4'd1;
                         do_redo   <= 0;
+                        do_save   <= 1;
                         if( rom_dout[10:7]==4'd1 ) begin
                             // when NI=1 the next instruction must be executed
                             // in two cycles but there is no time to catch it

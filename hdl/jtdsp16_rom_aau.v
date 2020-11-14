@@ -41,6 +41,7 @@ module jtdsp16_rom_aau(
     input             do_start,
     input             do_redo,
     input             do_out,
+    input             do_save,
     input             do_short,
     input      [10:0] do_data,
     input      [ 3:0] do_pc,
@@ -179,9 +180,9 @@ always @(posedge clk, posedge rst ) begin
         else if( shadow && !do_start)
             pi <= sequ_pc;
 
+        if( do_save && !do_redo ) do_head <= pc[11:0]; // - (do_short ? 1'd0 : 1'd1 );
         if( do_start ) begin
             do_incache <= 1;
-            if( !do_redo ) do_head <= pc[11:0] - (do_short ? 1'd0 : 1'd1 );
         end else if( do_out )
             do_incache <= 0;
 

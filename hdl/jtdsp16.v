@@ -123,7 +123,7 @@ wire        irq_latch;
 wire        xaau_ram_load, xaau_imm_load, xaau_acc_load;
 wire        pt_read, xaau_istep;
 // Do/Redo
-wire        do_start, do_out, do_short, do_redo;
+wire        do_start, do_out, do_short, do_redo, do_save;
 wire [ 3:0] do_pc;
 wire [10:0] do_data;
 
@@ -217,6 +217,7 @@ jtdsp16_ctrl u_ctrl(
     .do_start       ( do_start      ),
     .do_redo        ( do_redo       ),
     .do_out         ( do_out        ),
+    .do_save        ( do_save       ),
     .do_short       ( do_short      ),
     .do_data        ( do_data       ),
     .do_pc          ( do_pc         ),
@@ -320,6 +321,7 @@ jtdsp16_rom_aau u_rom_aau(
     // Do loop
     .do_start   ( do_start      ),
     .do_redo    ( do_redo       ),
+    .do_save    ( do_save       ),
     .do_out     ( do_out        ),
     .do_data    ( do_data       ),
     .do_pc      ( do_pc         ),
