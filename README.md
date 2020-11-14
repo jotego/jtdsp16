@@ -88,6 +88,12 @@ The cache cannot be used on external memory. This might be different on original
 
 ## Cache tests
 
+Cache loop is tricky because of
+
+* Double cycle instructions may affect the loop control
+* Single instruction loops are an exception (NI=1)
+* Output PC value may be altered when the instruction before the loop start takes two cycles
+
 Item        | Values         | Meaning
 ------------|----------------|----------------------------------
 NI          | 1,2 or 15      | number of instructions

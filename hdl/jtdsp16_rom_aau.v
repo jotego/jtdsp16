@@ -106,7 +106,7 @@ assign      load_pr  = (any_load && r_field==3'd1) || copy_pc;
 assign      load_pi  =  any_load && r_field==3'd2;
 assign      load_i   =  any_load && r_field==3'd3;
 
-assign      do_addr  = do_head + { 4'd0, do_pc };
+assign      do_addr  = do_head + { 8'd0, do_pc };
 assign      rom_addr = do_incache ? {4'd0, do_addr } : pc;
 
 assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_incache;
@@ -161,7 +161,7 @@ always @(posedge clk, posedge rst ) begin
         iack    <= 1;
         // Do registers
         do_incache <= 0;
-        do_head    <= 16'd0;
+        do_head    <= 12'd0;
     end else if(cen) begin
         if( load_pt  ) pt <= pt_load ? next_pt : rnext;
         if( load_pr  ) pr <= rnext;
