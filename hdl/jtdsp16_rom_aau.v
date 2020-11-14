@@ -39,9 +39,9 @@ module jtdsp16_rom_aau(
     output     [11:0] pt_addr,
     // do loop
     input             do_start,
+    input             do_out,
     input      [10:0] do_data,
-    output reg        do_flush,
-    output reg        do_en,
+    input      [ 3:0] do_pc,
     // instruction fields
     input      [ 2:0] r_field,
     input      [11:0] i_field,
@@ -73,12 +73,9 @@ reg  [15:0] pc,     // Program Counter
 reg         shadow;     // normal execution or inside IRQ
 
 // Do loops
-reg  [15:0] do_head, redo_out;
-wire [15:0] do_addr;
-reg  [ 4:0] do_pc, next_do_pc;
-reg  [ 3:0] do_ni;
-reg         redo_en, last_do_en, redo_aux, do_record;
-reg  [ 6:0] do_left;
+wire [11:0] do_addr;
+reg         do_incache;
+reg  [11:0] do_head;
 
 wire [15:0] sequ_pc;
 reg  [15:0] next_pc, next_pt;
@@ -90,8 +87,6 @@ wire        any_load;
 
 wire        ret, iret, goto_pt, call_pt;
 wire        enter_int, dis_shadow;
-
-wire        do_endhit, do_prehit, redo, do_loop;
 
 assign      sequ_pc  = pc+1'd1;
 assign      i_ext    = { {4{i[11]}}, i };
@@ -108,20 +103,12 @@ assign      load_pr  = (any_load && r_field==3'd1) || copy_pc;
 assign      load_pi  =  any_load && r_field==3'd2;
 assign      load_i   =  any_load && r_field==3'd3;
 
-assign      rom_addr = do_en ? do_addr : pc;
+assign      do_addr  = do_head + { 4'd0, do_pc };
+assign      rom_addr = do_incache ? {4'd0, do_addr } : pc;
 
-assign      do_endhit= do_pc == {1'b0, do_ni};
-assign      do_prehit= do_pc == {1'b0, do_ni} && do_left==7'd1;
-assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_en;
-assign      dis_shadow= enter_int || icall || redo || do_start;
+assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_incache;
+assign      dis_shadow= enter_int || icall || do_start;
 assign      pt_addr  = pt[11:0];
-
-// Do loop
-assign      do_addr  = do_head + { 12'd0, do_pc[3:0] };
-assign      do_loop  = do_endhit && do_left>7'd1;
-assign      redo     = do_start && do_data[10:7]==4'd0;
-//assign      do_flush = do_prehit;
-
 
 // Debugging
 assign      debug_pc = pc;
@@ -146,8 +133,8 @@ always @(*) begin
         2'd3: reg_dout = { {4{i[11]}}, i };
     endcase
 
-    if( do_en ) begin
-        next_pc = pc;
+    if( do_incache ) begin
+        next_pc = pc; // hold it
     end else begin
         next_pc =
             enter_int ? 16'd1 : (
@@ -158,8 +145,6 @@ always @(*) begin
             iret                 ? pi : (
             pc_halt              ? pc : sequ_pc ))))));
     end
-
-    next_do_pc = pc_halt ? do_pc : ( do_pc[3:0]==do_ni ? 5'd0 : (do_pc + 5'd1));
 end
 
 always @(posedge clk, posedge rst ) begin
@@ -172,18 +157,9 @@ always @(posedge clk, posedge rst ) begin
         shadow  <= 1;
         iack    <= 1;
         // Do registers
-        do_en   <= 0;
-        do_ni   <= 4'd0;
-        redo_en <= 0;
-        redo_out<= 16'd0;
-        do_left <= 7'd0;
-        last_do_en <= 0;
-        do_record  <= 0;
+        do_incache <= 0;
         do_head    <= 16'd0;
-        do_pc      <= 5'd0;
     end else if(cen) begin
-        last_do_en <= do_en;
-        do_flush <= do_en & do_prehit;
         if( load_pt  ) pt <= pt_load ? next_pt : rnext;
         if( load_pr  ) pr <= rnext;
         if( load_i   ) i  <= rnext[11:0];
@@ -191,46 +167,22 @@ always @(posedge clk, posedge rst ) begin
         // Interrupt processing
         if( dis_shadow ) begin
             shadow <= 0;
-        end else if( iret || (last_do_en && !do_en) ) shadow <= 1;
+        end else if( iret || !do_incache ) shadow <= 1;
         iack <= enter_int;
 
         // Update PC
         pc    <= next_pc;
-        do_pc <= next_do_pc;
         if( load_pi )
             pi <= rnext;
         else if( shadow && !do_start)
             pi <= sequ_pc;
 
         if( do_start ) begin
-            if(do_data[10:7]!=4'd0) begin
-                do_head  <= pc;
-                do_ni    <= do_data[10:7]-4'd1;
-                redo_aux <= 0;
-            end else begin
-                redo_out <= pc;
-                pc       <= do_head;
-                redo_aux <= 1;
-            end
-            do_pc    <= do_data[10:7] == 4'd0 ? 5'd0 : 5'd1;
-            do_left  <= do_data[6:0];// - 7'd1;// (do_data[10:7] == 4'd0 ? 7'd1 : 7'd0);
-            do_record<= 1;
-            // do_en    <= 1;
-        end else begin
-            if( do_endhit ) begin
-                if( do_record ) begin
-                    do_record <= 0;
-                    do_en <= 1; // execution from cache will start in next iteration
-                end
-                if( do_en && do_left > 7'd0 ) begin
-                    do_left <= do_left-7'd1;
-                end
-            end
-            if( do_prehit ) begin
-                do_en    <= 0;
-            end
-            // redo_aux <= 0;
-        end
+            do_incache <= 1;
+            do_head    <= pc[11:0]-1'd1;
+        end else if( do_out )
+            do_incache <= 0;
+
     end
 end
 

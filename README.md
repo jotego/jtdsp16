@@ -84,6 +84,8 @@ F1 y=Y  x=*pt++[i] | 31    | Yes         |  2 / 1 in cache
 
 The cache does not accept instructions that alter the program flow or that take two memory words (i.e. the long immediate instruction).
 
+The cache cannot be used on external memory. This might be different on original hardware.
+
 ## Cache tests
 
 Item        | Values         | Meaning

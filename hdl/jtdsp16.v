@@ -121,9 +121,11 @@ wire [11:0] i_field, pt_addr;
 wire        con_result, con_check;
 wire        irq_latch;
 wire        xaau_ram_load, xaau_imm_load, xaau_acc_load;
-wire        do_start, do_flush, do_en;
-wire [10:0] do_data;
 wire        pt_read, xaau_istep;
+// Do/Redo
+wire        do_start, do_out;
+wire [ 3:0] do_pc;
+wire [10:0] do_data;
 
 // Y-AAU
 wire [ 8:0] short_imm;
@@ -213,7 +215,9 @@ jtdsp16_ctrl u_ctrl(
     .xaau_acc_load  ( xaau_acc_load ),
     // Cache
     .do_start       ( do_start      ),
+    .do_out         ( do_out        ),
     .do_data        ( do_data       ),
+    .do_pc          ( do_pc         ),
     // *pt++[i] reads
     .pt_read        ( pt_read       ),
     .xaau_istep     ( xaau_istep    ),
@@ -313,9 +317,9 @@ jtdsp16_rom_aau u_rom_aau(
     .pt_load    ( dau_pt_load   ),  // same as DAU's
     // Do loop
     .do_start   ( do_start      ),
+    .do_out     ( do_out        ),
     .do_data    ( do_data       ),
-    .do_flush   ( do_flush      ),
-    .do_en      ( do_en         ),
+    .do_pc      ( do_pc         ),
     // instruction fields
     .r_field    ( r_field       ),
     .i_field    ( i_field       ),

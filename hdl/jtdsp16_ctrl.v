@@ -78,8 +78,10 @@ module jtdsp16_ctrl(
     // IRQ
     output            no_int,       // do not accept an irq now
     // cache
-    output reg        do_start,
+    output            do_start,
+    output            do_out,
     output reg [10:0] do_data,
+    output     [ 3:0] do_pc,
     // X load control
     output            up_xram,
     output            up_xrom,
@@ -114,7 +116,7 @@ reg [1:0] pre_inc_sel;
 reg [6:0] do_k_cnt, do_k;
 reg [3:0] do_ni_cnt, do_ni;
 reg       do_cnt_ld, do_redo, do_incache;
-wire      do_1stloop, do_out, do_busy;
+wire      do_1stloop, do_busy, do_over;
 
 reg       sch_double;
 
@@ -123,11 +125,14 @@ assign    con_ok   = ~con_check | con_result;
 assign    no_int   = ~double;
 
 // do/redo
+assign    do_over    = do_ni_cnt == do_ni;
+assign    do_pc      = do_ni_cnt;
+assign    do_start   = do_1stloop;
 assign    do_busy    = do_k_cnt!=7'd0;
 assign    do_1stloop = do_ni_cnt==4'd1 && do_k_cnt==do_k && do_busy;
-assign    do_out     = do_busy && (
-                        (do_ni_cnt==4'd1 && do_k_cnt==7'd1) ||
-                        (do_ni==4'd0 && do_k_cnt==7'd2) );
+assign    do_out     = do_busy && do_over && do_k_cnt==7'd1;
+//                       ((do_ni_cnt==4'd1 && do_k_cnt==7'd1) ||
+//                        (do_ni==4'd0 && do_k_cnt==7'd2) );
 
 always @(*) begin
     pre_step_sel = 0;
@@ -163,8 +168,8 @@ always @(posedge clk, posedge rst) begin
             do_ni_cnt <= do_ni;
             do_k_cnt  <= do_k;
         end else if(!double) begin
-            do_ni_cnt <= do_ni_cnt==4'd0 ? do_ni : do_ni_cnt-4'd1;
-            if( do_ni_cnt==4'd0 && do_k_cnt!=7'd0 ) begin
+            do_ni_cnt <= do_over ? 4'd0 : do_ni_cnt+4'd1;
+            if( do_over && do_k_cnt!=7'd0 ) begin
                 do_k_cnt <= do_k_cnt-7'd1;
             end
         end
@@ -194,7 +199,6 @@ always @(posedge clk, posedge rst) begin
         xaau_acc_load <= 0;
         xaau_istep    <= 0;
         do_data       <= 11'd0;
-        do_start      <= 0;
         pt_read       <= 0;
         // Cache
         do_cnt_ld     <= 0;
@@ -261,7 +265,6 @@ always @(posedge clk, posedge rst) begin
         xaau_ram_load <= 0;
         xaau_imm_load <= 0;
         xaau_acc_load <= 0;
-        do_start      <= 0;
         xaau_istep    <= 0;
         pt_read       <= 0;
 
@@ -504,7 +507,6 @@ always @(posedge clk, posedge rst) begin
                     // else trigger icall - not implemented
                 end
                 5'b01110: begin // do
-                    do_start <= 1;
                     do_data  <= rom_dout[10:0];
                     do_k     <= rom_dout[ 6:0];
                     do_cnt_ld <= 1;
