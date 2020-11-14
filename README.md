@@ -108,7 +108,18 @@ NI | K | Ticks | Out Double
 1  | 1 |  Odd  | No
 1  | 1 |  Odd  | No
 
-## Related Projects
+# Resource Usage
+
+This is a comparison done for MiST (Altera V).
+
+Module  | Logic cells | Registers | M9K
+--------|-------------|-----------|-------
+JTDSP16 |   2471      |   612     | 12
+Z80     |   2450      |   357     |  0
+JT51    |   3572      |   1652    | 12
+
+
+# Related Projects
 
 Other sound chips from the same author
 

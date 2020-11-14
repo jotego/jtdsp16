@@ -105,7 +105,7 @@ always @(posedge pids_n, posedge rst) begin
 end
 
 // Generate an interrupt after a certain parallel port output
-reg last_podsn;
+reg last_podsn, last_pidsn;
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
@@ -115,8 +115,10 @@ always @(posedge clk, posedge rst) begin
         pio_finish  <= 0;
     end else begin
         last_podsn <= pods_n;
+        last_pidsn <= pids_n;
         if( pbus_out==16'hcafe && pods_n && !last_podsn) irq <= 1;
-        else if( iack ) irq <= 0;
+        else if( !last_pidsn && pids_n )
+                irq <= 0;
         // PIO finish control
         if( pbus_out==16'hdead && pods_n && !last_podsn) begin
             auto_finish <= 0;

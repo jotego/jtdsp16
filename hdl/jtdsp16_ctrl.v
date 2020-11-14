@@ -323,8 +323,12 @@ always @(posedge clk, posedge rst) begin
                 pc_halt   <= 1;
                 double    <= 1;
                 iack      <= 1;
+                clr_iack  <= 0;
             end else begin
-                if( irq_ok && clr_iack ) iack   <= 0;
+                if( irq_ok && clr_iack ) begin
+                    iack     <= 0;
+                    clr_iack <= 0;
+                end
 
                 casez( rom_dout[15:11] ) // T
                     5'b0000?: begin // goto JA
