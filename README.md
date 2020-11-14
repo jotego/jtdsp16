@@ -49,36 +49,37 @@ The files must be in the simulation directory.
 
 # Instruction Details
 
-Nemonic            |  T    | Cacheable   | Cycles
--------------------|-------|-------------|---------
-goto JA            | 0/1   |      No     |  2
-R=M (short)        | 2/3   | Yes         |  1
-F1 Y = a1[l]       | 4     | Yes         |  2
-F1 Z:aT[l]         | 5     | Yes         |  2
-F1 Y               | 6     | Yes         |  1
-F1 aT[l]=Y         | 7     | Yes         |  1
-at=R               | 8     | Yes         |  2
-R=aS               | 9/11  | Yes         |  2
-R=N (long)         | 10    |       No    |  2
-Y=R                | 12    | Yes         |  2
-Z:R                | 13    | Yes         |  2
-do/redo            | 14    |       No    |  1
-R=Y                | 15    | Yes         |  2
-call JA            | 16/17 |       No    |  2
-ifc CON F2         | 18    | Yes         |  1
-if  CON F2         | 19    | Yes         |  1
-F1 Y=y[l]          | 20    | Yes         |  2
-F1 Z:y[l]          | 21    | Yes         |  2
-F1 x=Y             | 22    | Yes         |  1
-F1 y[l]=Y          | 23    | Yes         |  1
-goto B             | 24    |       No    |  2
-F1 y=a0 x=*pt++[i] | 25    | Yes         |  2 / 1 in cache
-if CON goto        | 26    |       No    |  1+2
-F1 y=a1 x=*pt++[i] | 27    | Yes         |  2 / 1 in cache
-F1 Y = a0[l]       | 28    | Yes         |  2
-F1 Z:y  x=*pt++[i] | 29    | Yes         |  2
-Reserved           | 30    |             |
-F1 y=Y  x=*pt++[i] | 31    | Yes         |  2 / 1 in cache
+Nemonic            |  T    | Cacheable   | Interruptable | Cycles
+-------------------|-------|-------------|---------------|---------
+goto JA            | 0/1   |      No     |         No    |   2
+R=M (short)        | 2/3   | Yes         |   Yes         |   1
+F1 Y = a1[l]       | 4     | Yes         |   Yes         |   2
+F1 Z:aT[l]         | 5     | Yes         |   Yes         |   2
+F1 Y               | 6     | Yes         |   Yes         |   1
+F1 aT[l]=Y         | 7     | Yes         |   Yes         |   1
+at=R               | 8     | Yes         |   Yes         |   2
+R=aS               | 9/11  | Yes         |   Yes         |   2
+R=N (long)         | 10    |       No    |   Yes         |   2
+Y=R                | 12    | Yes         |   Yes         |   2
+Z:R                | 13    | Yes         |   Yes         |   2
+do/redo            | 14    |       No    |         No    |   1
+R=Y                | 15    | Yes         |   Yes         |   2
+call JA            | 16/17 |       No    |         No    |   2
+ifc CON F2         | 18    | Yes         |   Yes         |   1
+if  CON F2         | 19    | Yes         |   Yes         |   1
+F1 Y=y[l]          | 20    | Yes         |   Yes         |   2
+F1 Z:y[l]          | 21    | Yes         |   Yes         |   2
+F1 x=Y             | 22    | Yes         |   Yes         |   1
+F1 y[l]=Y          | 23    | Yes         |   Yes         |   1
+goto B             | 24    |       No    |         No    |   2
+F1 y=a0 x=*pt++[i] | 25    | Yes         |   Yes         |   2 / 1 in cache
+if CON goto        | 26    |       No    |         No    |   1+2
+icall              | 26*   |       No    |         No    |   3
+F1 y=a1 x=*pt++[i] | 27    | Yes         |   Yes         |   2 / 1 in cache
+F1 Y = a0[l]       | 28    | Yes         |   Yes         |   2
+F1 Z:y  x=*pt++[i] | 29    | Yes         |   Yes         |   2
+Reserved           | 30    |             |   Yes         |
+F1 y=Y  x=*pt++[i] | 31    | Yes         |   Yes         |   2 / 1 in cache
 
 # The Cache
 

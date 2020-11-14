@@ -1,16 +1,15 @@
 goto start
-y=3
+a0=a0+y
 ireturn
-y=10
-y=10
-y=10
+a0=a1+y
 
 start:
-y=0
+y=1
 pdx0=0xcafe
 pioc=0x20
 pdx0=0xbeef
 pdx0=0xcafe
 pdx0=0xbabe
+pioc=0x0
 end:
 goto end

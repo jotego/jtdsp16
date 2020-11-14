@@ -175,7 +175,7 @@ wire        pdx_read, pio_imm_load;
 wire [15:0] r_pio;
 
 // interrupts
-wire        no_int;
+wire        irq_start;
 
 
 jtdsp16_div u_div(
@@ -263,7 +263,9 @@ jtdsp16_ctrl u_ctrl(
     .ram_load       ( ram_load      ),
     .post_load      ( post_load     ),
     // interrupts
-    .no_int         ( no_int        ),
+    .irq            ( irq_latch     ),
+    .irq_start      ( irq_start     ),
+    .iack           ( iack          ),
     // register load inputs
     .short_imm      ( short_imm     ),
     .long_imm       ( long_imm      ),
@@ -330,9 +332,7 @@ jtdsp16_rom_aau u_rom_aau(
     .r_field    ( r_field       ),
     .i_field    ( i_field       ),
     // Interruption
-    .ext_irq    ( irq_latch     ),
-    .no_int     ( no_int        ),
-    .iack       ( iack          ),
+    .irq_start  ( irq_start     ),
     // Data buses
     .rom_dout   ( rom_dout      ),
     .ram_dout   ( ram_dout      ),

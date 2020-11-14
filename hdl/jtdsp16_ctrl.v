@@ -76,7 +76,9 @@ module jtdsp16_ctrl(
     // instruction fields
     output reg [11:0] i_field,
     // IRQ
-    output            no_int,       // do not accept an irq now
+    input             irq,
+    output reg        irq_start,
+    output reg        iack,
     // cache
     output            do_start,
     output            do_out,
@@ -121,6 +123,9 @@ reg [3:0] do_ni_cnt, do_ni;
 reg       do_cnt_ld, do_incache, do_1done;
 wire      do_1stloop, do_busy, do_over;
 
+// interrupts
+reg       irq_ok, clr_iack;
+
 assign    long_imm = rom_dout;
 assign    con_ok   = ~con_check | con_result;
 assign    no_int   = ~double;
@@ -132,8 +137,14 @@ assign    do_start   = (!do_redo && do_1stloop) || (do_redo && !do_busy);
 assign    do_busy    = do_k_cnt!=7'd0;
 assign    do_1stloop = ((do_over && do_k_cnt==do_k && do_busy) || do_short) && !do_1done;
 assign    do_out     = do_busy && do_over && do_k_cnt==7'd1 && !double;
-//                       ((do_ni_cnt==4'd1 && do_k_cnt==7'd1) ||
-//                        (do_ni==4'd0 && do_k_cnt==7'd2) );
+
+// interrupts
+always @(*) begin
+    case( rom_dout[15:11] )
+        5'd0, 5'd1, 5'd14, 5'd16, 5'd17, 5'd24, 5'd26: irq_ok = 0;
+        default: irq_ok = 1;
+    endcase
+end
 
 always @(*) begin
     pre_step_sel = 0;
@@ -209,6 +220,10 @@ always @(posedge clk, posedge rst) begin
         do_incache    <= 0;
         do_1done      <= 0;
         do_save       <= 0;
+        // interrupts
+        irq_start     <= 0;
+        iack          <= 0;
+        clr_iack      <= 0;
         // *r++ control lines:
         y_field       <= 2'b0;
         step_sel      <= 0;
@@ -275,6 +290,9 @@ always @(posedge clk, posedge rst) begin
         do_cnt_ld     <= 0;
         do_save       <= 0;
 
+        // interrupts
+        irq_start     <= 0;
+
         // DAU
         dau_dec_en    <= 0;
         dau_rmux_load <= 0;
@@ -299,243 +317,254 @@ always @(posedge clk, posedge rst) begin
         sio_ram_load  <= 0;
 
         if( !double ) begin
-            casez( rom_dout[15:11] ) // T
-                5'b0000?: begin // goto JA
-                    goto_ja <= con_ok;
-                    pc_halt <= 1;
-                    double  <= 1;
-                    if( do_busy ) fault <= 1; // illegal instruction
-                end
+            if( irq && !do_busy && irq_ok && !iack ) begin
+                goto_ja   <= 1;
+                irq_start <= 1;
+                pc_halt   <= 1;
+                double    <= 1;
+                iack      <= 1;
+            end else begin
+                if( irq_ok && clr_iack ) iack   <= 0;
 
-                5'b0001?: begin // short imm j, k, rb, re
-                    short_load <= 1;
-                    r_field    <= rom_dout[11:9]^3'b100;
-                end
-
-                5'b1000?: begin // call JA
-                    call_ja <= con_ok;
-                    pc_halt <= 1;
-                    double  <= 1;
-                    if( do_busy ) fault <= 1; // illegal instruction
-                end
-
-                5'b11000: begin // goto B (ret, iret, goto pt, call pt)
-                    goto_b  <= con_ok || (rom_dout[10:8]==3'b1); // iret is always executed
-                    pc_halt <= 1;
-                    double  <= 1;
-                    if( do_busy ) fault <= 1; // illegal instruction
-                end
-
-                5'b01000: begin // aT=R
-                    r_field      <=  rom_dout[6:4];
-                    rsel         <=  rom_dout[8:6];
-                    dau_rmux_load<= 1;
-                    pdx_read     <= 1;
-                    st_a0h       <=  rom_dout[10];
-                    st_a1h       <= ~rom_dout[10];
-                    double       <= 1;
-                    pc_halt      <= 1;
-                end
-
-                5'b01001, 5'b01011: begin // R=a0 / R=a1
-                    r_field      <=  rom_dout[6:4];
-                    a_field      <=  { 1'b1, rom_dout[12] };
-                    acc_sel      <= 1;
-                    dau_acc_load <= rom_dout[8:7]==2'b10;  // DAU register
-                    acc_load     <= rom_dout[8:7]==2'b00;  // RAM AAU register
-                    xaau_acc_load<= rom_dout[8:7]==2'b01;  // ROM AAU register
-                    sio_acc_load <= rom_dout[8:6]==3'b110; // SIO register
-                    double       <= 1;
-                    pc_halt      <= 1;
-                end
-
-                5'b01010: begin // R=imm (long imm)
-                    long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
-                    xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
-                    dau_imm_load  <= rom_dout[9:7]==3'b010; // DAU register as destination
-                    sio_imm_load  <= rom_dout[9:6]==4'b0110; // Serial I/O - tdms register is not implemented
-                    pio_imm_load  <= rom_dout[9:6]==4'b0111; // Parallel I/O
-                    r_field       <= rom_dout[6:4];
-                    double        <= 1;
-                    if( do_busy ) fault <= 1; // illegal instruction
-                end
-
-                5'b01111, // R=Y RAM load to r0-r3
-                5'b01100  // Y=R r0-r3 storage to RAM
-                : begin
-                    if( rom_dout[15:10] == 6'b011110 ) begin
-                        ram_load      <= rom_dout[ 9:7]==3'b000; // YAAU register as destination
-                        xaau_ram_load <= rom_dout[ 9:7]==3'b001; // YAAU register as destination
-                        dau_ram_load  <= rom_dout[ 9:7]==3'b010; // DAU register as destination
-                        sio_ram_load  <= rom_dout[ 9:6]==4'b0110;
+                casez( rom_dout[15:11] ) // T
+                    5'b0000?: begin // goto JA
+                        goto_ja <= con_ok;
+                        pc_halt <= 1;
+                        double  <= 1;
+                        if( do_busy ) fault <= 1; // illegal instruction
                     end
-                    pdx_read <= rom_dout[15:11] == 5'b01111;
-                    pc_halt <= 1;
-                    if( rom_dout[15:11] == 5'b01100 ) begin
-                        ram_we  <= 1; // RAM write
-                    end else begin
-                        ram_we  <= 0; // RAM load
+
+                    5'b0001?: begin // short imm j, k, rb, re
+                        short_load <= 1;
+                        r_field    <= rom_dout[11:9]^3'b100;
                     end
-                    rsel      <= rom_dout[ 8:6];
-                    r_field   <= rom_dout[ 6:4];
-                    double   <= 1;
-                    // Y control
-                    post_load <= 1;
-                    inc_sel   <= pre_inc_sel;
-                    step_sel  <= pre_step_sel;
-                    ksel      <= pre_ksel;
-                end
 
-                5'b00110, // Y    F1
-                5'b00111: // aT=Y F1
-                begin
-                    dau_dec_en    <= 1;
-                    a_field       <= rom_dout[10:9];
-                    // accumulator storing
-                    if( rom_dout[11] ) begin
-                        st_a1h      <= ~rom_dout[10];
-                        st_a0h      <=  rom_dout[10];
-                        dau_acc_ram <= 1;
+                    5'b1000?: begin // call JA
+                        call_ja <= con_ok;
+                        pc_halt <= 1;
+                        double  <= 1;
+                        if( do_busy ) fault <= 1; // illegal instruction
                     end
-                    // Y control
-                    post_load <= 1;
-                    inc_sel   <= pre_inc_sel;
-                    step_sel  <= pre_step_sel;
-                    ksel      <= pre_ksel;
-                end
 
-                5'b10011: begin // if CON F2
-                    dau_dec_en    <= 1;
-                    a_field       <= rom_dout[10:9];
-                    dau_special   <= 1;
-                end
+                    5'b11000: begin // goto B (ret, iret, goto pt, call pt)
+                        goto_b  <= con_ok || (rom_dout[10:8]==3'b1); // iret is always executed
+                        pc_halt <= 1;
+                        double  <= 1;
+                        if( rom_dout[10:8]==3'b1 ) clr_iack <= 1;
+                        if( do_busy ) fault <= 1; // illegal instruction
+                    end
 
-                5'b10101: begin // Z:y F1
-                    // F1
-                    dau_dec_en    <= 1;
-                    // DAU
-                    // zyh_swap      <=  rom_dout[4];
-                    // zyl_swap      <= ~rom_dout[4];
-                    dau_ram_load  <= 1;
-                    // Register mux
-                    rsel          <= 3'b100; // DAU
-                    r_field       <= rom_dout[4] ? 3'd1 /* yh */: 3'd2 /* yl */;
-                    ram_we        <= 1;
-                    // RAM AAU
-                    y_field       <= rom_dout[3:2]; // selects register
-                    inc_sel       <= 2'd2; // +1. Only the zp case is supported
-                    step_sel      <= 0;
-                    post_load     <= 1;
-                    double        <= 1;
-                    pc_halt       <= 1;
-                end
+                    5'b01000: begin // aT=R
+                        r_field      <=  rom_dout[6:4];
+                        rsel         <=  rom_dout[8:6];
+                        dau_rmux_load<= 1;
+                        pdx_read     <= 1;
+                        st_a0h       <=  rom_dout[10];
+                        st_a1h       <= ~rom_dout[10];
+                        double       <= 1;
+                        pc_halt      <= 1;
+                    end
 
-                5'b10110: begin // F1, x=Y, 1 cycle
-                    dau_dec_en    <= 1;
-                    dau_ram_load  <= 1;
-                    r_field       <= 3'd0; // x
-                    // Y control
-                    post_load <= 1;
-                    inc_sel   <= pre_inc_sel;
-                    step_sel  <= pre_step_sel;
-                    ksel      <= pre_ksel;
-                end
-                5'b11001,       // F1, y = a0, x = *pt++[i]
-                5'b11011: begin // F1, y = a1, x = *pt++[i], 2 or 1 cycles (cache)
-                    // F1
-                    dau_dec_en    <= 1;
-                    // y load
-                    a_field       <= { 1'b0, rom_dout[12]};
-                    dau_fully_load<= 1;
-                    // x load
-                    dau_pt_load   <= 1;
-                    xaau_istep    <= rom_dout[4];
-                    pt_read       <= 1;
-                    // 2-cycle version implemented for now
-                    double    <= 1;
-                    pc_halt   <= 1;
-                end
-                5'b11111: begin // F1, y = Y, x = *pt++[i], 2 or 1 cycles (cache)
-                    // F1
-                    dau_dec_en    <= 1;
-                    // y load
-                    dau_ram_load  <= 1;
-                    r_field       <= 3'd1; // y
-                    // x load
-                    dau_pt_load   <= 1;
-                    xaau_istep    <= rom_dout[4];
-                    pt_read       <= 1;
-                    // Y control
-                    post_load <= 1;
-                    inc_sel   <= pre_inc_sel;
-                    step_sel  <= pre_step_sel;
-                    ksel      <= pre_ksel;
-                    // 2-cycle version implemented for now
-                    double    <= 1;
-                    pc_halt   <= 1;
-                end
-                5'b10100, // F1, Y = y, 2 cycles
-                5'b10111, // F1, y[k]=Y, 1 cycle
-                5'b11100, // F1, Y=a0[l], 2 cycles
-                5'b00100: // F1, Y=a1[l], 2 cycles
-                begin
-                    case( rom_dout[15:11] )
-                        5'b10100: begin // RAM write
-                            ram_we <= 1;
-                            rsel   <= 3'b100;  // DAU
-                            double <= 1;
-                            pc_halt<= 1;
+                    5'b01001, 5'b01011: begin // R=a0 / R=a1
+                        r_field      <=  rom_dout[6:4];
+                        a_field      <=  { 1'b1, rom_dout[12] };
+                        acc_sel      <= 1;
+                        dau_acc_load <= rom_dout[8:7]==2'b10;  // DAU register
+                        acc_load     <= rom_dout[8:7]==2'b00;  // RAM AAU register
+                        xaau_acc_load<= rom_dout[8:7]==2'b01;  // ROM AAU register
+                        sio_acc_load <= rom_dout[8:6]==3'b110; // SIO register
+                        double       <= 1;
+                        pc_halt      <= 1;
+                    end
+
+                    5'b01010: begin // R=imm (long imm)
+                        long_load     <= rom_dout[9:7]==3'b000; // YAAU register as destination
+                        xaau_imm_load <= rom_dout[9:7]==3'b001; // XAAU register as destination
+                        dau_imm_load  <= rom_dout[9:7]==3'b010; // DAU register as destination
+                        sio_imm_load  <= rom_dout[9:6]==4'b0110; // Serial I/O - tdms register is not implemented
+                        pio_imm_load  <= rom_dout[9:6]==4'b0111; // Parallel I/O
+                        r_field       <= rom_dout[6:4];
+                        double        <= 1;
+                        if( do_busy ) fault <= 1; // illegal instruction
+                    end
+
+                    5'b01111, // R=Y RAM load to r0-r3
+                    5'b01100  // Y=R r0-r3 storage to RAM
+                    : begin
+                        if( rom_dout[15:10] == 6'b011110 ) begin
+                            ram_load      <= rom_dout[ 9:7]==3'b000; // YAAU register as destination
+                            xaau_ram_load <= rom_dout[ 9:7]==3'b001; // YAAU register as destination
+                            dau_ram_load  <= rom_dout[ 9:7]==3'b010; // DAU register as destination
+                            sio_ram_load  <= rom_dout[ 9:6]==4'b0110;
                         end
-                        5'b10111: begin // write to y[l] register
-                            dau_ram_load <= 1;
-                        end
-                        default: begin
-                            rsel <= 3'b010; // DAU
-                            acc_sel <= 1;
-                            ram_we  <= 1;
-                            double  <= 1;
-                            pc_halt <= 1;
-                            a_field <= { rom_dout[4], ~rom_dout[15] };
-                        end
-                    endcase
-                    dau_dec_en    <= 1;
-                    r_field   <= rom_dout[4] ? 3'd1  /* y */: 3'd2 /* yl */; // select y or yl
-                    // Y control
-                    post_load <= 1;
-                    inc_sel   <= pre_inc_sel;
-                    step_sel  <= pre_step_sel;
-                    ksel      <= pre_ksel;
-                end
-                5'b11010: begin
-                    if( !rom_dout[10] ) con_check <= 1; // conditional branch
-                    // else trigger icall - not implemented
-                end
-                5'b01110: begin // do
-                    do_data  <= rom_dout[10:0];
-                    do_cnt_ld <= 1;
-                    do_1done  <= 0;
-                    if( rom_dout[10:7]==4'd0 ) begin // redo
-                        pc_halt   <= 1;
-                        double    <= 1;
-                        do_redo   <= 1;
-                        do_k      <= rom_dout[ 6:0];
-                    end else begin // do
-                        do_ni     <= rom_dout[10:7]-4'd1;
-                        do_redo   <= 0;
-                        do_save   <= 1;
-                        if( rom_dout[10:7]==4'd1 ) begin
-                            // when NI=1 the next instruction must be executed
-                            // in two cycles but there is no time to catch it
-                            // via the do_1stloop signal
-                            do_short <= 1;
-                            do_k     <= rom_dout[ 6:0]-7'd1;
+                        pdx_read <= rom_dout[15:11] == 5'b01111;
+                        pc_halt <= 1;
+                        if( rom_dout[15:11] == 5'b01100 ) begin
+                            ram_we  <= 1; // RAM write
                         end else begin
-                            do_k     <= rom_dout[ 6:0];
+                            ram_we  <= 0; // RAM load
+                        end
+                        rsel      <= rom_dout[ 8:6];
+                        r_field   <= rom_dout[ 6:4];
+                        double   <= 1;
+                        // Y control
+                        post_load <= 1;
+                        inc_sel   <= pre_inc_sel;
+                        step_sel  <= pre_step_sel;
+                        ksel      <= pre_ksel;
+                    end
+
+                    5'b00110, // Y    F1
+                    5'b00111: // aT=Y F1
+                    begin
+                        dau_dec_en    <= 1;
+                        a_field       <= rom_dout[10:9];
+                        // accumulator storing
+                        if( rom_dout[11] ) begin
+                            st_a1h      <= ~rom_dout[10];
+                            st_a0h      <=  rom_dout[10];
+                            dau_acc_ram <= 1;
+                        end
+                        // Y control
+                        post_load <= 1;
+                        inc_sel   <= pre_inc_sel;
+                        step_sel  <= pre_step_sel;
+                        ksel      <= pre_ksel;
+                    end
+
+                    5'b10011: begin // if CON F2
+                        dau_dec_en    <= 1;
+                        a_field       <= rom_dout[10:9];
+                        dau_special   <= 1;
+                    end
+
+                    5'b10101: begin // Z:y F1
+                        // F1
+                        dau_dec_en    <= 1;
+                        // DAU
+                        // zyh_swap      <=  rom_dout[4];
+                        // zyl_swap      <= ~rom_dout[4];
+                        dau_ram_load  <= 1;
+                        // Register mux
+                        rsel          <= 3'b100; // DAU
+                        r_field       <= rom_dout[4] ? 3'd1 /* yh */: 3'd2 /* yl */;
+                        ram_we        <= 1;
+                        // RAM AAU
+                        y_field       <= rom_dout[3:2]; // selects register
+                        inc_sel       <= 2'd2; // +1. Only the zp case is supported
+                        step_sel      <= 0;
+                        post_load     <= 1;
+                        double        <= 1;
+                        pc_halt       <= 1;
+                    end
+
+                    5'b10110: begin // F1, x=Y, 1 cycle
+                        dau_dec_en    <= 1;
+                        dau_ram_load  <= 1;
+                        r_field       <= 3'd0; // x
+                        // Y control
+                        post_load <= 1;
+                        inc_sel   <= pre_inc_sel;
+                        step_sel  <= pre_step_sel;
+                        ksel      <= pre_ksel;
+                    end
+                    5'b11001,       // F1, y = a0, x = *pt++[i]
+                    5'b11011: begin // F1, y = a1, x = *pt++[i], 2 or 1 cycles (cache)
+                        // F1
+                        dau_dec_en    <= 1;
+                        // y load
+                        a_field       <= { 1'b0, rom_dout[12]};
+                        dau_fully_load<= 1;
+                        // x load
+                        dau_pt_load   <= 1;
+                        xaau_istep    <= rom_dout[4];
+                        pt_read       <= 1;
+                        // 2-cycle version implemented for now
+                        double    <= 1;
+                        pc_halt   <= 1;
+                    end
+                    5'b11111: begin // F1, y = Y, x = *pt++[i], 2 or 1 cycles (cache)
+                        // F1
+                        dau_dec_en    <= 1;
+                        // y load
+                        dau_ram_load  <= 1;
+                        r_field       <= 3'd1; // y
+                        // x load
+                        dau_pt_load   <= 1;
+                        xaau_istep    <= rom_dout[4];
+                        pt_read       <= 1;
+                        // Y control
+                        post_load <= 1;
+                        inc_sel   <= pre_inc_sel;
+                        step_sel  <= pre_step_sel;
+                        ksel      <= pre_ksel;
+                        // 2-cycle version implemented for now
+                        double    <= 1;
+                        pc_halt   <= 1;
+                    end
+                    5'b10100, // F1, Y = y, 2 cycles
+                    5'b10111, // F1, y[k]=Y, 1 cycle
+                    5'b11100, // F1, Y=a0[l], 2 cycles
+                    5'b00100: // F1, Y=a1[l], 2 cycles
+                    begin
+                        case( rom_dout[15:11] )
+                            5'b10100: begin // RAM write
+                                ram_we <= 1;
+                                rsel   <= 3'b100;  // DAU
+                                double <= 1;
+                                pc_halt<= 1;
+                            end
+                            5'b10111: begin // write to y[l] register
+                                dau_ram_load <= 1;
+                            end
+                            default: begin
+                                rsel <= 3'b010; // DAU
+                                acc_sel <= 1;
+                                ram_we  <= 1;
+                                double  <= 1;
+                                pc_halt <= 1;
+                                a_field <= { rom_dout[4], ~rom_dout[15] };
+                            end
+                        endcase
+                        dau_dec_en    <= 1;
+                        r_field   <= rom_dout[4] ? 3'd1  /* y */: 3'd2 /* yl */; // select y or yl
+                        // Y control
+                        post_load <= 1;
+                        inc_sel   <= pre_inc_sel;
+                        step_sel  <= pre_step_sel;
+                        ksel      <= pre_ksel;
+                    end
+                    5'b11010: begin
+                        if( !rom_dout[10] ) con_check <= 1; // conditional branch
+                        // else trigger icall - not implemented
+                    end
+                    5'b01110: begin // do
+                        do_data  <= rom_dout[10:0];
+                        do_cnt_ld <= 1;
+                        do_1done  <= 0;
+                        if( rom_dout[10:7]==4'd0 ) begin // redo
+                            pc_halt   <= 1;
+                            double    <= 1;
+                            do_redo   <= 1;
+                            do_k      <= rom_dout[ 6:0];
+                        end else begin // do
+                            do_ni     <= rom_dout[10:7]-4'd1;
+                            do_redo   <= 0;
+                            do_save   <= 1;
+                            if( rom_dout[10:7]==4'd1 ) begin
+                                // when NI=1 the next instruction must be executed
+                                // in two cycles but there is no time to catch it
+                                // via the do_1stloop signal
+                                do_short <= 1;
+                                do_k     <= rom_dout[ 6:0]-7'd1;
+                            end else begin
+                                do_k     <= rom_dout[ 6:0];
+                            end
                         end
                     end
-                end
-                default: fault<=1;
-            endcase
+                    default: fault<=1;
+                endcase
+            end
         end
         if( (do_1stloop && !do_redo) || do_out ) begin
             // last instruction of 1st loop in DO takes two cycles

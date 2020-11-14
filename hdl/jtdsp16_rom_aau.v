@@ -49,9 +49,7 @@ module jtdsp16_rom_aau(
     input      [ 2:0] r_field,
     input      [11:0] i_field,
     // IRQ
-    input             ext_irq,
-    input             no_int,
-    output reg        iack,
+    input             irq_start,
     // Data buses
     input      [15:0] rom_dout,
     input      [15:0] ram_dout,
@@ -89,7 +87,7 @@ wire        load_pt, load_pi, load_pr ,load_i;
 wire        any_load;
 
 wire        ret, iret, goto_pt, call_pt;
-wire        enter_int, dis_shadow;
+wire        dis_shadow;
 
 assign      sequ_pc  = pc+1'd1;
 assign      i_ext    = { {4{i[11]}}, i };
@@ -109,8 +107,7 @@ assign      load_i   =  any_load && r_field==3'd3;
 assign      do_addr  = do_head + { 8'd0, do_pc };
 assign      rom_addr = do_incache ? {4'd0, do_addr } : pc;
 
-assign      enter_int = ext_irq && shadow && !pc_halt && !no_int && !do_incache;
-assign      dis_shadow= enter_int || icall || do_start;
+assign      dis_shadow= irq_start || icall || do_start;
 assign      pt_addr  = pt[11:0];
 
 // Debugging
@@ -140,13 +137,12 @@ always @(*) begin
         next_pc = pc; // hold it
     end else begin
         next_pc =
-            enter_int ? 16'd1 : (
             icall     ? 16'd2 : (
-            (goto_ja || call_ja) ? { pc[15:12], i_field } : (
+            (goto_ja || call_ja) ? ( irq_start ? 16'd1 : { pc[15:12], i_field }) : (
             (goto_pt || call_pt) ? pt : (
             ret                  ? pr : (
             iret                 ? pi : (
-            (pc_halt && (!do_start || do_redo)) ? pc : sequ_pc ))))));
+            (pc_halt && (!do_start || do_redo)) ? pc : sequ_pc )))));
     end
 end
 
@@ -158,7 +154,6 @@ always @(posedge clk, posedge rst ) begin
         pt      <= 16'd0;
         i       <= 12'd0;
         shadow  <= 1;
-        iack    <= 1;
         // Do registers
         do_incache <= 0;
         do_head    <= 12'd0;
@@ -170,15 +165,14 @@ always @(posedge clk, posedge rst ) begin
         // Interrupt processing
         if( dis_shadow ) begin
             shadow <= 0;
-        end else if( iret || !do_incache ) shadow <= 1;
-        iack <= enter_int;
+        end else if( iret ) shadow <= 1;
 
         // Update PC
         pc    <= next_pc;
         if( load_pi )
             pi <= rnext;
-        else if( shadow && !do_start)
-            pi <= sequ_pc;
+        else if( shadow && !do_start && !do_incache && !irq_start )
+            pi <= pc;
 
         if( do_save && !do_redo ) do_head <= pc[11:0]; // - (do_short ? 1'd0 : 1'd1 );
         if( do_start ) begin
