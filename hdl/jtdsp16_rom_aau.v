@@ -146,7 +146,7 @@ always @(*) begin
             (goto_pt || call_pt) ? pt : (
             ret                  ? pr : (
             iret                 ? pi : (
-            (pc_halt && !do_start) ? pc : sequ_pc ))))));
+            (pc_halt && (!do_start || do_redo)) ? pc : sequ_pc ))))));
     end
 end
 
