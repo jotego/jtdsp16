@@ -235,7 +235,7 @@ RTL::RTL() {
     vcd.open("test.vcd");
     ticks=0;
     sim_time=0;
-    half_period=10;
+    half_period=9;
     reset();
 }
 

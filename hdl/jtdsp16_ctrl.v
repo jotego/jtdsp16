@@ -361,7 +361,7 @@ always @(posedge clk, posedge rst) begin
                         r_field      <=  rom_dout[6:4];
                         rsel         <=  rom_dout[8:6];
                         dau_rmux_load<= 1;
-                        pdx_read     <= 1;
+                        pdx_read     <=  rom_dout[9:6]==4'b0111;
                         st_a0h       <=  rom_dout[10];
                         st_a1h       <= ~rom_dout[10];
                         double       <= 1;
@@ -399,8 +399,9 @@ always @(posedge clk, posedge rst) begin
                             xaau_ram_load <= rom_dout[ 9:7]==3'b001; // YAAU register as destination
                             dau_ram_load  <= rom_dout[ 9:7]==3'b010; // DAU register as destination
                             sio_ram_load  <= rom_dout[ 9:6]==4'b0110;
+                        end else begin
+                            pdx_read <= rom_dout[9:6]==4'b0111;
                         end
-                        pdx_read <= rom_dout[15:11] == 5'b01111;
                         pc_halt <= 1;
                         if( rom_dout[15:11] == 5'b01100 ) begin
                             ram_we  <= 1; // RAM write

@@ -27,9 +27,13 @@ int playfiles() {
     ROM rom;
     //QSndData samples("punisher.rom");
     rtl.read_rom(rom.data());
+
     rtl.clk( 100'000 );
     rtl.set_irq();
-    rtl.clk( 5'000 );
+    for( int k=0; k<5'000; k++ ) {
+        rtl.clk(2);
+        if( rtl.pids()==0 ) rtl.set_irq(0);
+    }
 
     return 0;
 }

@@ -51,11 +51,15 @@ public:
     int  srta() { return top.debug_srta; }
     int  sioc() { return top.debug_sioc; }
 
+    // PIO
+    int pids() { return top.pids_n; }
+
     // IRQ
-    void set_irq() { top.irq = 1; }
+    void set_irq(int v=1) { top.irq = v; }
     int iack() { return top.iack; }
 
     int get_ticks() { return ticks; }
+    vluint64_t time() { return sim_time; }
 };
 
 class ROM {
