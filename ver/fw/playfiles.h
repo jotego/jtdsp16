@@ -1,4 +1,5 @@
 #include "common.h"
+#include "vcd.h"
 #include <fstream>
 #include <cstdio>
 #include <vector>
@@ -24,9 +25,11 @@ public:
 int playfiles() {
     RTL rtl;
     ROM rom;
-    QSndData samples("punisher.rom");
-
+    //QSndData samples("punisher.rom");
     rtl.read_rom(rom.data());
+    rtl.clk( 100'000 );
+    rtl.set_irq();
+    rtl.clk( 5'000 );
 
     return 0;
 }

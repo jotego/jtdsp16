@@ -413,5 +413,5 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
         }
     }
     srand(seed);
-    printf("Random seed = %d\n", seed);
+    if(!playback) printf("Random seed = %d\n", seed);
 }

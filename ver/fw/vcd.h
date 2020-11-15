@@ -5,24 +5,26 @@
 #include <map>
 #include <string>
 
-class VCDpoint {
+struct VCDpoint {
     int64_t time, val;
 };
 
 class VCDsignal {
     std::list<VCDpoint> points;
-    std::list<VCDpoint>::iterator k;
+    std::list<VCDpoint>::iterator k, n;
     int64_t mask;
+    std::string name;
 public:
-    VCDsignal( const std::string& name, int64_t mask );
+    VCDsignal( const std::string& _name, int64_t _mask );
     void push( int64_t time, int64_t val );
     void rewind();
-    int64_t move_to(int64_t time);
+    void forward(int64_t time);
     int64_t cur();
 };
 
 class VCDfile {
-    std::map<std::string,VCDsignal*> signals, handlers;
+    typedef std::map<std::string,VCDsignal*> sigmap;
+    sigmap signals, handlers;
     void parse_var  ( const std::string& str );
     void parse_value( int64_t t, const std::string& str );
     void parse_t0   ( std::ifstream& fin );
@@ -33,6 +35,10 @@ public:
     VCDfile( const char *fname );
     VCDsignal* get_signal( const char *name );
     ~VCDfile();
+    // move all signals
+    void rewind();
+    void forward(int64_t time);
+    VCDsignal* get( std::string name );
 };
 
 #endif

@@ -27,6 +27,7 @@ VCDfile::VCDfile( const char *fname ) {
     }
     parse_t0( fin );
     parse_rest( fin );
+    rewind();
 }
 
 void VCDfile::parse_var( const string& str ) {
@@ -107,4 +108,59 @@ int64_t VCDfile::parse_bin( const string& str) {
         c++;
     }
     return v;
+}
+
+VCDfile::~VCDfile() {
+    for( auto k : signals ) {
+        delete k.second;
+    }
+}
+
+void VCDfile::rewind() {
+    for( auto k : signals ) {
+        k.second->rewind();
+    }
+}
+
+void VCDfile::forward(int64_t time) {
+    for( auto k : signals ) {
+        k.second->forward(time);
+    }
+}
+
+VCDsignal* VCDfile::get( std::string name ) {
+    sigmap::iterator k = signals.find(name);
+    return k==signals.end() ? nullptr : k->second;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+VCDsignal::VCDsignal( const std::string& _name, int64_t _mask ) {
+    name = _name;
+    mask = _mask;
+    k = points.end();
+    n = points.end();
+}
+
+void VCDsignal::push( int64_t time, int64_t val ) {
+    VCDpoint pt;
+    pt.time = time;
+    pt.val = val;
+    points.push_back( pt );
+}
+
+void VCDsignal::rewind() {
+    k = points.begin();
+    n = k; n++;
+}
+
+void VCDsignal::forward( int64_t time ) {
+    while( time > k->time && n!=points.end() ) {
+        k++;
+        n++;
+    }
+}
+
+int64_t VCDsignal::cur() {
+    return k->val;
 }

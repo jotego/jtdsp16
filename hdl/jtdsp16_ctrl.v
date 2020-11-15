@@ -128,7 +128,6 @@ reg       irq_ok, clr_iack;
 
 assign    long_imm = rom_dout;
 assign    con_ok   = ~con_check | con_result;
-assign    no_int   = ~double;
 
 // do/redo
 assign    do_over    = do_ni_cnt == do_ni;

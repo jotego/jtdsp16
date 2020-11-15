@@ -78,6 +78,9 @@ wire [11:0] do_addr;
 reg         do_incache;
 reg  [11:0] do_head;
 
+// interrupts
+reg         irq_in;
+
 wire [15:0] sequ_pc;
 reg  [15:0] next_pc, next_pt;
 wire [15:0] i_ext;
@@ -157,6 +160,8 @@ always @(posedge clk, posedge rst ) begin
         // Do registers
         do_incache <= 0;
         do_head    <= 12'd0;
+        // interrupts
+        irq_in  <= 0;
     end else if(cen) begin
         if( load_pt  ) pt <= pt_load ? next_pt : rnext;
         if( load_pr  ) pr <= rnext;
@@ -165,7 +170,12 @@ always @(posedge clk, posedge rst ) begin
         // Interrupt processing
         if( dis_shadow ) begin
             shadow <= 0;
-        end else if( iret ) shadow <= 1;
+        end else if( iret || (!irq_in && do_out) ) shadow <= 1;
+
+        if( irq_start )
+            irq_in <= 1;
+        else if( iret )
+            irq_in <= 0;
 
         // Update PC
         pc    <= next_pc;

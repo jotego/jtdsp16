@@ -51,6 +51,10 @@ public:
     int  srta() { return top.debug_srta; }
     int  sioc() { return top.debug_sioc; }
 
+    // IRQ
+    void set_irq() { top.irq = 1; }
+    int iack() { return top.iack; }
+
     int get_ticks() { return ticks; }
 };
 
