@@ -9,7 +9,7 @@ class DSP16emu {
     int next_pt, next_pr, next_pi, next_i;
     int next_x,  next_y,  next_yl, next_p;
     int next_auc, next_psw, next_c0, next_c1, next_c2, next_sioc, next_srta, next_sdx;
-    int next_tdms, next_pioc, next_pdx0, next_pdx1;
+    int next_tdms, next_pioc, next_pdx0, next_pdx1, next_pbus;
     int lfsr;
     int64_t next_a0, next_a1;
     // Cache
@@ -53,7 +53,7 @@ public:
     int pt, pr, pi, i;
     int x, y, yl, p;
     int auc, psw, c0, c1, c2, sioc, srta, sdx;
-    int tdms, pioc, pdx0, pdx1;
+    int tdms, pioc, pdx0, pdx1, pbus_out;
     int64_t a0, a1;
     bool verbose;
 
@@ -94,6 +94,7 @@ DSP16emu::DSP16emu( int16_t* _rom ) {
     next_auc = next_psw = next_c0 = next_c1 = next_c2 = next_sioc = next_srta = next_sdx = 0;
     next_tdms = next_pioc = next_pdx0 = next_pdx1 = 0;
     next_a0 = a0 = next_a1 = a1 = 0;
+    next_pbus = pbus_out = 0;
     p = 0;
     ticks=0;
     lfsr = 0xcafe'cafe;
@@ -150,6 +151,7 @@ void DSP16emu::update_regs() {
 
     tdms = next_tdms;
     pioc = next_pioc;
+    pbus_out = next_pbus;
     pdx0 = next_pdx0;
     pdx1 = next_pdx1;
 
@@ -221,9 +223,10 @@ void DSP16emu::set_register( int rfield, int v ) {
         case 26: next_sdx   = v; break;
         case 27: next_tdms  = v; break;
         case 28: next_pioc  = v; break;
-        case 29: next_pdx0  = v; break;
-        case 30: next_pdx1  = v; break;
+        case 29: next_pdx0  = v; pbus_out = next_pbus = v; break;
+        case 30: next_pdx1  = v; pbus_out = next_pbus = v; break;
     }
+    //printf("next_pbus = %X\n", next_pbus);
 }
 
 int64_t DSP16emu::assign_high( int clr_mask, int64_t& dest, int val ) {
@@ -724,9 +727,15 @@ void DSP16emu::disasm(int op) {
             printf("a%d=%s\n", 1-((op>>10)&1), disasm_r(op) );
             s=nullptr;
             break;
-        case 9: case 11: s="R=aS"; break;
-        case 10: s="R=N (long)"; break;
-        case 12: s="Y=R"; break;
+        case 9: case 11:
+            printf("%s=aS\n", disasm_r(op));
+            s=nullptr;
+            break;
+        case 10:
+            printf("%s=N (long)\n", disasm_r(op));
+            s=nullptr;
+            break;
+        case 12: printf("Y=%s\n", disasm_r(op)); s=nullptr; break;
         case 13: s="Z:R"; break;
         case 14: printf("do/redo NI=%d, K=%d\n", (op>>7)&0xf, op&0x7f); s=nullptr; break;
         case 15: s="R=Y"; break;

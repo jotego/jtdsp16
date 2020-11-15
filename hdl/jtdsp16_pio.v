@@ -140,7 +140,7 @@ always @(posedge clk, posedge rst) begin
 
         if( pdx_access ) begin
             psel <= r_field[1];
-            if( pio_imm_load ) begin
+            if( pdx0_load || pdx1_load ) begin
                 pbus_out <= load_data;
             end
             // if(r_field[0] && pdx_read ) pdx0_rd <= pdx_buffer;

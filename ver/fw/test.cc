@@ -139,7 +139,7 @@ ROM::~ROM() {
     rom = nullptr;
 }
 
-int random_rfield() {
+int random_rfield(bool pdx_en=false) {
     int r=32;
     const int PIOC=28; // do not allow random writes here
     const int TDMS=27; // do not allow random writes here
@@ -148,9 +148,14 @@ int random_rfield() {
     const int PDX0=0x1D; // do not allow random writes here
     const int PDX1=0x1E; // do not allow random writes here
     const int PSW=0x14; // do not allow random writes here
+    const int PI=0xa; // This register is hard to match in emulation
+        // and it really only plays a role in interrupt handling which
+        // is not tested in random sims
     // as it can enable interrupts
     while( !(r<=11 || (r>=16 && r<31) )
-            || r==PIOC || r==TDMS || r==SDX || r==PDX0 || r==PDX1 || r==PSW ) r=rand()%31;
+            || r==PIOC || r==TDMS || r==SDX || ( (r==PDX0 || r==PDX1 ) && !pdx_en )
+            || r==PI
+            || r==PSW ) r=rand()%31;
     return r;
 }
 
@@ -181,8 +186,8 @@ int ROM::random( int valid ) {
             case 9:  // R=a0
             case 11: // R=a1
                 extra  = (rand()%2) << 10;
-                extra |= random_rfield() << 4; break; // aT=R
-            case 10: extra = random_rfield() << 4; break; // R=imm
+                extra |= random_rfield(r!=8) << 4; break; // aT=R
+            case 10: extra = random_rfield(true) << 4; break; // R=imm
             case 14: // Do / Redo
                 extra = rand()%0x800;
                 while( ((extra>>7)&0xf) == 0 && !cache_ready )
@@ -193,7 +198,7 @@ int ROM::random( int valid ) {
                 if( incache > 0 ) incache++; // because 1 will be subtracted at the bottom of this for loop
                 break;
             case 12: /* Y = R */ case 15: // R = Y
-                extra  = random_rfield() << 4;
+                extra  = random_rfield(false) << 4;
                 extra |= rand()%16; // Y field
                 break;
             // F1 operations:
@@ -349,6 +354,7 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     // SIO
     g = g && rtl.srta()  == emu.srta;
     g = g && rtl.sioc()  == emu.sioc;
+    g = g && rtl.pbus_out()  == emu.pbus_out;
     return g;
 }
 
@@ -391,6 +397,8 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     cout << "-- SIO --\n";
     REG_DUMP(SRTA, emu.srta, rtl.srta )
     REG_DUMP(SIOC, emu.sioc, rtl.sioc )
+    cout << "-- PIO --\n";
+    REG_DUMP(PBUS, emu.pbus_out, rtl.pbus_out )
 
     cout << "-- STATS --\n";
     printf("%d RAM reads and %d RAM writes\n", emu.stats.ram_reads, emu.stats.ram_writes );
@@ -403,9 +411,12 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
     if( argc==1 ) return;
     for( int k=1; k<argc; k++ ) {
         if( argv[k][0]=='-' ) {
-            if( strcmp(argv[k],"-step")==0 )  { step=true;  continue; }
-            if( strcmp(argv[k],"-extra")==0 ) { extra=true; continue; }
-            if( strcmp(argv[k],"-v")==0 ) { verbose=true; continue; }
+            if( strcmp(argv[k],"-extra")==0 )  { extra=true;  continue; }
+            if( strcmp(argv[k],"-v")==0 ) {
+                verbose=true;
+                if(verbose) step=true;
+                continue;
+            }
             if( strcmp(argv[k],"-play")==0 ) { playback=true; continue; }
             if( strcmp(argv[k],"-max")==0 ) {
                 if( ++k<argc ) {

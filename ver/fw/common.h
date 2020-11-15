@@ -53,6 +53,7 @@ public:
 
     // PIO
     int pids() { return top.pids_n; }
+    int pbus_out() { return top.pbus_out; }
 
     // IRQ
     void set_irq(int v=1) { top.irq = v; }
