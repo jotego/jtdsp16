@@ -1,6 +1,7 @@
 #include "vcd.h"
 #include <fstream>
 #include <cstring>
+#include <iostream>
 
 using namespace std;
 
@@ -9,9 +10,9 @@ VCDfile::VCDfile( const char *fname ) {
     string str;
     line=1;
     while( getline( fin, str ) ) {
-        size_t blank=str.find_first_of(' ');
-        if( blank==string::npos ) continue;
-        string cmd=str.substr(blank-1);
+        string cmd;
+        int blank = str.find_first_of(" \t");
+        cmd = blank ? str.substr(0,blank) : str;
         try {
             if( cmd=="$var" ) parse_var(str);
         } catch( const char *msg ) {
@@ -76,7 +77,7 @@ void VCDfile::parse_value( int64_t t, const string& str ) {
         v = str.at(0)=='1';
         handler = str.substr(1);
     }
-    handlers[handler]->push( 0, v );
+    handlers[handler]->push( t, v );
 }
 
 void VCDfile::parse_t0( ifstream& fin ) {
@@ -92,7 +93,7 @@ void VCDfile::parse_rest( ifstream& fin ) {
     string str;
     int64_t t=0L;
     while( getline( fin, str ) ) {
-        if( str.at(0)='#' ) {
+        if( str.at(0)=='#' ) {
             sscanf( str.c_str()+1, "%ld", &t );
         } else parse_value( t, str );
         line++;
@@ -128,9 +129,34 @@ void VCDfile::forward(int64_t time) {
     }
 }
 
-VCDsignal* VCDfile::get( std::string name ) {
+VCDsignal* VCDfile::get( const std::string& name ) {
     sigmap::iterator k = signals.find(name);
     return k==signals.end() ? nullptr : k->second;
+}
+
+VCDsignal* VCDfile::get_or_throw( const std::string& name ) {
+    VCDsignal *s = get(name);
+    if( s==nullptr ) {
+        char s[256];
+        sprintf(s, "Cannot find signal name %s in VCD file", name.substr(0,50).c_str() );
+        throw runtime_error(s);
+    }
+    return s;
+}
+
+int64_t VCDfile::forward(std::string name, int64_t val) {
+    VCDsignal *p = get_or_throw(name);
+    int64_t time = p->next(val);
+    forward( time );
+    return time;
+}
+
+void VCDfile::report() {
+    printf("VCD signals:");
+    for( auto s : signals ) {
+        printf("\n\t%s (%d points)", s.first.c_str(), s.second->data_points() );
+    }
+    putchar('\n');
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,4 +189,13 @@ void VCDsignal::forward( int64_t time ) {
 
 int64_t VCDsignal::cur() {
     return k->val;
+}
+
+int64_t VCDsignal::next(int64_t val) {
+    val &= mask;
+    while( k->val != val && n!=points.end() ) {
+        k++;
+        n++;
+    }
+    return k->time;
 }

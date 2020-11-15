@@ -27,6 +27,10 @@ int playfiles() {
     ROM rom;
     //QSndData samples("punisher.rom");
     rtl.read_rom(rom.data());
+    VCDfile stim("wof_coin.vcd"); // VCD sample input from CPS 1.5 ver/game folder
+    stim.report();
+    // Move until rst is low
+    printf("VCD forwarded to %ld\n", stim.forward("dsp_rst",0) );
 
     rtl.clk( 100'000 );
     rtl.set_irq();

@@ -52,10 +52,16 @@ int random_tests( ParseArgs& args );
 int main( int argc, char *argv[] ) {
     ParseArgs args( argc, argv );
 
-    if( args.playback )
-        return playfiles();
-    else
-        return random_tests(args);
+    try {
+        if( args.playback )
+            return playfiles();
+        else
+            return random_tests(args);
+    } catch( runtime_error e ) {
+        printf("ERROR: %s\n",e.what());
+        return 1;
+    }
+    return 0;
 }
 
 int random_tests( ParseArgs& args ) {
