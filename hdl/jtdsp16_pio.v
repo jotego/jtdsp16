@@ -33,10 +33,15 @@ module jtdsp16_pio(
     input             irq,           // external interrupt request
     // interface with CPU
     input             pdx_read,
-    input      [15:0] long_imm,
     input             pio_imm_load,
+    input             pio_ram_load,
+    input             pio_acc_load,
     input      [ 2:0] r_field,
     output     [15:0] pio_dout,
+    // Buses
+    input      [15:0] long_imm,
+    input      [15:0] ram_dout,
+    input      [15:0] acc_dout,
     // Interrupts
     input             siord_full,
     input             siowr_empty,
@@ -58,6 +63,8 @@ wire [ 4:0] ien     = pioc[ 9: 5];
 wire [ 3:0] ststart = 4'he << stlen;
 
 wire        pioc_load, pdx0_load, pdx1_load, pdx_load, pdx_access;
+wire        any_load;
+wire [15:0] load_data;
 
 // interrupt latches
 reg         last_irq, last_siowr_empty, last_siord_full, last_iack;
@@ -66,11 +73,13 @@ wire        iack_negedge, siowr_empty_posedge, siord_full_posedge, irq_posedge;
 assign pods_n = pocnt[0];
 assign pids_n = picnt[0];
 
-assign pioc_load  = pio_imm_load && r_field[1:0]==2'd0;
-assign pdx0_load  = pio_imm_load && r_field[1:0]==2'd1;
-assign pdx1_load  = pio_imm_load && r_field[1:0]==2'd2;
+assign load_data  = pio_imm_load ? long_imm : ( pio_ram_load ? ram_dout : acc_dout);
+assign any_load   = pio_imm_load | pio_ram_load | pio_acc_load;
+assign pioc_load  = any_load && r_field[1:0]==2'd0;
+assign pdx0_load  = any_load && r_field[1:0]==2'd1;
+assign pdx1_load  = any_load && r_field[1:0]==2'd2;
 assign pdx_load   = pdx0_load | pdx1_load;
-assign pdx_access = (pio_imm_load | pdx_read) && r_field[1:0]!=2'd0;
+assign pdx_access = (any_load | pdx_read) && r_field[1:0]!=2'd0;
 
 // interrupt signals
 assign iack_negedge        = ~iack       &  last_iack;
@@ -132,7 +141,7 @@ always @(posedge clk, posedge rst) begin
         if( pdx_access ) begin
             psel <= r_field[1];
             if( pio_imm_load ) begin
-                pbus_out <= long_imm;
+                pbus_out <= load_data;
             end
             // if(r_field[0] && pdx_read ) pdx0_rd <= pdx_buffer;
             // if(r_field[1] && pdx_read ) pdx1_rd <= pdx_buffer;

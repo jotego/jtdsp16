@@ -171,7 +171,7 @@ wire        sio_imm_load, sio_acc_load, sio_ram_load, obe;
 wire [15:0] r_sio;
 
 // Parallel interface
-wire        pdx_read, pio_imm_load;
+wire        pdx_read, pio_imm_load, pio_ram_load, pio_acc_load;
 wire [15:0] r_pio;
 
 // interrupts
@@ -271,6 +271,8 @@ jtdsp16_ctrl u_ctrl(
     .long_imm       ( long_imm      ),
     // Parallel port
     .pio_imm_load   ( pio_imm_load  ),
+    .pio_ram_load   ( pio_ram_load  ),
+    .pio_acc_load   ( pio_acc_load  ),
     .pdx_read       ( pdx_read      ),
     // Serial port
     .sio_imm_load   ( sio_imm_load  ),
@@ -460,10 +462,15 @@ jtdsp16_pio u_pio(
     .irq            ( irq           ),
     // interface with CPU
     .pdx_read       ( pdx_read      ),
-    .long_imm       ( long_imm      ),
     .pio_imm_load   ( pio_imm_load  ),
+    .pio_ram_load   ( pio_ram_load  ),
+    .pio_acc_load   ( pio_acc_load  ),
     .r_field        ( r_field       ),
     .pio_dout       ( r_pio         ),
+    // Buses
+    .ram_dout       ( ram_dout      ),
+    .long_imm       ( long_imm      ),
+    .acc_dout       ( acc_dout      ),
     // Interrupts
     .iack           ( iack          ),
     .siord_full     ( ibf           ),

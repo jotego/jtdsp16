@@ -95,6 +95,8 @@ module jtdsp16_ctrl(
 
     // Parallel port
     output reg        pio_imm_load,
+    output reg        pio_ram_load,
+    output reg        pio_acc_load,
     output reg        pdx_read,
 
     // Serial port
@@ -245,6 +247,8 @@ always @(posedge clk, posedge rst) begin
         acc_sel       <= 0;
         // Parallel port
         pio_imm_load  <= 0;
+        pio_ram_load  <= 0;
+        pio_acc_load  <= 0;
         pdx_read      <= 0;
         // Serial port
         sio_imm_load  <= 0;
@@ -308,6 +312,8 @@ always @(posedge clk, posedge rst) begin
 
         // Parallel port
         pio_imm_load  <= 0;
+        pio_ram_load  <= 0;
+        pio_acc_load  <= 0;
         pdx_read      <= 0;
 
         // Serial portf
@@ -376,6 +382,7 @@ always @(posedge clk, posedge rst) begin
                         acc_load     <= rom_dout[8:7]==2'b00;  // RAM AAU register
                         xaau_acc_load<= rom_dout[8:7]==2'b01;  // ROM AAU register
                         sio_acc_load <= rom_dout[8:6]==3'b110; // SIO register
+                        pio_acc_load <= rom_dout[8:6]==3'b111; // PIO register
                         double       <= 1;
                         pc_halt      <= 1;
                     end
@@ -399,6 +406,7 @@ always @(posedge clk, posedge rst) begin
                             xaau_ram_load <= rom_dout[ 9:7]==3'b001; // YAAU register as destination
                             dau_ram_load  <= rom_dout[ 9:7]==3'b010; // DAU register as destination
                             sio_ram_load  <= rom_dout[ 9:6]==4'b0110;
+                            pio_ram_load  <= rom_dout[ 9:6]==4'b0111;
                         end else begin
                             pdx_read <= rom_dout[9:6]==4'b0111;
                         end
