@@ -18,9 +18,11 @@ public:
     VCDsignal( const std::string& _name, int64_t _mask );
     void push( int64_t time, int64_t val );
     void rewind();
-    void forward(int64_t time);
+    int64_t forward(int64_t time);
     int64_t next(int64_t val);
     int64_t cur();
+    int64_t get_tend();
+    //int64_t time() { return k->time; }
     int data_points() { return points.size(); }
 };
 
@@ -33,14 +35,14 @@ class VCDfile {
     void parse_rest ( std::ifstream& fin );
     int64_t parse_bin( const std::string& );
     VCDsignal* get_or_throw( const std::string& name );
-    int line;
+    int line, scale;
 public:
-    VCDfile( const char *fname );
+    VCDfile( const char *fname, int downscale=1000 ); // scale from ps to ns
     VCDsignal* get_signal( const char *name );
     ~VCDfile();
     // move all signals
     void rewind();
-    void forward(int64_t time);
+    int64_t forward(int64_t time);
     int64_t forward(std::string name, int64_t val);
     VCDsignal* get( const std::string& name );
     void report();

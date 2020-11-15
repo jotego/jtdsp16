@@ -5,10 +5,11 @@
 
 using namespace std;
 
-VCDfile::VCDfile( const char *fname ) {
+VCDfile::VCDfile( const char *fname, int downscale ) {
     ifstream fin( fname );
     string str;
     line=1;
+    scale = downscale;
     while( getline( fin, str ) ) {
         string cmd;
         int blank = str.find_first_of(" \t");
@@ -77,7 +78,7 @@ void VCDfile::parse_value( int64_t t, const string& str ) {
         v = str.at(0)=='1';
         handler = str.substr(1);
     }
-    handlers[handler]->push( t, v );
+    handlers[handler]->push( t/scale, v );
 }
 
 void VCDfile::parse_t0( ifstream& fin ) {
@@ -123,10 +124,13 @@ void VCDfile::rewind() {
     }
 }
 
-void VCDfile::forward(int64_t time) {
+int64_t VCDfile::forward(int64_t time) {
+    int64_t next=0;
     for( auto k : signals ) {
-        k.second->forward(time);
+        int64_t nt = k.second->forward(time);
+        if( nt > next) next=nt;
     }
+    return next;
 }
 
 VCDsignal* VCDfile::get( const std::string& name ) {
@@ -154,10 +158,12 @@ int64_t VCDfile::forward(std::string name, int64_t val) {
 void VCDfile::report() {
     printf("VCD signals:");
     for( auto s : signals ) {
-        printf("\n\t%s (%d points)", s.first.c_str(), s.second->data_points() );
+        printf("\n\t%s (%4d points - ends at %14ld)", s.first.c_str(), s.second->data_points(),
+            s.second->get_tend() );
     }
     putchar('\n');
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -180,11 +186,21 @@ void VCDsignal::rewind() {
     n = k; n++;
 }
 
-void VCDsignal::forward( int64_t time ) {
+int64_t VCDsignal::forward( int64_t time ) {
+    static bool ended=false;
     while( time > k->time && n!=points.end() ) {
         k++;
         n++;
     }
+    if(n==points.end() && !ended) {
+        printf("%s passed end\n", name.c_str());
+        ended=true;
+    }
+    return n==points.end() ? k->time : n->time;
+}
+
+int64_t VCDsignal::get_tend() {
+    return points.back().time;
 }
 
 int64_t VCDsignal::cur() {

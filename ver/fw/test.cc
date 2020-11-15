@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <cstdio>
 #include <fstream>
+#include <string>
 
 using namespace std;
 
@@ -44,6 +45,7 @@ class ParseArgs {
 public:
     bool step, extra, verbose, playback;
     int max, seed;
+    string vcd_file;
     ParseArgs( int argc, char *argv[]);
 };
 
@@ -54,7 +56,7 @@ int main( int argc, char *argv[] ) {
 
     try {
         if( args.playback )
-            return playfiles();
+            return playfiles(args.vcd_file.c_str());
         else
             return random_tests(args);
     } catch( runtime_error e ) {
@@ -65,7 +67,7 @@ int main( int argc, char *argv[] ) {
 }
 
 int random_tests( ParseArgs& args ) {
-    RTL rtl;
+    RTL rtl( args.vcd_file.c_str());
     ROM rom;
     if( rom.random( // GOTOJA |
         SHORTIMM |
@@ -240,10 +242,10 @@ int ROM::random( int valid ) {
 }
 
 /////////////////////////
-RTL::RTL() {
+RTL::RTL( const char *vcd_name) {
     Verilated::traceEverOn(true);
     top.trace(&vcd, 99);
-    vcd.open("test.vcd");
+    vcd.open(vcd_name);
     ticks=0;
     sim_time=0;
     half_period=9;
@@ -406,6 +408,7 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
     extra = step = verbose = playback = false;
+    vcd_file="test.vcd";
     seed=0;
     max = 100'000;
     if( argc==1 ) return;
@@ -422,6 +425,10 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
                 if( ++k<argc ) {
                     max = strtol(argv[k], NULL, 0);
                 }
+                continue;
+            }
+            if( strcmp(argv[k],"-vcd")==0 ) {
+                if( ++k < argc ) vcd_file=argv[k];
                 continue;
             }
         } else {

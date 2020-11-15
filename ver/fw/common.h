@@ -9,7 +9,7 @@ class RTL {
     VerilatedVcdC vcd;
 public:
     Vjtdsp16 top;
-    RTL();
+    RTL(const char *vcd_name);
     void reset();
     void clk( int n=1 );
     void read_rom( int16_t* data );
@@ -54,6 +54,7 @@ public:
     // PIO
     int pids() { return top.pids_n; }
     int pbus_out() { return top.pbus_out; }
+    void pbus_in(int v) { top.pbus_in = v; }
 
     // IRQ
     void set_irq(int v=1) { top.irq = v; }
