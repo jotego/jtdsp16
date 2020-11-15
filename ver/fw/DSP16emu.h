@@ -22,6 +22,7 @@ class DSP16emu {
     int64_t assign_high( int clr_mask, int64_t& dest, int val );
     int     sign_extend( int v, int msb=7 );
     void    disasm(int op);
+    const char *disasm_r( int op );
 
     int     Yparse( int Y, bool up_now );
     void    Yparse_write( int Y, int v );
@@ -677,6 +678,39 @@ bool DSP16emu::processDo() {
     else return false;
 }
 
+const char *DSP16emu::disasm_r( int op ) {
+    switch( (op>>4)&0x3f ) {
+        case 0: return "r0";
+        case 1: return "r1";
+        case 2: return "r2";
+        case 3: return "r3";
+        case 4: return "j";
+        case 5: return "k";
+        case 6: return "rb";
+        case 7: return "re";
+        case 8: return "pt";
+        case 9: return "pr";
+        case 10: return "pi";
+        case 11: return "i";
+        case 16: return "x";
+        case 17: return "y";
+        case 18: return "yl";
+        case 19: return "aux";
+        case 20: return "psw";
+        case 21: return "c0";
+        case 22: return "c1";
+        case 23: return "c2";
+        case 24: return "sioc";
+        case 25: return "srta";
+        case 26: return "sdx";
+        case 27: return "tdms";
+        case 28: return "pioc";
+        case 29: return "pdx0";
+        case 30: return "pdx1";
+        default: return "*BAD OP*";
+    }
+}
+
 void DSP16emu::disasm(int op) {
     const char* s;
     switch( (op>>11)&0x1f ) {
@@ -686,7 +720,10 @@ void DSP16emu::disasm(int op) {
         case 5: s="F1 Z:aT[l]"; break;
         case 6: s="F1 Y"; break;
         case 7: s="F1 aT[l]=Y"; break;
-        case 8: s="at=R"; break;
+        case 8:
+            printf("a%d=%s\n", 1-((op>>10)&1), disasm_r(op) );
+            s=nullptr;
+            break;
         case 9: case 11: s="R=aS"; break;
         case 10: s="R=N (long)"; break;
         case 12: s="Y=R"; break;
@@ -721,12 +758,12 @@ int DSP16emu::eval() {
     if( verbose ) printf("*********");
     bool last_loop = processDo();
 
-    if(!in_cache) next_pi = pc;
     if(verbose) {
         printf("OP=%04X (0x%X=%d) --> ",op, opcode, opcode );
         disasm( op );
     }
     update_regs();
+    if(!in_cache) next_pi = pc;
     switch( opcode ) {
         case 0: // goto JA
         case 1:
