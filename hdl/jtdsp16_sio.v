@@ -54,7 +54,8 @@ module jtdsp16_sio(
     output reg [15:0] r_sio,    // output register
     // Debug
     output     [ 7:0] debug_srta,
-    output     [ 9:0] debug_sioc
+    output     [ 9:0] debug_sioc,
+    output reg [15:0] ser_out
 );
 
 reg  [15:0] ibuf, obuf;
@@ -98,6 +99,7 @@ always @(posedge clk, posedge rst) begin
         addr_obuf <= ~8'h0;
         srta      <= 8'h0;
         obuf      <= 16'h0;
+        ser_out  <= 16'd0;
     end else if(cen) begin
         clkdiv   <= clkdiv==4'd11 ? 4'd0: clkdiv+4'd1;
         last_ock <= ock;
@@ -105,6 +107,7 @@ always @(posedge clk, posedge rst) begin
         if( clkdiv==4'd11 ) ock <= 0;
         if( any_load ) begin
             if( sdx_load ) begin
+                ser_out   <= load_data;
                 obuf      <= load_data;
                 addr_obuf <= srta[7:0];
                 ocnt      <= 17'h1;

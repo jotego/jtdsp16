@@ -43,6 +43,7 @@ module jtdsp16(
     input             di,            // serial data input
     input             ick,           // serial data input clock
     input             ild,           // serial data input load
+    output     [15:0] ser_out,       // not a pin in the original
     // interrupts
     input             irq,           // interrupt
     output            iack,          // interrupt acknowledgement
@@ -489,6 +490,7 @@ jtdsp16_sio u_sio(
     .old            ( old           ),  // output load
     .ose            ( ose           ),  // output shift register empty
     .doen           ( doen          ),
+    .ser_out        ( ser_out       ),
     // interface with CPU
     .sio_imm_load   ( sio_imm_load  ),
     .sio_acc_load   ( sio_acc_load  ),
