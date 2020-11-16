@@ -85,6 +85,12 @@ F1 y=Y  x=*pt++[i] | 31    | Yes         |   Yes         |   2 / 1 in cache
 
 External memory cannot be used to execute a program. It can only be used to access data via the pt register.
 
+Memory   |  Access by registers  | Can be loaded into
+---------|-----------------------|-------------------
+RAM      | r0,r1,r2,r3           | a0, a1, y, any register
+ROM      | pc, pt                | x
+external | pt                    | x
+
 # The Cache
 
 The cache does not accept instructions that alter the program flow or that take two memory words (i.e. the long immediate instruction).

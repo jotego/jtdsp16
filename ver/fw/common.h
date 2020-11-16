@@ -53,8 +53,13 @@ public:
 
     // PIO
     int pids() { return top.pids_n; }
+    int pods() { return top.pods_n; }
     int pbus_out() { return top.pbus_out; }
     void pbus_in(int v) { top.pbus_in = v; }
+
+    // external ROM
+    int ab() { return top.ab; }
+    void rb_din(int d) { top.rb_din = d; }
 
     // IRQ
     void set_irq(int v=1) { top.irq = v; }

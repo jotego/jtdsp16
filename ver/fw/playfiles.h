@@ -11,9 +11,11 @@ int playfiles();
 
 class QSndData {
     int get_offset( char *header, int p );
+    int mask;
     char *data;
 public:
     QSndData( const char *rompath );
+    int get( int addr );
     ~QSndData();
 };
 
@@ -26,7 +28,7 @@ public:
 int playfiles( const char* vcd_file ) {
     RTL rtl(vcd_file);
     ROM rom;
-    //QSndData samples("punisher.rom");
+    QSndData samples("wof.rom");
     rtl.read_rom(rom.data());
     VCDfile stim("wof_coin.vcd"); // VCD sample input from CPS 1.5 ver/game folder
     stim.report();
@@ -44,10 +46,12 @@ int playfiles( const char* vcd_file ) {
     int64_t vcdtime = n->time;
     int64_t next= n->time;
     rtl.clk( 20'000 ); // initialization
-    for( int k=0; k<3'500'000; ) {
+
+    for( int k=0; k<2'500'000; ) {
         int newcmd = n->val;
         int reads=0;
         int last_pids=1;
+        int rom_addr=0;
         rtl.set_irq(1);
         rtl.pbus_in( newcmd>>16 );
         n++;
@@ -66,10 +70,19 @@ int playfiles( const char* vcd_file ) {
             }
             if( last_pids==0 ) rtl.set_irq(0);
             last_pids = rtl.pids();
+            if( !rtl.pods() ) {
+                rom_addr = 0;
+                rom_addr |= rtl.pbus_out()&0xFFFF;
+            }
+            rom_addr &= 0xFFFF;
+            rom_addr |= (rtl.ab()&0xff)<<16;
+            if( rtl.ab()&0x8000 ) { // update the value only when external reads occur
+                int din = samples.get( rom_addr );
+                //printf("Read %X from %X\n", din, rom_addr );
+                rtl.rb_din( din<<8 );
+            }
             steps-=2;
-            if( reads == 3 ) break;
         }
-        rtl.clk( steps ); // Do the rest
         k+=steps;
     }
 
@@ -78,27 +91,48 @@ int playfiles( const char* vcd_file ) {
 
 QSndData::QSndData( const char *rompath ) {
     ifstream fin(rompath, ios_base::binary);
+    if( !fin.good() ) throw runtime_error("Cannot open ROM file for game");
     // Get the header
     char header[64];
     fin.read( header, 64 );
+    if( !fin.good() ) throw runtime_error("Cannot read ROM header");
     int start = get_offset( header, 2 );
     int end   = get_offset( header, 4 );
-    end = end-start;
-    if( end>8*1024*1024 )
-        end = 8*1024*1024;
-    data = new char[end];
-    fin.seekg( start );
-    fin.read( data, end );
-    // printf("Read %d MB as PCM data\n", c>>10 );
+    int expected = end-start;
+    if( expected>8*1024*1024 )
+        expected = 8*1024*1024;
+    data = new char[expected];
+    mask = expected-1;
+    printf("PCM data start %10X\nPCM data end   %10X. Mask=%0x\n", start, end, mask );
+    fin.seekg( start+64 );
+    if( !fin.good() ) {
+        char s[256];
+        sprintf(s,"Cannot seek to PCM start of game ROM (%X)", start);
+        throw runtime_error(s);
+    }
+    fin.read( data, expected );
+    int data_cnt = fin.gcount();
+    if( data_cnt!=expected ) {
+        char s[256];
+        sprintf(s,"Expected 0x%X bytes of data but only 0x%X were read", expected, data_cnt );
+        throw runtime_error(s);
+    }
+    printf("Read %d (%d MB) as PCM data\n", data_cnt, data_cnt>>20 );
 }
 
 QSndData::~QSndData() {
-    delete data;
+    delete[] data;
     data = nullptr;
 }
 
+int QSndData::get( int addr ) {
+    addr &= mask;
+    return data[addr]&0xff;
+}
+
 int QSndData::get_offset( char *header, int p ) {
-    int o = (((int)header[p+1])&0xff)<<16 | (((int)header[p])&0xff);
+    int o = ((((int)header[p+1])&0xff)<<8) | (((int)header[p])&0xff);
+    printf("%X%X->%X\n", (unsigned)header[p+1]&0xff, (unsigned)header[p]&0xff, o);
     o <<= 10;
     return o;
 }
