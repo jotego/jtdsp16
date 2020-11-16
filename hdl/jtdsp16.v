@@ -291,6 +291,7 @@ jtdsp16_rom u_rom(
     .cen        ( cen             ),
     .addr       ( rom_addr        ),
     .pt         ( pt_addr         ),
+    .pt_load    ( dau_pt_load     ),
 
     .dout       ( rom_dout        ),
     .pt_dout    ( pt_dout         ),

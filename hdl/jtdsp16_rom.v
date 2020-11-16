@@ -28,6 +28,7 @@ module jtdsp16_rom(
     input             cen,
     input      [15:0] addr,
     input      [15:0] pt,
+    input             pt_load,
     output     [15:0] dout,     // first 4kB of memory comes from internal ROM
                                 // the rest is read from the external memory
     output     [15:0] pt_dout,  // ROM reads by PT pointer
@@ -50,8 +51,8 @@ assign     dout      = {rom_msb, rom_lsb};
 assign     pt_rom    = {pt_msb, pt_lsb};
 
 assign     ext_addr  = pt;
-assign     ext_rq    = pt[15:12]!=4'd0;
-assign     pt_dout   = ext_rq ? ext_data : pt_rom;
+assign     ext_rq    = pt[15:12]!=4'd0 && pt_load;
+assign     pt_dout   = pt[15:12]!=4'd0 ? ext_data : pt_rom;
 //assign     read_addr = cen ? pt[11:0] : addr[11:0];
 
 assign     rom_addr  = prog_we ? prog_addr[12:1] : pt[11:0];
