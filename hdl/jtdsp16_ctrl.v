@@ -106,7 +106,6 @@ module jtdsp16_ctrl(
 
     // Data buses
     input      [15:0] rom_dout,
-    input      [15:0] ext_dout,
 
     // Debug
     output reg        fault

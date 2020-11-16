@@ -33,6 +33,7 @@ module jtdsp16_rom(
     output     [15:0] pt_dout,  // ROM reads by PT pointer
     // External ROM
     input             ext_mode,
+    output            ext_rq,
     input      [15:0] ext_data,
     output     [15:0] ext_addr,
     // ROM programming interface
@@ -50,7 +51,8 @@ assign     rom_dout  = {rom_msb, rom_lsb};
 assign     pt_dout   = {pt_msb, pt_lsb};
 
 assign     ext_addr  = addr;
-assign     dout      = ext_mode ? ext_data : ((addr[15:12]==4'd0) ? rom_dout : ext_data);
+assign     ext_rq    = addr[15:12]!=4'd0 || ext_mode;
+assign     dout      = ext_rq ? ext_data : rom_dout;
 //assign     read_addr = cen ? pt[11:0] : addr[11:0];
 
 assign     rom_addr  = prog_we ? prog_addr[12:1] : pt;

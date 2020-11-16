@@ -25,6 +25,7 @@ module jtdsp16(
     output     [15:0] ab,           // address bus
     input      [15:0] rb_din,       // ROM data bus
     input             ext_mode,     // EXM pin, when high internal ROM is disabled
+    output            ext_rq,
     // Parallel I/O
     input      [15:0] pbus_in,
     output     [15:0] pbus_out,
@@ -280,7 +281,6 @@ jtdsp16_ctrl u_ctrl(
     .sio_ram_load   ( sio_ram_load  ),
     // Data buses
     .rom_dout       ( rom_dout      ),
-    .ext_dout       ( rb_din        ),
     // Debug
     .fault          ( fault         )
 );
@@ -297,6 +297,7 @@ jtdsp16_rom u_rom(
     .ext_mode   ( ext_mode        ),
     .ext_data   ( rb_din          ),
     .ext_addr   ( ab              ),
+    .ext_rq     ( ext_rq          ),
     // ROM programming interface
     .prog_addr  ( prog_addr       ),
     .prog_data  ( prog_data       ),
