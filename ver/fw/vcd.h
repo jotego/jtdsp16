@@ -9,9 +9,13 @@ struct VCDpoint {
     int64_t time, val;
 };
 
+
 class VCDsignal {
-    std::list<VCDpoint> points;
-    std::list<VCDpoint>::iterator k, n;
+public:
+    typedef std::list<VCDpoint> pointlist;
+private:
+    pointlist points;
+    pointlist::iterator k, n;
     int64_t mask;
     std::string name;
 public:
@@ -24,6 +28,7 @@ public:
     int64_t get_tend();
     //int64_t time() { return k->time; }
     int data_points() { return points.size(); }
+    const pointlist& get_list() const { return points; }
 };
 
 class VCDfile {

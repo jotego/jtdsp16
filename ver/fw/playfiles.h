@@ -32,26 +32,45 @@ int playfiles( const char* vcd_file ) {
     stim.report();
     // Move until rst is low
     //printf("VCD forwarded to %ld\n",  );
-    int64_t vcdtime = stim.forward("dsp_rst",0);
+    //int64_t vcdtime = stim.forward("dsp_rst",0);
 
-    VCDsignal* sig_irq = stim.get("dsp_irq");
+    // VCDsignal* sig_irq = stim.get("dsp_irq");
     VCDsignal* sig_cpu2dsp = stim.get("cpu2dsp");
-    int last_irq;
-    int64_t next= vcdtime + 9*2*20;
-    for( int k=0; k<60'500'000; k++ ) {
-        int steps = (next-vcdtime)/18;
-        printf("%6d -> %ld\n", steps, vcdtime);
-        rtl.clk(steps);
-        int cpu2dsp = sig_cpu2dsp->cur();
-        rtl.pbus_in( cpu2dsp&0xFFFF );
-        vcdtime = next;
-        next = stim.forward(vcdtime);
-        if( next == vcdtime ) break;
+    const VCDsignal::pointlist& cmdlist = sig_cpu2dsp->get_list();
+    VCDsignal::pointlist::const_iterator n = cmdlist.cbegin();
 
-        // if( rtl.pids()==0 ) rtl.set_irq(0);
-        // else if( sig_irq->cur() ) rtl.set_irq(1);
-        //if( sig_irq->cur()!= last_irq ) printf("%ld, %ld\n", vcdtime, sig_irq->cur() );
-        //last_irq = sig_irq->cur();
+    int reads;
+    n++;
+    int64_t vcdtime = n->time;
+    int64_t next= n->time;
+    rtl.clk( 20'000 ); // initialization
+    for( int k=0; k<3'500'000; ) {
+        int newcmd = n->val;
+        int reads=0;
+        int last_pids=1;
+        rtl.set_irq(1);
+        rtl.pbus_in( newcmd>>16 );
+        n++;
+        if( n==cmdlist.cend() ) break;
+        vcdtime = next;
+        next = n->time;
+        int steps = (next-vcdtime)/18;
+        if( steps>2'000'000 )
+            steps=2'000'000;
+        printf("%6d -> %ld\n", steps, vcdtime);
+        while( steps>0 ) {
+            rtl.clk(2);
+            if( rtl.pids()==1 && last_pids==0 ) {
+                reads++;
+                if( reads==1 ) rtl.pbus_in( newcmd&&0xffff );
+            }
+            if( last_pids==0 ) rtl.set_irq(0);
+            last_pids = rtl.pids();
+            steps-=2;
+            if( reads == 3 ) break;
+        }
+        rtl.clk( steps ); // Do the rest
+        k+=steps;
     }
 
     return 0;

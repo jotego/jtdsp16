@@ -24,7 +24,6 @@ module jtdsp16(
     output            cen_cko,      // clock output, interpret as clock enable signal
     output     [15:0] ab,           // address bus
     input      [15:0] rb_din,       // ROM data bus
-    input             ext_mode,     // EXM pin, when high internal ROM is disabled
     output            ext_rq,
     // Parallel I/O
     input      [15:0] pbus_in,
@@ -118,7 +117,8 @@ wire        goto_ja;
 wire        goto_b;
 wire        call_ja;
 wire        icall;
-wire [11:0] i_field, pt_addr;
+wire [11:0] i_field;
+wire [15:0] pt_addr;
 wire        con_result, con_check;
 wire        irq_latch;
 wire        xaau_ram_load, xaau_imm_load, xaau_acc_load;
@@ -294,7 +294,6 @@ jtdsp16_rom u_rom(
     .dout       ( rom_dout        ),
     .pt_dout    ( pt_dout         ),
 
-    .ext_mode   ( ext_mode        ),
     .ext_data   ( rb_din          ),
     .ext_addr   ( ab              ),
     .ext_rq     ( ext_rq          ),

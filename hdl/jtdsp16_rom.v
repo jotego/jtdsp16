@@ -27,12 +27,11 @@ module jtdsp16_rom(
     input             clk,
     input             cen,
     input      [15:0] addr,
-    input      [11:0] pt,
+    input      [15:0] pt,
     output     [15:0] dout,     // first 4kB of memory comes from internal ROM
                                 // the rest is read from the external memory
     output     [15:0] pt_dout,  // ROM reads by PT pointer
     // External ROM
-    input             ext_mode,
     output            ext_rq,
     input      [15:0] ext_data,
     output     [15:0] ext_addr,
@@ -43,19 +42,19 @@ module jtdsp16_rom(
 );
 
 wire [ 7:0] rom_msb, rom_lsb, pt_msb, pt_lsb;
-wire [15:0] rom_dout;
+wire [15:0] rom_dout, pt_rom;
 wire [11:0] rom_addr;
 wire        prog_msb, prog_lsb;
 
-assign     rom_dout  = {rom_msb, rom_lsb};
-assign     pt_dout   = {pt_msb, pt_lsb};
+assign     dout      = {rom_msb, rom_lsb};
+assign     pt_rom    = {pt_msb, pt_lsb};
 
-assign     ext_addr  = addr;
-assign     ext_rq    = addr[15:12]!=4'd0 || ext_mode;
-assign     dout      = ext_rq ? ext_data : rom_dout;
+assign     ext_addr  = pt;
+assign     ext_rq    = pt[15:12]!=4'd0;
+assign     pt_dout   = ext_rq ? ext_data : pt_rom;
 //assign     read_addr = cen ? pt[11:0] : addr[11:0];
 
-assign     rom_addr  = prog_we ? prog_addr[12:1] : pt;
+assign     rom_addr  = prog_we ? prog_addr[12:1] : pt[11:0];
 assign     prog_msb  = prog_we &  prog_addr[0];
 assign     prog_lsb  = prog_we & ~prog_addr[0];
 /*

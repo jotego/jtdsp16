@@ -275,7 +275,7 @@ void RTL::reset() {
 }
 
 void RTL::clk(int n) {
-    while( n-- ) {
+    while( n-- > 0 ) {
         sim_time += half_period;
         top.clk = 0;
         top.eval();

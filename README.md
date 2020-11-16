@@ -81,6 +81,10 @@ F1 Z:y  x=*pt++[i] | 29    | Yes         |   Yes         |   2
 Reserved           | 30    |             |   Yes         |
 F1 y=Y  x=*pt++[i] | 31    | Yes         |   Yes         |   2 / 1 in cache
 
+# The External Memory
+
+External memory cannot be used to execute a program. It can only be used to access data via the pt register.
+
 # The Cache
 
 The cache does not accept instructions that alter the program flow or that take two memory words (i.e. the long immediate instruction).

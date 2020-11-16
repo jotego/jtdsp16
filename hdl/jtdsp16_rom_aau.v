@@ -36,7 +36,7 @@ module jtdsp16_rom_aau(
     // *pt++[i] reads
     input             pt_read,
     input             istep,
-    output     [11:0] pt_addr,
+    output     [15:0] pt_addr,
     // do loop
     input             do_start,
     input             do_redo,
@@ -111,7 +111,7 @@ assign      do_addr  = do_head + { 8'd0, do_pc };
 assign      rom_addr = do_incache ? {4'd0, do_addr } : pc;
 
 assign      dis_shadow= irq_start || icall || do_start;
-assign      pt_addr  = pt[11:0];
+assign      pt_addr  = pt;
 
 // Debugging
 assign      debug_pc = pc;
