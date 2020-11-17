@@ -44,7 +44,7 @@ class DSP16emu {
     int64_t extend_y();
     int     extend_i();
 
-    void    assign_acc( int aD, int v, bool up_now );
+    void    assign_acc( int aD, int selhigh, int v, bool up_now );
     int     get_acc( int w, bool high=true, bool sat=true );
     void    step_aau_r( int* pr, int s );
 
@@ -573,7 +573,7 @@ int DSP16emu::parse_pt( int op ) {
     return v;
 }
 
-void DSP16emu::assign_acc( int aD, int v, bool up_now ) {
+void DSP16emu::assign_acc( int aD, int selhigh, int v, bool up_now ) {
     int64_t *pr, *pnext;
     int64_t newv;
     if( aD ) {
@@ -583,17 +583,21 @@ void DSP16emu::assign_acc( int aD, int v, bool up_now ) {
         pr = &a0;
         pnext = &next_a0;
     }
+    int clr = (auc>>(4+aD))&1;
     int64_t v64 = v;
+    newv = *pr;
     v64 &= 0xffff;
-    v64 <<= 16;
-    newv = v64 | (*pr & 0xffff );
-    if( v &0x8000 )
-        newv |= 0xf'0000'0000; // sign extend
+    if( selhigh ) {
+        v64 <<= 16;
+        newv &= 0xffffL;
+    } else {
+        newv &= ~0xffffL;
+    }
+    newv |= v64;
+    if( selhigh && ((newv>>31)&1) )
+        newv |= 0xf'0000'0000L; // sign extend
     newv &= 0xF'FFFF'FFFFL;
-    int clr = auc>>4;
-    clr >>= aD;
-    clr &=1;
-    if( !clr ) newv &= ~0xffff; // clear low
+    if( !clr && selhigh) newv &= ~0xffff; // clear low
     *pnext = newv;
     if( up_now ) *pr = newv;
 }
@@ -721,7 +725,10 @@ void DSP16emu::disasm(int op) {
         case 4: s="F1 Y = a1[l]"; break;
         case 5: s="F1 Z:aT[l]"; break;
         case 6: s="F1 Y"; break;
-        case 7: s="F1 aT[l]=Y"; break;
+        case 7:
+            s=nullptr;
+            printf("F1 a%d%s=Y\n", (~op>>10)&1, ((op>>4)&1) ? "h" : "l" );
+            break;
         case 8:
             printf("a%d=%s\n", 1-((op>>10)&1), disasm_r(op) );
             s=nullptr;
@@ -809,7 +816,7 @@ int DSP16emu::eval() {
         case 7: // aT[l] = Y
             F1parse( op );
             aux = Yparse_read( op&0xf, false );
-            assign_acc( ((~op)>>10)&1, aux, false );
+            assign_acc( ((~op)>>10)&1, (op>>4)&1, aux, false );
             delta = 1;
             break;
         case 0x8: // aT = R

@@ -153,6 +153,7 @@ always @(*) begin
         2'd3: unit_mux =  16'd2;
     endcase
     step_mux = step_sel ? jk_mux : unit_mux;
+    //vsr_loop = rind==re && vsr_en && unit_mux==16'd1 && !step_sel; // loops only if post increment is one
     vsr_loop = rind==re && vsr_en && step_mux==16'd1; // loops only if post increment is one
     rsum     = rind + step_mux;
     rnext    = imm_load  ? imm_ext  : (

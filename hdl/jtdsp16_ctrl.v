@@ -45,8 +45,9 @@ module jtdsp16_ctrl(
     output reg        dau_yacc_load,
     output reg        dau_acc_ram,
     output reg        dau_special,
-    output reg        st_a0h,
-    output reg        st_a1h,
+    output reg        st_a0,
+    output reg        st_a1,
+    output reg        st_ah,
     output reg        acc_sel,
     input             con_result,
     // Load control
@@ -241,8 +242,9 @@ always @(posedge clk, posedge rst) begin
         dau_special   <= 0;
         dau_acc_ram   <= 0;
         rsel          <= 3'd0;
-        st_a0h        <= 0;
-        st_a1h        <= 0;
+        st_a0         <= 0;
+        st_a1         <= 0;
+        st_ah         <= 0;
         acc_sel       <= 0;
         // Parallel port
         pio_imm_load  <= 0;
@@ -305,8 +307,9 @@ always @(posedge clk, posedge rst) begin
         dau_yacc_load <= 0;
         dau_acc_ram   <= 0;
         dau_special   <= 0;
-        st_a0h        <= 0;
-        st_a1h        <= 0;
+        st_a0         <= 0;
+        st_a1         <= 0;
+        st_ah         <= 0;
         acc_sel       <= 0;
 
         // Parallel port
@@ -367,8 +370,9 @@ always @(posedge clk, posedge rst) begin
                         rsel         <=  rom_dout[8:6];
                         dau_rmux_load<= 1;
                         pdx_read     <=  rom_dout[9:6]==4'b0111;
-                        st_a0h       <=  rom_dout[10];
-                        st_a1h       <= ~rom_dout[10];
+                        st_a0        <=  rom_dout[10];
+                        st_a1        <= ~rom_dout[10];
+                        st_ah        <= 1;
                         double       <= 1;
                         pc_halt      <= 1;
                     end
@@ -432,8 +436,9 @@ always @(posedge clk, posedge rst) begin
                         a_field       <= rom_dout[10:9];
                         // accumulator storing
                         if( rom_dout[11] ) begin
-                            st_a1h      <= ~rom_dout[10];
-                            st_a0h      <=  rom_dout[10];
+                            st_a1      <= ~rom_dout[10];
+                            st_a0      <=  rom_dout[10];
+                            st_ah      <=  rom_dout[4];
                             dau_acc_ram <= 1;
                         end
                         // Y control

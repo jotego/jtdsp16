@@ -147,7 +147,7 @@ wire [ 5:0] dau_op_fields;
 wire [ 1:0] y_field, a_field;
 wire        dau_acc_load, dau_imm_load, dau_ram_load, dau_pt_load,
             dau_yacc_load, dau_acc_ram;
-wire        st_a0h, st_a1h;
+wire        st_a0, st_a1, st_ah;
 wire        dau_dec_en, dau_rmux_load, dau_special;
 
 wire [15:0] cache_dout;
@@ -238,8 +238,9 @@ jtdsp16_ctrl u_ctrl(
     .dau_yacc_load  ( dau_yacc_load ),
     .dau_acc_ram    ( dau_acc_ram   ),
     .dau_special    ( dau_special   ),
-    .st_a0h         ( st_a0h        ),
-    .st_a1h         ( st_a1h        ),
+    .st_a0          ( st_a0         ),
+    .st_a1          ( st_a1         ),
+    .st_ah          ( st_ah         ),
     .con_result     ( con_result    ),
     .con_check      ( con_check     ),
     .acc_sel        ( acc_sel       ),
@@ -427,8 +428,9 @@ jtdsp16_dau u_dau(
     .acc_ram        ( dau_acc_ram   ),
     .yacc_load      ( dau_yacc_load ),
     .pt_load        ( dau_pt_load   ),
-    .st_a0h         ( st_a0h        ),
-    .st_a1h         ( st_a1h        ),
+    .st_a0          ( st_a0         ),
+    .st_a1          ( st_a1         ),
+    .st_ah          ( st_ah         ),
     // Data buses
     .ram_dout       ( ram_dout      ),
     .rom_dout       ( rom_dout      ),

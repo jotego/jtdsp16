@@ -81,6 +81,11 @@ F1 Z:y  x=*pt++[i] | 29    | Yes         |   Yes         |   2
 Reserved           | 30    |             |   Yes         |
 F1 y=Y  x=*pt++[i] | 31    | Yes         |   Yes         |   2 / 1 in cache
 
+# Document Ambiguities and Contradictions
+
+1. Post increment for YAAU is said to be circular when re!=0, the register is equal to re and the post
+increment is 1. But it is not clear whether it also applies when j=1 and \*r++j is used.
+
 # The External Memory
 
 External memory cannot be used to execute a program. It can only be used to access data via the pt register.

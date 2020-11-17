@@ -37,8 +37,9 @@ module jtdsp16_dau(
     input             pt_load,
     // ALU control
     input             alu_sel,
-    input             st_a0h,
-    input             st_a1h,
+    input             st_a0,
+    input             st_a1,
+    input             st_ah,
     input             lfsr_rst,
     // Data buses
     input      [15:0] ram_dout,
@@ -71,8 +72,6 @@ reg  [35:0] a1, a0;
 reg  [35:0] alu_out, acc_mux;
 reg  [36:0] alu_arith, alu_special, p_ext;
 wire [36:0] alu_in;
-wire        st_a0l;
-wire        st_a1l;
 wire [35:0] alu_sat;
 
 wire [ 3:0] f_field;
@@ -123,8 +122,6 @@ assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
 assign up_p        = dec_en && f_field[3:2]==2'b0 && !special;
 assign up_y        = load_y | load_yl | yacc_load;
-assign st_a1l      = 0;
-assign st_a0l      = 0;
 assign as          = s_field ? {a1[35],a1} : {a0[35],a0};
 assign y_ext       = { {5{y[31]}}, y };
 assign psw         = { flags, 2'b0, ov1, a1[35:32], ov0, a0[35:32] };
@@ -256,18 +253,24 @@ always @(posedge clk, posedge rst) begin
         end
         // z <= zyl_swap ? yl : yh; // keep a copy of y last value
         // a0
-        if( st_a0h ) begin
-            a0[35:16] <= acc_in;
-            if( clr_a0l ) a0[15:0] <= 16'd0;
+        if( st_a0 ) begin
+            if( st_ah ) begin
+                a0[35:16] <= acc_in;
+                if( clr_a0l ) a0[15:0] <= 16'd0;
+            end else
+                a0[15:0] <= acc_in[15:0];
         end else if( load_a0 ) begin
             a0  <= alu_out;
             ov0 <= pre_lmv;
             if( special && ah_only ) a0[15:0] <= 16'd0;
         end
         // a1
-        if( st_a1h ) begin
-            a1[35:16] <= acc_in;
-            if( clr_a1l ) a1[15:0] <= 16'd0;
+        if( st_a1 ) begin
+            if( st_ah ) begin
+                a1[35:16] <= acc_in;
+                if( clr_a1l ) a1[15:0] <= 16'd0;
+            end else
+                a1[15:0] <= acc_in[15:0];
         end else if( load_a1 ) begin
             a1  <= alu_out;
             ov1 <= pre_lmv;

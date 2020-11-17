@@ -369,7 +369,7 @@ void dump( RTL& rtl, DSP16emu& emu ) {
     cout << "-- ROM AAU --\n";
     REG_DUMP(PC, emu.pc, rtl.pc )
     REG_DUMP(PR, emu.pr, rtl.pr )
-    REG_DUMP(PI, emu.pi, rtl.pi )
+    // REG_DUMP(PI, emu.pi, rtl.pi )
     REG_DUMP(PT, emu.pt, rtl.pt )
     REG_DUMP( I, emu.i , rtl.i  )
     // RAM AAU
