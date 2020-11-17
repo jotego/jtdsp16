@@ -293,7 +293,7 @@ bool DSP16emu::CONparse( int op ) {
 
 void DSP16emu::F12parse( int op, bool special, bool up_now ) {
     int64_t *ad, *next_ad, as;
-    int ov0 = (psw&0x100)!=0;
+    int ov0 = (psw&0x010)!=0;
     int ov1 = (psw&0x200)!=0;
     int* pov;
     int ovsat;
