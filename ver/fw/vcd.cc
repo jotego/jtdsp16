@@ -39,21 +39,22 @@ void VCDfile::parse_var( const string& str ) {
     char *token = strtok( s, " \t" );
     try{
         // move across the line
-        if( strcmp(token,"$var")!=0 ) throw "VCD: expecting $var";
+        if( strcmp(token,"$var")!=0 ) throw runtime_error("VCD: expecting $var");
         token = strtok(NULL," \t");
-        if( token==NULL || strcmp(token,"wire")!=0 ) throw "VCD: expecting wire";
+        if( token==NULL || (strcmp(token,"wire")!=0 && strcmp(token,"integer")!=0)
+            ) throw runtime_error("VCD: expecting wire or integer");
         token = strtok(NULL," \t");
         // Get width
-        if( token==NULL ) throw "VCD: expecting signal width";
+        if( token==NULL ) throw runtime_error("VCD: expecting signal width");
         int w = atoi( token );
-        if( w<1 || w>64 ) throw "VCD: signal width not supported";
+        if( w<1 || w>64 ) throw runtime_error("VCD: signal width not supported");
         token = strtok(NULL," \t");
         // Get handle
-        if( token==NULL ) throw "VCD: expecting signal token";
+        if( token==NULL ) throw runtime_error("VCD: expecting signal token");
         handle = token;
         token = strtok(NULL," \t");
         // Get full name
-        if( token==NULL ) throw "VCD: expecting signal name";
+        if( token==NULL ) throw runtime_error("VCD: expecting signal name");
         name = token;
         // Create signal
         const int64_t mask = w==64 ? ~0L : (1L<<w)-1;

@@ -45,9 +45,10 @@ int playfiles( const char* vcd_file ) {
     n++;
     int64_t vcdtime = n->time;
     int64_t next= n->time;
-    rtl.clk( 20'000 ); // initialization
+    rtl.clk( 200'000 ); // initialization
 
-    for( int k=0; k<2'500'000; ) {
+    int sim_time=0;
+    do {
         int newcmd = n->val;
         int reads=0;
         int last_pids=1;
@@ -61,12 +62,13 @@ int playfiles( const char* vcd_file ) {
         int steps = (next-vcdtime)/18;
         if( steps>2'000'000 )
             steps=2'000'000;
-        printf("%6d -> %ld\n", steps, vcdtime);
+        sim_time = (int)(rtl.time()/1000'000L);
+        printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
         while( steps>0 ) {
             rtl.clk(2);
             if( rtl.pids()==1 && last_pids==0 ) {
                 reads++;
-                if( reads==1 ) rtl.pbus_in( newcmd&&0xffff );
+                if( reads==1 ) rtl.pbus_in( newcmd&0xffff );
             }
             if( last_pids==0 ) rtl.set_irq(0);
             last_pids = rtl.pids();
@@ -83,8 +85,7 @@ int playfiles( const char* vcd_file ) {
             }
             steps-=2;
         }
-        k+=steps;
-    }
+    }while( sim_time < 200 );
 
     return 0;
 }

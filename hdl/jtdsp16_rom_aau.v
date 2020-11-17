@@ -125,7 +125,7 @@ always @(*) begin
         imm_load ? rom_dout : (
         ram_load ? ram_dout : (
         acc_load ? acc_dout : pc ));
-    next_pt = pt + (istep ? i_ext : 16'd1);
+    next_pt = { pt[15:12], pt[11:0] + (istep ? i : 12'd1) }; // 12 bit adder
 end
 
 always @(*) begin
