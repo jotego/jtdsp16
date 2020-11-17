@@ -111,7 +111,7 @@ wire [15:0] rom_addr;
 
 wire [ 2:0] r_field;
 wire [ 1:0] inc_sel;
-wire        acc_sel;
+wire        acc_sel, lfsr_rst;
 
 // X-AAU
 wire        goto_ja;
@@ -336,6 +336,7 @@ jtdsp16_rom_aau u_rom_aau(
     .i_field    ( i_field       ),
     // Interruption
     .irq_start  ( irq_start     ),
+    .lfsr_rst   ( lfsr_rst      ),
     // Data buses
     .rom_dout   ( rom_dout      ),
     .ram_dout   ( ram_dout      ),
@@ -407,6 +408,7 @@ jtdsp16_dau u_dau(
     .cen            ( cen           ),
     .pc_halt        ( pc_halt       ),
     .con_check      ( con_check     ),
+    .lfsr_rst       ( lfsr_rst      ),
     // Decoder
     .dec_en         ( dau_dec_en    ),
     .special        ( dau_special   ),

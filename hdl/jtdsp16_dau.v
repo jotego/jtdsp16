@@ -39,6 +39,7 @@ module jtdsp16_dau(
     input             alu_sel,
     input             st_a0h,
     input             st_a1h,
+    input             lfsr_rst,
     // Data buses
     input      [15:0] ram_dout,
     input      [15:0] rom_dout,
@@ -137,7 +138,7 @@ assign rmux_ext    = { {4{rmux[15]}}, rmux };
 assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
 assign acc_in      = acc_ram ? ram_ext[35:16] : (rmux_load ? rmux_ext : alu_out[35:16]);
 assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit integer
-assign pre_lmv     = |alu_out[35:31] ^ &alu_out[35:31]; // number doesn't fit in 32-bit integer
+assign pre_lmv     = alu_out[35:32] != {4{alu_out[31]}}; // number doesn't fit in 32-bit integer
 assign alu_sat     = { {5{alu_out[35]}}, {31{~alu_out[35]}}}; // saturate to 32-bit integer
 
 assign f1_st       = dec_en && !special && (f_field!=4'd2 && f_field!=4'd6 && f_field!=4'd10 && f_field!=4'd11 );
@@ -220,7 +221,9 @@ always @(posedge clk, posedge rst) begin
     if( rst ) begin
         lfsr <= 32'hcafe_cafe;
     end else if( cen ) begin
-        if( up_lfsr && special)
+        if( lfsr_rst )
+            lfsr<= 32'hcafe_cafe;
+        else if( up_lfsr && special)
             lfsr <= { lfsr[30:0], lfsr[31]^lfsr[21]^lfsr[1]^lfsr[0] };
     end
 end

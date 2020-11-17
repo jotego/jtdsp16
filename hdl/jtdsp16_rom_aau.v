@@ -50,6 +50,7 @@ module jtdsp16_rom_aau(
     input      [11:0] i_field,
     // IRQ
     input             irq_start,
+    output reg        lfsr_rst,
     // Data buses
     input      [15:0] rom_dout,
     input      [15:0] ram_dout,
@@ -161,7 +162,8 @@ always @(posedge clk, posedge rst ) begin
         do_incache <= 0;
         do_head    <= 12'd0;
         // interrupts
-        irq_in  <= 0;
+        irq_in   <= 0;
+        lfsr_rst <= 0;
     end else if(cen) begin
         if( load_pt  ) pt <= pt_load ? next_pt : rnext;
         if( load_pr  ) pr <= rnext;
@@ -179,11 +181,14 @@ always @(posedge clk, posedge rst ) begin
 
         // Update PC
         pc    <= next_pc;
-        if( shadow && !do_start && !do_incache && !irq_start )
+        if( shadow && !do_start && !do_incache && !irq_start )begin
             pi <= pc;
-        else
-        if( load_pi )
-            pi <= rnext;
+            lfsr_rst <= load_pi;
+        end else begin
+            if( load_pi )
+                pi <= rnext;
+            lfsr_rst <= 0;
+        end
 
         if( do_save && !do_redo ) do_head <= pc[11:0]; // - (do_short ? 1'd0 : 1'd1 );
         if( do_start ) begin
