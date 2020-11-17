@@ -958,6 +958,8 @@ int DSP16emu::eval() {
 }
 
 int16_t DSP16emu::read_rom(int a) {
-    a &= 0xfff;
+    if( a>0xfff )
+        return 0; // no external data
+    else
     return rom[a];
 }
