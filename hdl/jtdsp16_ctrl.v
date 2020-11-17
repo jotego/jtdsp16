@@ -42,7 +42,7 @@ module jtdsp16_ctrl(
     output reg        dau_ram_load,
     output reg        dau_acc_load,
     output reg        dau_pt_load,
-    output reg        dau_fully_load,
+    output reg        dau_yacc_load,
     output reg        dau_acc_ram,
     output reg        dau_special,
     output reg        st_a0h,
@@ -237,7 +237,7 @@ always @(posedge clk, posedge rst) begin
         dau_imm_load  <= 0;
         dau_ram_load  <= 0;
         dau_pt_load   <= 0;
-        dau_fully_load<= 0;
+        dau_yacc_load <= 0;
         dau_special   <= 0;
         dau_acc_ram   <= 0;
         rsel          <= 3'd0;
@@ -302,7 +302,7 @@ always @(posedge clk, posedge rst) begin
         dau_ram_load  <= 0;
         dau_acc_load  <= 0;
         dau_pt_load   <= 0;
-        dau_fully_load<= 0;
+        dau_yacc_load <= 0;
         dau_acc_ram   <= 0;
         dau_special   <= 0;
         st_a0h        <= 0;
@@ -479,13 +479,13 @@ always @(posedge clk, posedge rst) begin
                         step_sel  <= pre_step_sel;
                         ksel      <= pre_ksel;
                     end
-                    5'b11001,       // F1, y = a0, x = *pt++[i]
-                    5'b11011: begin // F1, y = a1, x = *pt++[i], 2 or 1 cycles (cache)
+                    5'b11001,       // 25, F1, y = a0, x = *pt++[i]
+                    5'b11011: begin // 27, F1, y = a1, x = *pt++[i], 2 or 1 cycles (cache)
                         // F1
                         dau_dec_en    <= 1;
                         // y load
-                        a_field       <= { 1'b0, rom_dout[12]};
-                        dau_fully_load<= 1;
+                        a_field       <= { 1'b1, rom_dout[12]};
+                        dau_yacc_load <= 1;
                         // x load
                         dau_pt_load   <= 1;
                         xaau_istep    <= rom_dout[4];

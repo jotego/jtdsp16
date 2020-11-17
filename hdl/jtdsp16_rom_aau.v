@@ -179,10 +179,11 @@ always @(posedge clk, posedge rst ) begin
 
         // Update PC
         pc    <= next_pc;
+        if( shadow && !do_start && !do_incache && !irq_start )
+            pi <= pc;
+        else
         if( load_pi )
             pi <= rnext;
-        else if( shadow && !do_start && !do_incache && !irq_start )
-            pi <= pc;
 
         if( do_save && !do_redo ) do_head <= pc[11:0]; // - (do_short ? 1'd0 : 1'd1 );
         if( do_start ) begin

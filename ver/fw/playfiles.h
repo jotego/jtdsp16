@@ -37,7 +37,7 @@ int playfiles( const char* vcd_file ) {
     //int64_t vcdtime = stim.forward("dsp_rst",0);
 
     // VCDsignal* sig_irq = stim.get("dsp_irq");
-    VCDsignal* sig_cpu2dsp = stim.get("cpu2dsp");
+    VCDsignal* sig_cpu2dsp = stim.get("cpu2dsp0");
     const VCDsignal::pointlist& cmdlist = sig_cpu2dsp->get_list();
     VCDsignal::pointlist::const_iterator n = cmdlist.cbegin();
 

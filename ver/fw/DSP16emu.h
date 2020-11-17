@@ -2,6 +2,9 @@ struct EmuStats {
     int ram_reads, ram_writes;
 };
 
+const int RFIELD_Y  = 0x11;
+const int RFIELD_YL = 0x12;
+
 class DSP16emu {
     int16_t *rom, *ram;
     int16_t read_rom(int a);
@@ -42,6 +45,7 @@ class DSP16emu {
     int     extend_i();
 
     void    assign_acc( int aD, int v, bool up_now );
+    int     get_acc( int w, bool high=true, bool sat=true );
     void    step_aau_r( int* pr, int s );
 
     void    ram_write( int a, int v );
@@ -461,7 +465,6 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
     int lmv = sign_bits!=0 && sign_bits!=0x1F; // number doesn't fit in 32-bit integer
     const int sign = (r>>35)&1;
     int lmi = sign;
-    *pov = llv;
     // store the final value
     if( verbose ) {
         if( flag_up )
@@ -469,13 +472,9 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
         printf("OVSAT %d - a%d<-a%d (F%d=%X) - (%lX)\n",
              ovsat, (f>>5)&1, (f>>4)&1, special?2:1, f&0xf, r);
     }
-    if( lmv && ovsat ) {// saturate to a 32 bit value
-    //     printf("Saturation\n");
-        r = sign ? 0xF'8000'0000 : 0x0'7FFF'FFFF;
-        r&=ahmask; // this will clear AL if needed
-    }
     r &= 0x0F'FFFF'FFFFL;
     if( !no_r ) {
+        *pov = lmv;
         *next_ad = r;
         if( up_now ) {
             *ad = r;
@@ -728,7 +727,7 @@ void DSP16emu::disasm(int op) {
             s=nullptr;
             break;
         case 9: case 11:
-            printf("%s=aS\n", disasm_r(op));
+            printf("%s=a%d\n", disasm_r(op), (op>>12)&1);
             s=nullptr;
             break;
         case 10:
@@ -756,6 +755,16 @@ void DSP16emu::disasm(int op) {
         case 31: s="F1 y=Y  x=*pt++[i]"; break;
     }
     if( s!=nullptr) puts(s);
+}
+
+int DSP16emu::get_acc( int w, bool high, bool sat ) {
+    int64_t acc_mux = w ? a1 : a0;
+    if( sat && (
+        (w==1 && (psw&0x200)!=0 && (auc&8)==0) ||
+        (w==0 && (psw&0x010)!=0 && (auc&4)==0)    )) {
+        acc_mux = (acc_mux&(1L<<35)) ? 0x8000'0000L : 0x7FFF'FFFFL;
+    }
+    return (high ? acc_mux>>16 : acc_mux) & 0xFFFF;
 }
 
 int DSP16emu::eval() {
@@ -797,6 +806,12 @@ int DSP16emu::eval() {
             }
             delta=1;
             break;
+        case 7: // aT[l] = Y
+            F1parse( op );
+            aux = Yparse_read( op&0xf, false );
+            assign_acc( ((~op)>>10)&1, aux, false );
+            delta = 1;
+            break;
         case 0x8: // aT = R
             aux = (op>>4)&0x3f;
             aux2 = get_register(aux);
@@ -810,7 +825,7 @@ int DSP16emu::eval() {
         case 0x9: // R = a0
             aux  = (op>>4)&0x3f;
             delta = 2;
-            set_register( aux, (a0>>16) & 0xffff );
+            set_register( aux, get_acc(0, true, aux!=RFIELD_Y && aux!=RFIELD_YL ) );
             break;
         case 0xa: // long imm
             aux  = (op>>4)&0x3f;
@@ -870,12 +885,6 @@ int DSP16emu::eval() {
             update_regs();
             delta = 2;
             break;
-        case 7: // aT[l] = Y
-            F1parse( op );
-            aux = Yparse_read( op&0xf, false );
-            assign_acc( ((~op)>>10)&1, aux, false );
-            delta = 1;
-            break;
         case 21: // Z:y F1
             F1parse( op, true );
             parseZ(op);
@@ -900,19 +909,12 @@ int DSP16emu::eval() {
             break;
         case 25: // 0x19
         case 27:
-            if( opcode==25 ) {
-                aux  = a0 >> 16;
-                aux2 = a0;
-            } else {
-                aux  = a1 >> 16;
-                aux2 = a1;
-            }
-            aux  &=0xffff;
-            aux2 &=0xffff;
             //if(verbose ) printf("OP 27. as = {%X, %X}\n", aux, aux2);
+            next_y  = get_acc( opcode==27 ? 1 : 0, true, false );
             F1parse( op, true );
-            next_y  = y  = aux;
-            next_yl = yl = aux2;
+            y = next_y;
+            if( (auc&0x40)==0 )
+                next_yl = yl = 0;
             x = next_x = parse_pt(op);
             // delta = in_cache ? 1 : 2;
             delta = 2;
@@ -930,12 +932,8 @@ int DSP16emu::eval() {
             break;
         case 4: // F1 Y=a1
         case 28: // 0x1C
-            // get old value of accumulator
-            if( opcode==4 )
-                aux2 = (op&0x10) ? (a1>>16) : a1;
-            else
-                aux2 = (op&0x10) ? (a0>>16) : a0;
-            aux2 &= 0xffff;
+            aux2 = get_acc( opcode==4, // selects a1 or a0
+                           (op&0x10)!=0 ); // selects high half
             F1parse( op );
             Yparse_write( op&0xf, aux2 );
             update_regs();

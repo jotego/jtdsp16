@@ -339,7 +339,7 @@ bool compare( RTL& rtl, DSP16emu& emu ) {
     g = g && rtl.j()  == emu.j;
     g = g && rtl.k()  == emu.k;
     // DAU
-    g = g && rtl.psw() == emu.psw;  //( (rtl.psw()&0xf000) == (emu.psw&0xf000));
+    g = g && ( (rtl.psw()&0xfe10) == (emu.psw&0xfe10)); // guard bits are not compared
     g = g && rtl.x()   == emu.x;
     g = g && rtl.y()   == emu.y;
     g = g && rtl.yl()  == emu.yl;

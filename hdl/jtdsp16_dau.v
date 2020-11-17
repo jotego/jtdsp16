@@ -33,7 +33,7 @@ module jtdsp16_dau(
     input             imm_load,
     input             acc_load,
     input             acc_ram,
-    input             fully_load,
+    input             yacc_load,
     input             pt_load,
     // ALU control
     input             alu_sel,
@@ -46,7 +46,7 @@ module jtdsp16_dau(
     input      [15:0] long_imm,
     input      [15:0] pt_dout,
 
-    output     [15:0] acc_dout,
+    output reg [15:0] acc_dout,
     output reg [15:0] reg_dout,
     output reg        con_result,
     input             con_check,
@@ -67,7 +67,7 @@ module jtdsp16_dau(
 reg  [15:0] x, yh, yl, z;
 reg  [31:0] p;
 reg  [35:0] a1, a0;
-reg  [35:0] alu_out;
+reg  [35:0] alu_out, acc_mux;
 reg  [36:0] alu_arith, alu_special, p_ext;
 wire [36:0] alu_in;
 wire        st_a0l;
@@ -82,8 +82,11 @@ wire        special_ok; // special operation F2 is ok to store as CON was true
 // Control registers
 reg  [ 7:0] c0, c1, c2;
 reg  [ 6:0] auc;        // arithmetic unit control
-reg         lmi, leq, llv, lmv, alu_llv;
-reg         f1_nop;        // indicates that F1 should not alter the flags
+reg         lmi, leq,
+            llv,        // the number doesn't fit in 36 bits
+            lmv,        // the number doesn't fit in 32 bits
+            alu_llv;
+reg         f1_nop;     // indicates that F1 should not alter the flags
 wire [15:0] psw;        // processor status word
 reg         ov1, ov0;   // overflow
 reg         ah_only;    // used for F2 operation #9
@@ -94,7 +97,7 @@ reg         up_lfsr;
 
 wire [31:0] y;
 wire [36:0] as, y_ext;
-wire [35:0] ram_ext, acc_mux;
+wire [35:0] ram_ext;
 wire [19:0] rmux_ext, acc_in;
 wire [ 3:0] flags;
 wire [15:0] load_data;
@@ -118,7 +121,7 @@ assign inc_cen     = special | con_check;
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
 assign up_p        = dec_en && f_field[3:2]==2'b0 && !special;
-assign up_y        = load_y | load_yl | fully_load;
+assign up_y        = load_y | load_yl | yacc_load;
 assign st_a1l      = 0;
 assign st_a0l      = 0;
 assign as          = s_field ? {a1[35],a1} : {a0[35],a0};
@@ -132,8 +135,6 @@ assign sat_a0      = ~auc[2];
 assign ram_ext     = { {4{ram_dout[15]}}, ram_dout, 16'd0 };
 assign rmux_ext    = { {4{rmux[15]}}, rmux };
 assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
-assign acc_mux     = a_field[0] ? a1 : a0;
-assign acc_dout    = a_field[1] ? acc_mux[31:16] : acc_mux[15:0]; // this is used in R=aT operations
 assign acc_in      = acc_ram ? ram_ext[35:16] : (rmux_load ? rmux_ext : alu_out[35:16]);
 assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit integer
 assign pre_lmv     = |alu_out[35:31] ^ &alu_out[35:31]; // number doesn't fit in 32-bit integer
@@ -169,6 +170,15 @@ assign debug_a1  = a1;
 assign debug_psw = psw;
 assign debug_auc = auc;
 assign debug_p   = p;
+
+// Accumulator output to memory
+always @(*) begin
+    acc_mux = a_field[0] ? a1 : a0;
+    // saturation is not performed for y register loads
+    if( ((a_field[0] && ov1 && sat_a1) || (!a_field[0] && ov0 && sat_a0)) && !up_y )
+        acc_mux = { {5{acc_mux[35]}}, {31{~acc_mux[35]}}}; // saturate to 32-bit integer
+    acc_dout = a_field[1] ? acc_mux[31:16] : acc_mux[15:0];
+end
 
 // Condition check
 always @(*) begin
@@ -235,16 +245,11 @@ always @(posedge clk, posedge rst) begin
         if( up_p   ) p <= x*yh;
         if( load_x ) x <= pt_load ? pt_dout : load_data;
         if( up_y ) begin
-            if( fully_load ) begin
-                {yh, yl} <= acc_mux[31:0];
+            if( !load_yl || yacc_load ) begin
+                yh <= yacc_load ? acc_dout : load_data;
+                if( clr_yl ) yl <= 16'd0;
             end else begin
-                if( !load_yl ) begin
-                    yh <= /*load_ay1 ? a1[31:16] : (load_ay0 ? a0[15:0] :*/
-                                                 load_data;
-                    if( clr_yl ) yl <= 16'd0;
-                end else begin
-                    yl <= load_data;
-                end
+                yl <= load_data;
             end
         end
         // z <= zyl_swap ? yl : yh; // keep a copy of y last value
@@ -253,7 +258,8 @@ always @(posedge clk, posedge rst) begin
             a0[35:16] <= acc_in;
             if( clr_a0l ) a0[15:0] <= 16'd0;
         end else if( load_a0 ) begin
-            a0 <= (pre_lmv & sat_a0) ? alu_sat : alu_out;
+            a0  <= alu_out;
+            ov0 <= pre_lmv;
             if( special && ah_only ) a0[15:0] <= 16'd0;
         end
         // a1
@@ -261,7 +267,8 @@ always @(posedge clk, posedge rst) begin
             a1[35:16] <= acc_in;
             if( clr_a1l ) a1[15:0] <= 16'd0;
         end else if( load_a1 ) begin
-            a1 <= (pre_lmv & sat_a1) ? alu_sat : alu_out;
+            a1  <= alu_out;
+            ov1 <= pre_lmv;
             if( special && ah_only ) a1[15:0] <= 16'd0;
         end
         // Counters
@@ -281,9 +288,6 @@ always @(posedge clk, posedge rst) begin
                                        : ~|alu_out;
             llv <= pre_ov;
             lmv <= pre_lmv;
-            // Not sure whether these are always updated
-            ov0 <= ~d_field & pre_ov;
-            ov1 <=  d_field & pre_ov;
         end
     end
 end
