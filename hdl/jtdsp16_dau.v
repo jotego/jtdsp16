@@ -64,7 +64,7 @@ module jtdsp16_dau(
     output     [31:0] debug_p
 );
 
-reg  [15:0] x, yh, yl, z;
+reg  [15:0] x, yh, yl;
 reg  [31:0] p;
 reg  [35:0] a1, a0;
 reg  [35:0] alu_out, acc_mux;
@@ -231,7 +231,6 @@ always @(posedge clk, posedge rst) begin
         x   <= 16'd0;
         yh  <= 16'd0;
         yl  <= 16'd0;
-        z   <= 16'd0;
         a0  <= 36'd0;
         a1  <= 36'd0;
         auc <=  7'd0;

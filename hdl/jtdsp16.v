@@ -179,7 +179,6 @@ wire [15:0] r_pio;
 // interrupts
 wire        irq_start;
 
-
 jtdsp16_div u_div(
     .clk            ( clk           ),
     .cen            ( clk_en        ),
@@ -479,7 +478,7 @@ jtdsp16_pio u_pio(
     .siowr_empty    ( obe           ),
     .irq_latch      ( irq_latch     )
 );
-
+/* verilator tracing_on */
 jtdsp16_sio u_sio(
     .rst            ( rst           ),
     .clk            ( clk           ),

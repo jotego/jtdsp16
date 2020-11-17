@@ -565,9 +565,9 @@ int DSP16emu::parse_pt( int op ) {
     const int X = (op>>4)&1;
     int v = read_rom( pt ) & 0xffff;
     if( X )
-        pt+=extend_i();
+        pt = ((pt+extend_i())&0xfff) | (pt&0xf000);
     else
-        pt++;
+        pt = (pt&0xf000)+((pt+1)&0x0fff);
     pt &= 0xffff;
     next_pt = pt;
     return v;
