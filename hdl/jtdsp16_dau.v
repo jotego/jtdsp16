@@ -72,7 +72,6 @@ reg  [35:0] a1, a0;
 reg  [35:0] alu_out, acc_mux;
 reg  [36:0] alu_arith, alu_special, p_ext;
 wire [36:0] alu_in;
-wire [35:0] alu_sat;
 
 wire [ 3:0] f_field;
 wire        s_field;  // source
@@ -136,7 +135,6 @@ assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
 assign acc_in      = acc_ram ? ram_ext[35:16] : (rmux_load ? rmux_ext : alu_out[35:16]);
 assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit integer
 assign pre_lmv     = alu_out[35:32] != {4{alu_out[31]}}; // number doesn't fit in 32-bit integer
-assign alu_sat     = { {5{alu_out[35]}}, {31{~alu_out[35]}}}; // saturate to 32-bit integer
 
 assign f1_st       = dec_en && !special && (f_field!=4'd2 && f_field!=4'd6 && f_field!=4'd10 && f_field!=4'd11 );
 assign special_ok  = special && con_result;
@@ -344,8 +342,9 @@ end
 always @(*) begin
     case( auc[1:0] )
         2'd0, 2'd3: p_ext = { {5{p[31]}}, p }; // Makes reserved case 3 same as 0
-        2'd1: p_ext = { {7{p[31]}}, p[31:2] };
-        2'd2: p_ext = { {3{p[31]}}, p, 2'd0 };
+        2'd1: p_ext = { {7{p[31]}}, p[31:2] }; // >> 2
+        //2'd2: p_ext = { {3{p[31]}}, p, 2'd0 }; // << 4
+        2'd2: p_ext = { {5{p[29]}}, p[29:0], 2'd0 }; // << 4
     endcase
 end
 
