@@ -88,7 +88,7 @@ reg         lmi, leq,
 reg         f1_nop;     // indicates that F1 should not alter the flags
 wire [15:0] psw;        // processor status word
 reg         ov1, ov0;   // overflow
-reg         ah_only;    // used for F2 operation #9
+reg         sat_tx;
 
 // LFSR
 reg  [31:0] lfsr;
@@ -170,9 +170,12 @@ assign debug_p   = p;
 // Accumulator output to memory
 always @(*) begin
     acc_mux = a_field[0] ? a1 : a0;
+    sat_tx = 0;
     // saturation is not performed for y register loads
-    if( ((a_field[0] && ov1 && sat_a1) || (!a_field[0] && ov0 && sat_a0)) && !up_y )
+    if( ((a_field[0] && ov1 && sat_a1) || (!a_field[0] && ov0 && sat_a0)) && !up_y ) begin
         acc_mux = { {5{acc_mux[35]}}, {31{~acc_mux[35]}}}; // saturate to 32-bit integer
+        sat_tx = 1;
+    end
     acc_dout = a_field[1] ? acc_mux[31:16] : acc_mux[15:0];
 end
 
@@ -260,7 +263,6 @@ always @(posedge clk, posedge rst) begin
         end else if( load_a0 ) begin
             a0  <= alu_out;
             ov0 <= pre_lmv;
-            if( special && ah_only ) a0[15:0] <= 16'd0;
         end
         // a1
         if( st_a1 ) begin
@@ -272,7 +274,6 @@ always @(posedge clk, posedge rst) begin
         end else if( load_a1 ) begin
             a1  <= alu_out;
             ov1 <= pre_lmv;
-            if( special && ah_only ) a1[15:0] <= 16'd0;
         end
         // Counters
         if( load_c0 ) c0 <= load_data[7:0];
@@ -287,8 +288,7 @@ always @(posedge clk, posedge rst) begin
         // Flags
         if(dec_en && ( (!special && !f1_nop) || f2_st)) begin
             lmi <= alu_out[35];
-            leq <=  (special&&ah_only) ? ~|alu_out[35:16] // assume AL is all zeros
-                                       : ~|alu_out;
+            leq <= ~|alu_out;
             llv <= pre_ov;
             lmv <= pre_lmv;
         end
@@ -315,7 +315,6 @@ end
 
 // F2 operations
 always @(*) begin
-    ah_only = 0;
     case( f_field )
         4'd0:  alu_special = { as[36], as[36:1] };
         4'd1:  alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift << by 1
@@ -326,10 +325,7 @@ always @(*) begin
         4'd6:  alu_special = { {16{as[36]}}, as[36:16] }; // as >>> 16
         4'd7:  alu_special = { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
         4'd8:  alu_special = p_ext;
-        4'd9:  begin
-            alu_special = as + 37'h1_0000;
-            ah_only = 1;
-        end
+        4'd9:  alu_special = {as[36:16],16'd0} + 37'h1_0000;
         4'd11: alu_special = round(as);
         4'd12: alu_special = y_ext;
         4'd13: alu_special = as + 37'd1;
@@ -341,11 +337,11 @@ end
 
 always @(*) begin
     case( auc[1:0] )
-        2'd0, 2'd3: p_ext = { {5{p[31]}}, p }; // Makes reserved case 3 same as 0
-        2'd1: p_ext = { {7{p[31]}}, p[31:2] }; // >> 2
-        //2'd2: p_ext = { {3{p[31]}}, p, 2'd0 }; // << 4 uselss
-        2'd2: p_ext = { {5{p[29]}}, p[29:0], 2'd0 }; // << 4 better
+        2'd0, 2'd3: p_ext[31:0] = p; // Makes reserved case 3 same as 0
+        2'd1: p_ext[31:0] = { {2{p[31]}}, p[31:2] }; // >> 2
+        2'd2: p_ext[31:0] = p<<2; // << 4 better
     endcase
+    p_ext[36:32] = {5{p_ext[31]}};
 end
 
 always @(*) begin
