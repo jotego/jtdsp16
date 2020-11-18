@@ -1,7 +1,7 @@
 // #include "verilated.h"
-#include "Vjtdsp16.h"
-#include "DSP16emu.h"
+
 #include "common.h"
+#include "DSP16emu.h"
 #include "playfiles.h"
 
 #include <iostream>
@@ -41,14 +41,6 @@ const int IF_CON_F2  = 1<<19;
 // Z operations
 const int Zy_F1      = 1<<21;
 
-class ParseArgs {
-public:
-    bool step, extra, verbose, playback;
-    int max, seed;
-    string vcd_file;
-    ParseArgs( int argc, char *argv[]);
-};
-
 int random_tests( ParseArgs& args );
 
 int main( int argc, char *argv[] ) {
@@ -57,6 +49,8 @@ int main( int argc, char *argv[] ) {
     try {
         if( args.playback )
             return playfiles(args.vcd_file.c_str());
+        else if( args.tracecmp )
+            return cmptrace(args);
         else
             return random_tests(args);
     } catch( runtime_error e ) {
@@ -241,85 +235,6 @@ int ROM::random( int valid ) {
     return 0;
 }
 
-/////////////////////////
-RTL::RTL( const char *vcd_name) {
-    Verilated::traceEverOn(true);
-    top.trace(&vcd, 99);
-    vcd.open(vcd_name);
-    ticks=0;
-    sim_time=0;
-    half_period=9;
-    reset();
-}
-
-bool RTL::fault() {
-    int f = top.fault;
-    return f!=0;
-}
-
-void RTL::reset() {
-    top.rst       = 1;
-    top.clk       = 0;
-    top.clk_en    = 1;
-    top.pbus_in   = 0;
-    top.di        = 0;
-    top.ick       = 0;
-    top.ild       = 0;
-    top.irq       = 0;
-    top.prog_addr = 0;
-    top.prog_data = 0;
-    top.prog_we   = 0;
-    for(int k=0; k<32; k++ )
-        clk();
-    top.rst = 0;
-}
-
-void RTL::clk(int n) {
-    while( n-- > 0 ) {
-        sim_time += half_period;
-        top.clk = 0;
-        top.eval();
-        vcd.dump(sim_time);
-
-        sim_time += half_period;
-        top.clk = 1;
-        top.eval();
-        vcd.dump(sim_time);
-        ticks++;
-    }
-};
-
-void RTL::read_rom( int16_t* data ) {
-    int addr = 0;
-    top.prog_we = 1;
-    top.rst = 1;
-    for( int j=0; j<4*1024; j++ ) {
-        int16_t d = *data++;
-        // LSB
-        top.prog_addr = addr++;
-        top.prog_data = d&0xff;
-        clk();
-        // MSB
-        top.prog_addr = addr++;
-        top.prog_data = d>>8;
-        clk();
-    }
-    top.prog_we = 0;
-    reset();
-}
-
-void RTL::program_ram( int16_t* data ) {
-    int addr = 0;
-    top.debug_ram_we = 1;
-    top.rst = 1;
-    for( int j=0; j<2*1024; j++ ) {
-        top.debug_ram_addr = addr++;
-        top.debug_ram_din  = data[j];
-        clk();
-    }
-    top.debug_ram_we = 0;
-    reset();
-}
 
 bool compare( RTL& rtl, DSP16emu& emu ) {
     bool g = true;
@@ -407,8 +322,9 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 }
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
-    extra = step = verbose = playback = false;
+    extra = step = verbose = playback = tracecmp = false;
     vcd_file="test.vcd";
+    trace_file="wof.tr";
     seed=0;
     max = 100'000;
     if( argc==1 ) return;
@@ -421,6 +337,7 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
                 continue;
             }
             if( strcmp(argv[k],"-play")==0 ) { playback=true; continue; }
+            if( strcmp(argv[k],"-tracecmp")==0 ) { tracecmp=true; continue; }
             if( strcmp(argv[k],"-max")==0 ) {
                 if( ++k<argc ) {
                     max = strtol(argv[k], NULL, 0);
@@ -437,5 +354,5 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
         }
     }
     srand(seed);
-    if(!playback) printf("Random seed = %d\n", seed);
+    if(!playback && !tracecmp) printf("Random seed = %d\n", seed);
 }

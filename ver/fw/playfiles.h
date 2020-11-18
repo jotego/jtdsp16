@@ -1,5 +1,6 @@
 #include "common.h"
 #include "vcd.h"
+#include "mametrace.h"
 #include <fstream>
 #include <cstdio>
 #include <vector>
@@ -45,6 +46,9 @@ int playfiles( const char* vcd_file ) {
     n++;
     int64_t vcdtime = n->time;
     int64_t next= n->time;
+
+    rtl.clk( 0x800*4 );
+    rtl.step();
     rtl.clk( 200'000 ); // initialization
 
     int sim_time=0;
@@ -85,8 +89,63 @@ int playfiles( const char* vcd_file ) {
             }
             steps-=2;
         }
-    }while( sim_time < 200 );
+    }while( sim_time < 100 );
+    rtl.dump_ram();
 
+    return 0;
+}
+
+bool compare( RTL& rtl, MAMEtrace& tr ) {
+    bool g = true;
+    g = g && ( rtl.r0() == tr.r0 );
+    g = g && ( rtl.r1() == tr.r1 );
+    g = g && ( rtl.r2() == tr.r2 );
+    g = g && ( rtl.r3() == tr.r3 );
+    g = g && ( rtl.rb() == tr.rb );
+    g = g && ( rtl.re() == tr.re );
+    g = g && ( rtl.i() == tr.i );
+    g = g && ( rtl.j() == tr.j );
+    g = g && ( rtl.k() == tr.k );
+    g = g && ( rtl.x() == tr.x );
+    g = g && ( rtl.y() == tr.y );
+    g = g && ( rtl.p() == tr.p );
+    g = g && ( rtl.a0() == tr.a0 );
+    g = g && ( rtl.a1() == tr.a1 );
+    return g;
+}
+
+int cmptrace( ParseArgs& args ) {
+    RTL rtl(args.vcd_file.c_str());
+    ROM rom;
+    QSndData samples("wof.rom");
+    rtl.read_rom(rom.data());
+    MAMEtrace tr( args.trace_file.c_str() );
+    // Move until rst is low
+    //printf("VCD forwarded to %ld\n",  );
+    //int64_t vcdtime = stim.forward("dsp_rst",0);
+
+    // VCDsignal* sig_irq = stim.get("dsp_irq");
+    int bad=0;
+    for(int k=0; ; k++ ) {
+        //tr.show();
+        rtl.clk(2);
+        if( !compare(rtl, tr) ) {
+            if( bad<600 ) {
+                bad++;
+                //printf("bad\n");
+                continue; // give an extra cycle
+            } else {
+                printf("Diverged at %d\n", k);
+                rtl.screen_dump();
+                tr.dump();
+                return 1;
+            }
+        } else bad = 0;
+        if( !tr.next() ) {
+            printf("comparison found no differences\n");
+            break;
+        }
+    }
     return 0;
 }
 
@@ -133,7 +192,7 @@ int QSndData::get( int addr ) {
 
 int QSndData::get_offset( char *header, int p ) {
     int o = ((((int)header[p+1])&0xff)<<8) | (((int)header[p])&0xff);
-    printf("%X%X->%X\n", (unsigned)header[p+1]&0xff, (unsigned)header[p]&0xff, o);
+    // printf("%X%X->%X\n", (unsigned)header[p+1]&0xff, (unsigned)header[p]&0xff, o);
     o <<= 10;
     return o;
 }

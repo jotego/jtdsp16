@@ -1,12 +1,16 @@
 #ifndef __DSP16_COMMON
 #define __DSP16_COMMON
-
+#include "Vjtdsp16.h"
 #include "verilated_vcd_c.h"
 
+#include <string>
 
 class RTL {
     vluint64_t ticks, sim_time, half_period;
     VerilatedVcdC vcd;
+    void dump(const char *, int d );
+    void dump(const char *, int64_t d );
+    bool step_clk;
 public:
     Vjtdsp16 top;
     RTL(const char *vcd_name);
@@ -67,6 +71,10 @@ public:
 
     int get_ticks() { return ticks; }
     vluint64_t time() { return sim_time; }
+
+    void dump_ram();
+    void screen_dump();
+    void step(bool s=true) { step_clk = s; }
 };
 
 class ROM {
@@ -76,6 +84,14 @@ public:
     ~ROM();
     int random( int valid );
     int16_t *data() { return rom; }
+};
+
+class ParseArgs {
+public:
+    bool step, extra, verbose, playback, tracecmp;
+    int max, seed;
+    std::string vcd_file, trace_file;
+    ParseArgs( int argc, char *argv[]);
 };
 
 #endif

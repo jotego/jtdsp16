@@ -239,7 +239,6 @@ always @(posedge clk, posedge rst) begin
                 yl <= load_data;
             end
         end
-        // z <= zyl_swap ? yl : yh; // keep a copy of y last value
         // a0
         if( st_a0 ) begin
             if( st_ah ) begin
