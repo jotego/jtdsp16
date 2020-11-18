@@ -102,6 +102,18 @@ wire [ 6:0] debug_auc;
 wire [ 9:0] debug_sioc;
 wire [35:0] debug_a1, debug_a0;
 wire [31:0] debug_p;
+`else
+reg last_sadd;
+reg signed [15:0] snd_l, snd_r;
+always @(posedge clk) begin
+    last_sadd <= sadd;
+    if( !sadd && last_sadd ) begin
+        if( psel )
+            snd_l <= ser_out;
+        else
+            snd_r <= ser_out;
+    end
+end
 `endif
 
 wire        cen;   // cen divided by 2

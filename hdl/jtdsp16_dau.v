@@ -343,8 +343,8 @@ always @(*) begin
     case( auc[1:0] )
         2'd0, 2'd3: p_ext = { {5{p[31]}}, p }; // Makes reserved case 3 same as 0
         2'd1: p_ext = { {7{p[31]}}, p[31:2] }; // >> 2
-        //2'd2: p_ext = { {3{p[31]}}, p, 2'd0 }; // << 4
-        2'd2: p_ext = { {5{p[29]}}, p[29:0], 2'd0 }; // << 4
+        //2'd2: p_ext = { {3{p[31]}}, p, 2'd0 }; // << 4 uselss
+        2'd2: p_ext = { {5{p[29]}}, p[29:0], 2'd0 }; // << 4 better
     endcase
 end
 

@@ -120,7 +120,7 @@ always @(posedge clk, posedge rst) begin
                 if( !old ) begin
                     obuf <= obuf<<1;
                     ocnt <= ocnt<<1;
-                    addr_obuf <= { addr_obuf[6:0], 1'b1 };
+                    addr_obuf <= { addr_obuf[6:0], 1'b0 };
                 end
             end else if( obe ) begin
                 old <= 1;

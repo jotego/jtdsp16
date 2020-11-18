@@ -250,11 +250,14 @@ int64_t DSP16emu::assign_high( int clr_mask, int64_t& dest, int val ) {
 }
 
 int64_t DSP16emu::extend_p() {
-    int64_t psh = p; // sign extension here is automatic
+    int pre = p;
     switch( auc&3 ) {
-        case 1: psh >>= 2; break;
-        case 2: psh <<= 2; break;
+        case 1: pre >>= 2; break;
+        case 2:
+            pre <<= 2;
+            break;
     }
+    int64_t psh = pre; // sign extension here is automatic
     return psh &0x1F'FFFF'FFFF;
 }
 
