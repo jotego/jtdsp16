@@ -71,7 +71,6 @@ reg  [31:0] p;
 reg  [35:0] a1, a0;
 reg  [35:0] alu_out, acc_mux;
 reg  [36:0] alu_arith, alu_special, p_ext;
-wire [36:0] alu_in;
 
 wire [ 3:0] f_field;
 wire        s_field;  // source
@@ -96,8 +95,7 @@ reg         up_lfsr;
 
 wire [31:0] y;
 wire [36:0] as, y_ext;
-wire [35:0] ram_ext;
-wire [19:0] rmux_ext, acc_in;
+reg  [19:0] acc_in;
 wire [ 3:0] flags;
 wire [15:0] load_data;
 wire        pre_ov, pre_lmv;
@@ -129,10 +127,6 @@ assign clr_a1l     = ~auc[5];
 assign clr_a0l     = ~auc[4];
 assign sat_a1      = ~auc[3];
 assign sat_a0      = ~auc[2];
-assign ram_ext     = { {4{ram_dout[15]}}, ram_dout, 16'd0 };
-assign rmux_ext    = { {4{rmux[15]}}, rmux };
-assign alu_in      = alu_sel ? { ram_ext[35], ram_ext} : p_ext;
-assign acc_in      = acc_ram ? ram_ext[35:16] : (rmux_load ? rmux_ext : alu_out[35:16]);
 assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit integer
 assign pre_lmv     = alu_out[35:32] != {4{alu_out[31]}}; // number doesn't fit in 32-bit integer
 
@@ -207,13 +201,6 @@ always @(*) begin
     endcase
     if( c_field[0] ) con_result = ~con_result;
 end
-
-function [36:0] round;
-    input [36:0] a;
-    /* verilator lint_off WIDTH */
-    round = { a[36:16] + a[15] , 16'd0 };
-    /* verilator lint_on WIDTH */
-endfunction
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
@@ -325,8 +312,8 @@ always @(*) begin
         4'd6:  alu_special = { {16{as[36]}}, as[36:16] }; // as >>> 16
         4'd7:  alu_special = { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
         4'd8:  alu_special = p_ext;
-        4'd9:  alu_special = {as[36:16],16'd0} + 37'h1_0000;
-        4'd11: alu_special = round(as);
+        4'd9:  alu_special = {as[36:16],16'd0} + 37'h1_0000; // aDh = aSh+1
+        4'd11: alu_special = {as[36:16] + {20'd0,as[15]} , 16'd0 };
         4'd12: alu_special = y_ext;
         4'd13: alu_special = as + 37'd1;
         4'd14: alu_special = as;
@@ -346,6 +333,8 @@ end
 
 always @(*) begin
     {alu_llv, alu_out} = special ? alu_special : alu_arith;
+    acc_in[15:0] = acc_ram ? ram_dout : rmux;
+    acc_in[19:16] = {4{acc_in[15]}};
 end
 
 always @(*) begin

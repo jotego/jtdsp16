@@ -436,8 +436,8 @@ always @(posedge clk, posedge rst) begin
                         a_field       <= rom_dout[10:9];
                         // accumulator storing
                         if( rom_dout[11] ) begin
-                            st_a1      <= ~rom_dout[10];
                             st_a0      <=  rom_dout[10];
+                            st_a1      <= ~rom_dout[10];
                             st_ah      <=  rom_dout[4];
                             dau_acc_ram <= 1;
                         end
