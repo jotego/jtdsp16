@@ -495,9 +495,10 @@ always @(posedge clk, posedge rst) begin
                         dau_pt_load   <= 1;
                         xaau_istep    <= rom_dout[4];
                         pt_read       <= 1;
-                        // 2-cycle version implemented for now
-                        double    <= 1;
-                        pc_halt   <= 1;
+                        if( !do_incache ) begin
+                            double    <= 1;
+                            pc_halt   <= 1;
+                        end
                     end
                     5'b11111: begin // F1, y = Y, x = *pt++[i], 2 or 1 cycles (cache)
                         // F1
@@ -514,9 +515,10 @@ always @(posedge clk, posedge rst) begin
                         inc_sel   <= pre_inc_sel;
                         step_sel  <= pre_step_sel;
                         ksel      <= pre_ksel;
-                        // 2-cycle version implemented for now
-                        double    <= 1;
-                        pc_halt   <= 1;
+                        if( !do_incache ) begin
+                            double    <= 1;
+                            pc_halt   <= 1;
+                        end
                     end
                     5'b10100, // F1, Y = y, 2 cycles
                     5'b10111, // F1, y[k]=Y, 1 cycle
