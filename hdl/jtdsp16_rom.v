@@ -50,21 +50,14 @@ wire        prog_msb, prog_lsb;
 assign     dout      = {rom_msb, rom_lsb};
 assign     pt_rom    = {pt_msb, pt_lsb};
 
-assign     ext_addr  = pt;
 assign     ext_rq    = pt[15:12]!=4'd0 && pt_load;
+assign     ext_addr  = { pt[15:12] & {4{pt_load}}, pt[11:0] }; // ext_addr[15:12]!=4'd0 signals
+                                                               // external memory access
 assign     pt_dout   = pt[15:12]!=4'd0 ? ext_data : pt_rom;
-//assign     read_addr = cen ? pt[11:0] : addr[11:0];
 
 assign     rom_addr  = prog_we ? prog_addr[12:1] : pt[11:0];
 assign     prog_msb  = prog_we &  prog_addr[0];
 assign     prog_lsb  = prog_we & ~prog_addr[0];
-/*
-always @(posedge clk) begin
-    if(prog_we && !prog_addr[0]) rom_lsb[ prog_addr[12:1] ] <= prog_data;
-    if(prog_we &&  prog_addr[0]) rom_msb[ prog_addr[12:1] ] <= prog_data;
-    rom_dout <= { rom_msb[ read_addr ], rom_lsb[ read_addr ] };
-end
-*/
 
 jtdsp16_dualport #(1) u_msb(
     .clk    ( clk       ),

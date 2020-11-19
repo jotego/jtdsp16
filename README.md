@@ -96,6 +96,8 @@ RAM      | r0,r1,r2,r3           | a0, a1, y, any register
 ROM      | pc, pt                | x
 external | pt                    | x
 
+Originally in DSP16A, AB pins were 3 stated. Because AB in this implementation can only be used with the pt register, bits AB[15:12] are low when the external memory is not accessed. When pt is used to access the external memory AB[15:12] will not be zero. So peeking AB[15:12] is a way of determining that an external access has occured.
+
 # The Cache
 
 The cache does not accept instructions that alter the program flow or that take two memory words (i.e. the long immediate instruction).
