@@ -66,7 +66,7 @@ module jtdsp16_ctrl(
     output reg        goto_ja,
     output reg        goto_b,
     output reg        call_ja,
-    output reg        icall,
+    output            icall,
     output reg        pc_halt,
     output reg        xaau_ram_load,
     output reg        xaau_imm_load,
@@ -112,7 +112,6 @@ module jtdsp16_ctrl(
     output reg        fault
 );
 
-reg       x_field;
 reg       double;
 wire      con_ok;
 // Y control
@@ -140,6 +139,8 @@ assign    do_1stloop = ((do_over && do_k_cnt==do_k && do_busy) || do_short) && !
 assign    do_out     = do_busy && do_over && do_k_cnt==7'd1 && !double;
 
 // interrupts
+assign    icall      = 0; // software interrupts are not implemented
+
 always @(*) begin
     case( rom_dout[15:11] )
         5'd0, 5'd1, 5'd14, 5'd16, 5'd17, 5'd24, 5'd26: irq_ok = 0;
@@ -203,7 +204,6 @@ always @(posedge clk, posedge rst) begin
         goto_ja       <= 0;
         goto_b        <= 0;
         call_ja       <= 0;
-        icall         <= 0;
         ram_we        <= 0;
         pc_halt       <= 0;
         con_check     <= 0;
@@ -261,7 +261,6 @@ always @(posedge clk, posedge rst) begin
     end else if(cen) begin
         t_field       <= rom_dout[15:11];
         i_field       <= rom_dout[11: 0];
-        x_field       <= rom_dout[    4];
         c_field       <= rom_dout[ 4: 0];
         y_field       <= rom_dout[ 3:2];
         dau_op_fields <= rom_dout[10:5];

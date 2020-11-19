@@ -47,6 +47,7 @@ int playfiles( const char* vcd_file ) {
     int64_t vcdtime = n->time;
     int64_t next= n->time;
 
+    rtl.vcd_dump = false;
     rtl.clk( 0x800*4 );
     rtl.step();
     rtl.clk( 200'000 ); // initialization
@@ -79,6 +80,10 @@ int playfiles( const char* vcd_file ) {
             if( !rtl.pods() ) {
                 rom_addr = 0;
                 rom_addr |= rtl.pbus_out()&0xFFFF;
+                if( rtl.ser_out() != 0 ) {
+                    if( !rtl.vcd_dump ) printf("** Enabling VCD dumping\n");
+                    rtl.vcd_dump=true;
+                }
             }
             rom_addr &= 0xFFFF;
             rom_addr |= (rtl.ab()&0xff)<<16;
@@ -89,7 +94,7 @@ int playfiles( const char* vcd_file ) {
             }
             steps-=2;
         }
-    }while( sim_time < 100 );
+    }while( sim_time < 3'000 );
     rtl.dump_ram();
 
     return 0;

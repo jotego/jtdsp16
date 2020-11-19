@@ -84,7 +84,6 @@ reg         irq_in;
 
 wire [15:0] sequ_pc;
 reg  [15:0] next_pc, next_pt;
-wire [15:0] i_ext;
 wire [ 2:0] b_field;
 wire        copy_pc;
 wire        load_pt, load_pi, load_pr ,load_i;
@@ -94,7 +93,6 @@ wire        ret, iret, goto_pt, call_pt;
 wire        dis_shadow;
 
 assign      sequ_pc  = pc+1'd1;
-assign      i_ext    = { {4{i[11]}}, i };
 assign      b_field  = i_field[10:8];
 
 assign      ret      = goto_b && b_field==3'b00;

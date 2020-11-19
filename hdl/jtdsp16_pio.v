@@ -56,10 +56,10 @@ reg  [15:0] pdx0_rd, pdx1_rd;
 wire [ 4:0] status;
 
 wire [ 1:0] stlen   = pioc[14:13];
-wire        po_mode = pioc[12];
-wire        pi_mode = pioc[11];
-wire        scmode  = pioc[10]; // when high, pbus_out[15:8] should be ignored
-wire [ 4:0] ien     = pioc[ 9: 5];
+// wire        po_mode = pioc[12];
+// wire        pi_mode = pioc[11];
+// wire        scmode  = pioc[10]; // when high, pbus_out[15:8] should be ignored
+// wire [ 4:0] ien     = pioc[ 9: 5];
 wire [ 3:0] ststart = 4'he << stlen;
 
 wire        pioc_load, pdx0_load, pdx1_load, pdx_load, pdx_access;

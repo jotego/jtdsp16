@@ -7,6 +7,7 @@ using namespace std;
 
 RTL::RTL( const char *vcd_name) {
     Verilated::traceEverOn(true);
+    vcd_dump = true;
     top.trace(&vcd, 99);
     vcd.open(vcd_name);
     ticks=0;
@@ -42,12 +43,12 @@ void RTL::clk(int n) {
         sim_time += half_period;
         top.clk = 0;
         top.eval();
-        vcd.dump(sim_time);
+        if(vcd_dump) vcd.dump(sim_time);
 
         sim_time += half_period;
         top.clk = 1;
         top.eval();
-        vcd.dump(sim_time);
+        if(vcd_dump) vcd.dump(sim_time);
         ticks++;
 
         // if( step_clk && (n&1)) {

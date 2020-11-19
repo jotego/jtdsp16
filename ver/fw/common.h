@@ -13,6 +13,7 @@ class RTL {
     bool step_clk;
 public:
     Vjtdsp16 top;
+    bool vcd_dump;
     RTL(const char *vcd_name);
     void reset();
     void clk( int n=1 );
@@ -54,6 +55,7 @@ public:
     // SIO
     int  srta() { return top.debug_srta; }
     int  sioc() { return top.debug_sioc; }
+    int ser_out() { return top.ser_out; }
 
     // PIO
     int pids() { return top.pids_n; }
