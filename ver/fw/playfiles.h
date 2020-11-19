@@ -175,7 +175,7 @@ int cmptrace( ParseArgs& args ) {
     int bad=0;
     int line_bad;
     int rom_addr=0;
-    for(int k=0; tr.get_line()<309480; k++ ) {
+    for(int k=0; /*tr.get_line()<309480*/; k++ ) {
         //tr.show();
         rtl.clk(2);
         handle_din( rtl, rom_addr, samples );
@@ -183,8 +183,8 @@ int cmptrace( ParseArgs& args ) {
             if( bad<6 /*&& rtl.pc() <= tr.pc*/ ) {
                 if( bad==0 ) {
                     line_bad = tr.get_line();
-                    printf("************** %8d ********************\n", tr.get_line());
-                    sidebyside( rtl, tr );
+                    //printf("************** %8d ********************\n", tr.get_line());
+                    //sidebyside( rtl, tr );
                 }
                 bad++;
                 //printf("bad\n");
@@ -196,15 +196,15 @@ int cmptrace( ParseArgs& args ) {
                 return 1;
             }
         } else {
-            printf("************** %8d ********************\n", tr.get_line());
-            sidebyside( rtl, tr );
+            // printf("************** %8d ********************\n", tr.get_line());
+            // sidebyside( rtl, tr );
             bad = 0;
             if( !tr.next() ) {
-                printf("comparison found no differences\n");
                 break;
             }
         }
     }
+    printf("comparison found no differences\n");
     return 0;
 }
 

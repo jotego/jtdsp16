@@ -43,6 +43,7 @@ class DSP16emu {
     int64_t extend_p();
     int64_t extend_y();
     int     extend_i();
+    void    product();
 
     void    assign_acc( int aD, int selhigh, int v, bool up_now );
     int     get_acc( int w, bool high=true, bool sat=true );
@@ -261,6 +262,12 @@ int64_t DSP16emu::extend_p() {
     return psh &0x1F'FFFF'FFFF;
 }
 
+void DSP16emu::product() {
+    int xs = (int16_t)((uint16_t)x );
+    int ys = (int16_t)((uint16_t)y );
+    next_p = xs*ys;
+}
+
 int64_t DSP16emu::extend_y() {
     int64_t yext = (int16_t)y; // sign extension here is automatic
     yext<<=16;
@@ -338,7 +345,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
                 if(verbose) printf("F2=0: r=%lX as=%lX\n", r, as );
             } else {
                 r = extend_p();
-                next_p = x*y;
+                product();
             }
             break;
         case 1:
@@ -349,7 +356,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
             } else {
                 r = as + extend_p();
                 //printf("F1=1  ->  %lX + %lX = %lX\n", as, extend_p(), r);
-                next_p = x*y;
+                product();
             }
             break;
         case 2:
@@ -357,7 +364,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
                 r =  as >> 4;
                 if( as>>35 ) r |= 0xFL << 33; // keep sign
             } else {
-                next_p = x*y;
+                product();
                 flag_up = false;
                 no_r = true;
             }
@@ -369,7 +376,7 @@ void DSP16emu::F12parse( int op, bool special, bool up_now ) {
                 if( (r>>31)&1 ) r |=0x1F'0000'0000L; else r &=0xFFFF'FFFF;
             } else {
                 r = as - extend_p();
-                next_p = x*y;
+                product();
             }
             break;
         case 4:
