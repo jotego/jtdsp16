@@ -66,11 +66,12 @@ module jtdsp16_dau(
     output     [31:0] debug_p
 );
 
-reg  [15:0] x, yh, yl;
-reg  [31:0] p;
-reg  [35:0] a1, a0;
-reg  [35:0] alu_out, acc_mux;
-reg  [36:0] alu_arith, alu_special, p_ext;
+reg signed [15:0] x, yh;
+reg        [15:0] yl;
+reg signed [31:0] p;
+reg signed [35:0] a1, a0;
+reg signed [35:0] alu_out, acc_mux;
+reg signed [36:0] alu_arith, alu_special, p_ext;
 
 wire [ 3:0] f_field;
 wire        s_field;  // source
@@ -114,10 +115,6 @@ wire        inc_cen;
 wire        load_a0, load_a1;
 wire        f1_st, f2_st;  // F1/2 store operation
 
-wire signed [15:0] sx, syh;
-
-assign sx          = x;
-assign syh         = yh;
 assign inc_cen     = special | con_check;
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
@@ -233,7 +230,7 @@ always @(posedge clk, posedge rst) begin
         ov0 <=  0;
         { lmi, leq, llv, lmv } <= 4'd0;
     end else if(cen) begin
-        if( up_p   ) p <= sx*syh;
+        if( up_p   ) p <= x*yh;
         if( load_x ) x <= pt_load ? pt_dout : load_data;
         if( up_y ) begin
             if( !load_yl || yacc_load ) begin
