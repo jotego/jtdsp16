@@ -8,6 +8,7 @@ using namespace std;
 
 MAMEtrace::MAMEtrace( const char *file_name ) {
     fin.open(file_name);
+    line_cnt=0;
     next();
 }
 
@@ -29,6 +30,7 @@ bool MAMEtrace::next() {
         &j, &k, &x, &y,
         &p, &a0, &a1,
         &c0, &c1, &c2, &auc, &psw );
+    line_cnt++;
     return true;
 }
 

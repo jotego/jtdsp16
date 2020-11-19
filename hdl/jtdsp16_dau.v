@@ -114,6 +114,10 @@ wire        inc_cen;
 wire        load_a0, load_a1;
 wire        f1_st, f2_st;  // F1/2 store operation
 
+wire signed [15:0] sx, syh;
+
+assign sx          = x;
+assign syh         = yh;
 assign inc_cen     = special | con_check;
 assign flags       = { lmi, leq, llv, lmv };
 assign y           = {yh, yl};
@@ -229,7 +233,7 @@ always @(posedge clk, posedge rst) begin
         ov0 <=  0;
         { lmi, leq, llv, lmv } <= 4'd0;
     end else if(cen) begin
-        if( up_p   ) p <= x*yh;
+        if( up_p   ) p <= sx*syh;
         if( load_x ) x <= pt_load ? pt_dout : load_data;
         if( up_y ) begin
             if( !load_yl || yacc_load ) begin

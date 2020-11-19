@@ -95,23 +95,70 @@ int playfiles( const char* vcd_file ) {
     return 0;
 }
 
+#define CHECK( a ) if( rtl.a() != tr.a ) { /*printf("Register " #a " is wrong\n");*/ return false; }
+
 bool compare( RTL& rtl, MAMEtrace& tr ) {
-    bool g = true;
-    g = g && ( rtl.r0() == tr.r0 );
-    g = g && ( rtl.r1() == tr.r1 );
-    g = g && ( rtl.r2() == tr.r2 );
-    g = g && ( rtl.r3() == tr.r3 );
-    g = g && ( rtl.rb() == tr.rb );
-    g = g && ( rtl.re() == tr.re );
-    g = g && ( rtl.i() == tr.i );
-    g = g && ( rtl.j() == tr.j );
-    g = g && ( rtl.k() == tr.k );
-    g = g && ( rtl.x() == tr.x );
-    g = g && ( rtl.y() == tr.y );
-    g = g && ( rtl.p() == tr.p );
-    g = g && ( rtl.a0() == tr.a0 );
-    g = g && ( rtl.a1() == tr.a1 );
-    return g;
+    CHECK( r0 )
+    CHECK( r0 );
+    CHECK( r1 );
+    CHECK( r2 );
+    CHECK( r3 );
+    CHECK( rb );
+    CHECK( re );
+    CHECK( i );
+    CHECK( j );
+    CHECK( k );
+    CHECK( x );
+    int y = (rtl.y()<<16)|(rtl.yl()&0xffff);
+    if( y != tr.y ) return false;
+    CHECK( p );
+    CHECK( a0 );
+    CHECK( a1 );
+    return true;
+}
+
+#undef CHECK
+
+void sidebyside( RTL& rtl, MAMEtrace& tr ) {
+    int y = (rtl.y()<<16)|(rtl.yl()&0xffff);
+
+    printf("     RTL     EMU \n");
+    printf("PC   %04X - %04X %c\n", rtl.pc(), tr.pc, (rtl.pc() != tr.pc)?'*':' ' );
+    printf("PR   %04X - %04X %c\n", rtl.pr(), tr.pr, (rtl.pr() != tr.pr)?'*':' ' );
+    printf("PT   %04X - %04X %c\n", rtl.pt(), tr.pt, (rtl.pt() != tr.pt)?'*':' ' );
+    printf("r0   %04X - %04X %c\n", rtl.r0(), tr.r0, (rtl.r0() != tr.r0)?'*':' ' );
+    printf("r1   %04X - %04X %c\n", rtl.r1(), tr.r1, (rtl.r1() != tr.r1)?'*':' ' );
+    printf("r2   %04X - %04X %c\n", rtl.r2(), tr.r2, (rtl.r2() != tr.r2)?'*':' ' );
+    printf("r3   %04X - %04X %c\n", rtl.r3(), tr.r3, (rtl.r3() != tr.r3)?'*':' ' );
+    printf("rb   %04X - %04X %c\n", rtl.rb(), tr.rb, (rtl.rb() != tr.rb)?'*':' ' );
+    printf("re   %04X - %04X %c\n", rtl.re(), tr.re, (rtl.re() != tr.re)?'*':' ' );
+    printf("i    %04X - %04X %c\n", rtl.i(),  tr.i , (rtl.i()  != tr.i )?'*':' ' );
+    printf("j    %04X - %04X %c\n", rtl.j(),  tr.j , (rtl.j()  != tr.j )?'*':' ' );
+    printf("k    %04X - %04X %c\n", rtl.k(),  tr.k , (rtl.k()  != tr.k )?'*':' ' );
+    printf("p    %04X - %04X %c\n", rtl.p(),  tr.p , (rtl.p()  != tr.p )?'*':' ' );
+    printf("c1   %02X - %02X %c\n", rtl.c1(), tr.c1, (rtl.c1() != tr.c1)?'*':' ' );
+    printf("c2   %02X - %02X %c\n", rtl.c2(), tr.c2, (rtl.c2() != tr.c2)?'*':' ' );
+    //printf("c3   %02X - %02X\n", rtl.c3(), tr.c3 );
+    printf("x     %04X -  %04X %c\n", rtl.x(),  tr.x, (rtl.x() != tr.x)?'*':' '  );
+    printf("y     %08X -  %08X %c\n", y,  tr.y, (y != tr.y)?'*':' '  );
+    printf("a0   %09lX - %09lX %c\n", rtl.a0(),  tr.a0, (rtl.a0() !=  tr.a0)?'*':' ' );
+    printf("a1   %09lX - %09lX %c\n", rtl.a1(),  tr.a1, (rtl.a1() !=  tr.a1)?'*':' ' );
+    printf("auc   %02X -  %02X %c\n", rtl.auc(), tr.auc, (rtl.auc() != tr.auc)?'*':' ' );
+    printf("psw   %02X -  %02X %c\n", rtl.psw(), tr.psw, (rtl.psw() != tr.psw)?'*':' ' );
+}
+
+void handle_din( RTL& rtl, int& rom_addr, QSndData& samples ) {
+    if( !rtl.pods() ) {
+        rom_addr = 0;
+        rom_addr |= rtl.pbus_out()&0xFFFF;
+    }
+    rom_addr &= 0xFFFF;
+    rom_addr |= (rtl.ab()&0xff)<<16;
+    if( rtl.ab()&0x8000 ) { // update the value only when external reads occur
+        int din = samples.get( rom_addr );
+        //printf("Read %X from %X\n", din, rom_addr );
+        rtl.rb_din( din<<8 );
+    }
 }
 
 int cmptrace( ParseArgs& args ) {
@@ -126,24 +173,36 @@ int cmptrace( ParseArgs& args ) {
 
     // VCDsignal* sig_irq = stim.get("dsp_irq");
     int bad=0;
-    for(int k=0; ; k++ ) {
+    int line_bad;
+    int rom_addr=0;
+    for(int k=0; tr.get_line()<309480; k++ ) {
         //tr.show();
         rtl.clk(2);
+        handle_din( rtl, rom_addr, samples );
         if( !compare(rtl, tr) ) {
-            if( bad<600 ) {
+            if( bad<6 /*&& rtl.pc() <= tr.pc*/ ) {
+                if( bad==0 ) {
+                    line_bad = tr.get_line();
+                    printf("************** %8d ********************\n", tr.get_line());
+                    sidebyside( rtl, tr );
+                }
                 bad++;
                 //printf("bad\n");
                 continue; // give an extra cycle
             } else {
-                printf("Diverged at %d\n", k);
-                rtl.screen_dump();
-                tr.dump();
+                printf("Diverged at line %d\n", line_bad);
+                //sidebyside( rtl, tr );
+                rtl.clk(4); // Add some extra cycles
                 return 1;
             }
-        } else bad = 0;
-        if( !tr.next() ) {
-            printf("comparison found no differences\n");
-            break;
+        } else {
+            printf("************** %8d ********************\n", tr.get_line());
+            sidebyside( rtl, tr );
+            bad = 0;
+            if( !tr.next() ) {
+                printf("comparison found no differences\n");
+                break;
+            }
         }
     }
     return 0;
