@@ -10,7 +10,6 @@ You can show your appreciation through
 
 You can contact the author via Twitter at @topapate.
 
-
 # Macros
 
 Macro              | Effect
@@ -104,26 +103,20 @@ The cache does not accept instructions that alter the program flow or that take 
 
 The cache cannot be used on external memory. This might be different on original hardware.
 
-## Cache tests
-
-Cache loop is tricky because of
+Loops in cache is tricky because of:
 
 * Double cycle instructions may affect the loop control
 * Single instruction loops are an exception (NI=1)
 * Output PC value may be altered when the instruction before the loop start takes two cycles
 
-Item        | Values         | Meaning
-------------|----------------|----------------------------------
-NI          | 1,2 or 15      | number of instructions
-K           | 2 or 127       | number of loops
-Ticks       | odd or even    | count of clock cycles needed for instructions in the loop
-Out Double  | yes or no      | first instruction out of the loop take two cycles
-Redo        | yes or no      | the loop is executed as a do or as a redo
+# Clock Timing
 
-NI | K | Ticks | Out Double
----|---|-------|------------
-1  | 1 |  Odd  | No
-1  | 1 |  Odd  | No
+The original design probably divides down the clock to implement some kind of dynamic logic. I keep the divided clock design and I use it in this way:
+
+1. Memories are allowed to operate at full clock speed. This makes it possible to latch inputs and outputs and eases routing and instantiation as BRAM in FPGA
+
+2. The DAU uses the two phases of the divided clock to latch intermmediate operations; easing timing constraints.
+
 
 # Resource Usage
 

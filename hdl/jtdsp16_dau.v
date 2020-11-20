@@ -19,7 +19,7 @@
 module jtdsp16_dau(
     input             rst,
     input             clk,
-    input             cen,
+    input             ph1,
     input             pc_halt,
     input             dec_en,        // F1 decoder enable
     input             special,   // selects F2 output
@@ -206,7 +206,7 @@ end
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
         lfsr <= 32'hcafe_cafe;
-    end else if( cen ) begin
+    end else if( ph1 ) begin
         if( lfsr_rst )
             lfsr<= 32'hcafe_cafe;
         else if( up_lfsr && special)
@@ -229,7 +229,7 @@ always @(posedge clk, posedge rst) begin
         ov1 <=  0;
         ov0 <=  0;
         { lmi, leq, llv, lmv } <= 4'd0;
-    end else if(cen) begin
+    end else if(ph1) begin
         if( up_p   ) p <= x*yh;
         if( load_x ) x <= pt_load ? pt_dout : load_data;
         if( up_y ) begin
@@ -283,43 +283,51 @@ always @(posedge clk, posedge rst) begin
 end
 
 // F1 operations
-always @(*) begin
-    case( f_field )
-        4'd0, 4'd4: alu_arith = p_ext;
-        4'd1, 4'd5: alu_arith = as+p_ext;
-        4'd3, 4'd7: alu_arith = as-p_ext;
-        4'd8:       alu_arith = as | y_ext;
-        4'd9:       alu_arith = as ^ y_ext;
-        4'd10:      alu_arith = as & y_ext;
-        4'd11,4'd15:alu_arith = as - y_ext;
-        4'd12:      alu_arith = y_ext;
-        4'd13:      alu_arith = as + y_ext;
-        4'd14:      alu_arith = as & y_ext;
-        default: alu_arith = 37'd0;
-    endcase
-    f1_nop = f_field==4'd2 || f_field==4'd6; // do not modify flags
+always @(posedge clk, posedge rst) begin
+    if( rst ) begin
+        alu_arith <= 37'd0;
+    end else if(!ph1) begin
+        case( f_field )
+            4'd0, 4'd4: alu_arith <= p_ext;
+            4'd1, 4'd5: alu_arith <= as+p_ext;
+            4'd3, 4'd7: alu_arith <= as-p_ext;
+            4'd8:       alu_arith <= as | y_ext;
+            4'd9:       alu_arith <= as ^ y_ext;
+            4'd10:      alu_arith <= as & y_ext;
+            4'd11,4'd15:alu_arith <= as - y_ext;
+            4'd12:      alu_arith <= y_ext;
+            4'd13:      alu_arith <= as + y_ext;
+            4'd14:      alu_arith <= as & y_ext;
+            default:    alu_arith <= 37'd0;
+        endcase
+        f1_nop <= f_field==4'd2 || f_field==4'd6; // do not modify flags
+    end
 end
 
 // F2 operations
-always @(*) begin
-    case( f_field )
-        4'd0:  alu_special = { as[36], as[36:1] };
-        4'd1:  alu_special = { {5{as[30]}}, as[30:0], 1'd0 }; // shift << by 1
-        4'd2:  alu_special = { {4{as[36]}}, as[36:4] };
-        4'd3:  alu_special = { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
-        4'd4:  alu_special = { {8{as[36]}}, as[36:8] };
-        4'd5:  alu_special = { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
-        4'd6:  alu_special = { {16{as[36]}}, as[36:16] }; // as >>> 16
-        4'd7:  alu_special = { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
-        4'd8:  alu_special = p_ext;
-        4'd9:  alu_special = {as[36:16],16'd0} + 37'h1_0000; // aDh = aSh+1
-        4'd11: alu_special = {as[36:16] + {20'd0,as[15]} , 16'd0 };
-        4'd12: alu_special = y_ext;
-        4'd13: alu_special = as + 37'd1;
-        4'd14: alu_special = as;
-        4'd15: alu_special = -as;
-        default: alu_special = 37'd0; // case 10 is reserved
-    endcase
+always @(posedge clk, posedge rst) begin
+    if( rst ) begin
+            alu_special <= 37'd0;
+    end else if(!ph1) begin
+        case( f_field )
+            4'd0:    alu_special <= { as[36], as[36:1] };
+            4'd1:    alu_special <= { {5{as[30]}}, as[30:0], 1'd0 }; // shift << by 1
+            4'd2:    alu_special <= { {4{as[36]}}, as[36:4] };
+            4'd3:    alu_special <= { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
+            4'd4:    alu_special <= { {8{as[36]}}, as[36:8] };
+            4'd5:    alu_special <= { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
+            4'd6:    alu_special <= { {16{as[36]}}, as[36:16] }; // as >>> 16
+            4'd7:    alu_special <= { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
+            4'd8:    alu_special <= p_ext;
+            4'd9:    alu_special <= {as[36:16],16'd0} + 37'h1_0000; // aDh = aSh+1
+            4'd11:   alu_special <= {as[36:16] + {20'd0,as[15]} , 16'd0 };
+            4'd12:   alu_special <= y_ext;
+            4'd13:   alu_special <= as + 37'd1;
+            4'd14:   alu_special <= as;
+            4'd15:   alu_special <= -as;
+            default: alu_special <= 37'd0; // case 10 is reserved
+        endcase
+    end
 end
 
 always @(*) begin

@@ -23,7 +23,7 @@
 module jtdsp16_pio(
     input             rst,
     input             clk,
-    input             cen,
+    input             ph1,
     input      [15:0] pbus_in,
     output reg [15:0] pbus_out,
     output            pods_n,        // parallel output data strobe
@@ -100,7 +100,7 @@ always @(posedge clk, posedge rst) begin
         irq_latch        <= 0;
         last_iack        <= 0;
         irq_latch        <= 0;
-    end else if(cen) begin
+    end else if(ph1) begin
         last_iack        <= iack;
         last_irq         <= ~iack_negedge & (irq&pioc[5]);
         last_siowr_empty <= siowr_empty;
@@ -125,7 +125,7 @@ always @(posedge clk, posedge rst) begin
         pdx_buffer <= 16'd0;
         pioc       <= { 2'd0, 2'b11, 1'b0, 5'd0 };
         pbus_out   <= 16'd0;
-    end else if(cen) begin
+    end else if(ph1) begin
         pocnt <= pdx_load ? ststart : {1'b1,pocnt[3:1]};
         picnt <= pdx_read ? ststart : {1'b1,picnt[3:1]};
 

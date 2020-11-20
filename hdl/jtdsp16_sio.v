@@ -32,7 +32,7 @@
 module jtdsp16_sio(
     input             rst,
     input             clk,
-    input             cen,
+    input             ph1,
     // DSP16 pins
     output reg        ock,  // serial output clock
     output            sio_do,   // serial data output
@@ -100,7 +100,7 @@ always @(posedge clk, posedge rst) begin
         srta      <= 8'h0;
         obuf      <= 16'h0;
         ser_out  <= 16'd0;
-    end else if(cen) begin
+    end else if(ph1) begin
         clkdiv   <= clkdiv==4'd11 ? 4'd0: clkdiv+4'd1;
         last_ock <= ock;
         if( clkdiv==4'd5  ) ock <= ~obe;

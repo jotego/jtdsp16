@@ -116,7 +116,7 @@ always @(posedge clk) begin
 end
 `endif
 
-wire        cen;   // cen divided by 2
+wire        ph1;   // cen divided by 2
 
 wire [15:0] pt_dout;
 wire [15:0] rom_addr;
@@ -194,9 +194,9 @@ wire        irq_start;
 jtdsp16_div u_div(
     .clk            ( clk           ),
     .cen            ( clk_en        ),
-    .cendiv         ( cen           )
+    .cendiv         ( ph1           )
 );
-assign cen_cko = cen ;  // clock output, input clock divided by 2
+assign cen_cko = ph1 ;  // clock output, input clock divided by 2
 
 jtdsp16_rsel u_rsel(
     .r_xaau  ( r_xaau    ),
@@ -214,7 +214,7 @@ jtdsp16_rsel u_rsel(
 jtdsp16_ctrl u_ctrl(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen           ),
+    .ph1            ( ph1           ),
     .t_field        (               ),
     // ROM AAU - XAAU
     .goto_ja        ( goto_ja       ),
@@ -300,7 +300,7 @@ jtdsp16_ctrl u_ctrl(
 
 jtdsp16_rom u_rom(
     .clk        ( clk             ),
-    .cen        ( cen             ),
+    .ph1        ( ph1             ),
     .addr       ( rom_addr        ),
     .pt         ( pt_addr         ),
     .pt_load    ( dau_pt_load     ),
@@ -321,7 +321,7 @@ jtdsp16_rom u_rom(
 jtdsp16_rom_aau u_rom_aau(
     .rst        ( rst           ),
     .clk        ( clk           ),
-    .cen        ( cen           ),
+    .ph1        ( ph1           ),
     // instruction types
     .goto_ja    ( goto_ja       ),
     .goto_b     ( goto_b        ),
@@ -382,7 +382,7 @@ jtdsp16_ram u_ram(
 jtdsp16_ram_aau u_ram_aau(
     .rst        ( rst           ),
     .clk        ( clk           ),
-    .cen        ( cen           ),
+    .ph1        ( ph1           ),
     .r_field    ( r_field       ),
     .y_field    ( y_field       ),
     .rmux       ( rmux          ),
@@ -418,7 +418,7 @@ jtdsp16_ram_aau u_ram_aau(
 jtdsp16_dau u_dau(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen           ),
+    .ph1            ( ph1           ),
     .pc_halt        ( pc_halt       ),
     .con_check      ( con_check     ),
     .lfsr_rst       ( lfsr_rst      ),
@@ -468,7 +468,7 @@ jtdsp16_dau u_dau(
 jtdsp16_pio u_pio(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen           ),
+    .ph1            ( ph1           ),
     // Parallel I/O
     .pbus_in        ( pbus_in       ),
     .pbus_out       ( pbus_out      ),
@@ -498,7 +498,7 @@ jtdsp16_pio u_pio(
 jtdsp16_sio u_sio(
     .rst            ( rst           ),
     .clk            ( clk           ),
-    .cen            ( cen           ),
+    .ph1            ( ph1           ),
     // DSP16 pins
     .ock            ( ock           ),  // serial output clock
     .sio_do         ( sdo           ),   // serial data output

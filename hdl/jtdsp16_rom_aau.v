@@ -22,7 +22,7 @@
 module jtdsp16_rom_aau(
     input             rst,
     input             clk,
-    input             cen,
+    input             ph1,
     // instruction types
     input             goto_ja,
     input             goto_b,
@@ -162,7 +162,7 @@ always @(posedge clk, posedge rst ) begin
         // interrupts
         irq_in   <= 0;
         lfsr_rst <= 0;
-    end else if(cen) begin
+    end else if(ph1) begin
         if( load_pt  ) pt <= pt_load ? next_pt : rnext;
         if( load_pr  ) pr <= rnext;
         if( load_i   ) i  <= rnext[11:0];

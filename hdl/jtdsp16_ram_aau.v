@@ -22,7 +22,7 @@
 module jtdsp16_ram_aau(
     input           rst,
     input           clk,
-    input           cen,
+    input           ph1,
     input    [ 2:0] r_field,
     input    [ 1:0] y_field,
     // Increment selecction
@@ -172,7 +172,7 @@ always @(posedge clk, posedge rst ) begin
         r1 <= 16'd0;
         r2 <= 16'd0;
         r3 <= 16'd0;
-    end else if(cen) begin
+    end else if(ph1) begin
         if( load_j  ) j  <= rnext;
         if( load_k  ) k  <= rnext;
         if( load_rb ) rb <= rnext;

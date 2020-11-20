@@ -19,7 +19,7 @@
 module jtdsp16_ctrl(
     input             rst,
     input             clk,
-    input             cen,
+    input             ph1,
     // Instruction fields
     output reg        dau_dec_en,
     output reg        con_check,
@@ -177,7 +177,7 @@ always @(posedge clk, posedge rst) begin
     if(rst) begin
         do_ni_cnt <= 4'd0;
         do_k_cnt  <= 7'd0;
-    end else if(cen) begin
+    end else if(ph1) begin
         if( do_cnt_ld ) begin
             do_ni_cnt <= (do_redo||do_short) ? 4'd0 : 4'd1;
             do_k_cnt  <= do_k;
@@ -258,7 +258,7 @@ always @(posedge clk, posedge rst) begin
 
         do_short    <= 0;
         fault         <= 0;
-    end else if(cen) begin
+    end else if(ph1) begin
         t_field       <= rom_dout[15:11];
         i_field       <= rom_dout[11: 0];
         c_field       <= rom_dout[ 4: 0];

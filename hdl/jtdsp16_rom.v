@@ -25,7 +25,7 @@
 
 module jtdsp16_rom(
     input             clk,
-    input             cen,
+    input             ph1,
     input      [15:0] addr,
     input      [15:0] pt,
     input             pt_load,
