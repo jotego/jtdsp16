@@ -22,9 +22,11 @@ module jtdsp16(
     input             clk_en,
 
     output            cen_cko,      // clock output, interpret as clock enable signal
+    // External memory
     output     [15:0] ab,           // address bus
     input      [15:0] rb_din,       // ROM data bus
     output            ext_rq,
+    input             ext_ok,
     // Parallel I/O
     input      [15:0] pbus_in,
     output     [15:0] pbus_out,
@@ -92,6 +94,7 @@ module jtdsp16(
     `endif
 );
 
+
 `ifndef JTDSP16_DEBUG
 wire [15:0] debug_pc, debug_pr, debug_pi, debug_pt,
             debug_re, debug_rb, debug_j,  debug_k,  debug_r0, debug_r1, debug_r2, debug_r3;
@@ -102,19 +105,33 @@ wire [ 6:0] debug_auc;
 wire [ 9:0] debug_sioc;
 wire [35:0] debug_a1, debug_a0;
 wire [31:0] debug_p;
-`else
-reg last_sadd;
+`endif
+
+`ifdef JTDSP16_DUMP
+reg last_sadd, last_psel;
 reg signed [15:0] snd_l, snd_r;
+integer fsnd;
+
+initial begin
+    $display("jtdsp16.raw");
+    fsnd=$fopen("jtdsp16.raw","wb");
+end
+
 always @(posedge clk) begin
     last_sadd <= sadd;
+    last_psel <= psel;
     if( !sadd && last_sadd ) begin
         if( psel )
             snd_l <= ser_out;
         else
             snd_r <= ser_out;
     end
+    if( !last_psel && psel )
+        $fwrite( fsnd, {snd_l, snd_r} );
 end
 `endif
+
+/* verilator tracing_off */
 
 wire        ph1;   // cen divided by 2
 
@@ -193,6 +210,8 @@ wire        irq_start;
 
 jtdsp16_div u_div(
     .clk            ( clk           ),
+    .ext_ok         ( ext_ok        ),
+    .ext_rq         ( ext_rq        ),
     .cen            ( clk_en        ),
     .cendiv         ( ph1           )
 );
@@ -494,7 +513,7 @@ jtdsp16_pio u_pio(
     .siowr_empty    ( obe           ),
     .irq_latch      ( irq_latch     )
 );
-/* verilator tracing_on */
+/* verilator tracing_off */
 jtdsp16_sio u_sio(
     .rst            ( rst           ),
     .clk            ( clk           ),

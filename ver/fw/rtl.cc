@@ -13,6 +13,7 @@ RTL::RTL( const char *vcd_name) {
     ticks=0;
     sim_time=0;
     half_period=9;
+
     reset();
 }
 
@@ -33,6 +34,7 @@ void RTL::reset() {
     top.prog_addr = 0;
     top.prog_data = 0;
     top.prog_we   = 0;
+    top.ext_ok    = 1;
     for(int k=0; k<32; k++ )
         clk();
     top.rst = 0;

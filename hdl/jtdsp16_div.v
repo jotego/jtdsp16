@@ -22,6 +22,8 @@
 module jtdsp16_div(
     input      clk,
     input      cen,
+    input      ext_rq,
+    input      ext_ok,
     output reg cendiv
 );
 
@@ -36,7 +38,9 @@ end
 
 always @(posedge clk) begin
     cendiv <= 0;
-    if( cen ) begin
+    if( ext_rq && !ext_ok ) begin
+        cendiv <= 0;
+    end else if( cen ) begin
         toggle <= ~toggle;
         cendiv <= toggle;
     end

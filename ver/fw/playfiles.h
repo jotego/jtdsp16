@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <vector>
 #include <string>
+#include "WaveWritter.h"
 
 using namespace std;
 
@@ -29,16 +30,17 @@ public:
 int playfiles( const char* vcd_file ) {
     RTL rtl(vcd_file);
     ROM rom;
-    QSndData samples("wof.rom");
+    QSndData samples("punisher.rom");
     rtl.read_rom(rom.data());
-    VCDfile stim("wof_coin.vcd"); // VCD sample input from CPS 1.5 ver/game folder
+    VCDfile stim("punisher.vcd"); // VCD sample input from CPS 1.5 ver/game folder
+    WaveWritter wav("out.wav", 22000, false );
     stim.report();
     // Move until rst is low
     //printf("VCD forwarded to %ld\n",  );
     //int64_t vcdtime = stim.forward("dsp_rst",0);
 
     // VCDsignal* sig_irq = stim.get("dsp_irq");
-    VCDsignal* sig_cpu2dsp = stim.get("cpu2dsp0");
+    VCDsignal* sig_cpu2dsp = stim.get("cpu2dsp_s");
     const VCDsignal::pointlist& cmdlist = sig_cpu2dsp->get_list();
     VCDsignal::pointlist::const_iterator n = cmdlist.cbegin();
 
@@ -53,48 +55,64 @@ int playfiles( const char* vcd_file ) {
     rtl.clk( 200'000 ); // initialization
 
     int sim_time=0;
+    int last_pids=1, last_psel=1, last_sadd=1, last_pods=1;
+    int rom_addr=0;
+    int bank=0;
     do {
         int newcmd = n->val;
         int reads=0;
-        int last_pids=1;
-        int rom_addr=0;
         rtl.set_irq(1);
         rtl.pbus_in( newcmd>>16 );
         n++;
-        if( n==cmdlist.cend() ) break;
+        if( n==cmdlist.cend() ) {
+            printf("All VCD data points have been parsed\n");
+            break;
+        }
         vcdtime = next;
         next = n->time;
+        int16_t lr[2];
         int steps = (next-vcdtime)/18;
-        if( steps>2'000'000 )
-            steps=2'000'000;
+        if( steps>16'000'000 )
+            steps=16'000'000;
         sim_time = (int)(rtl.time()/1000'000L);
-        printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
+        //printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
         while( steps>0 ) {
             rtl.clk(2);
             if( rtl.pids()==1 && last_pids==0 ) {
                 reads++;
                 if( reads==1 ) rtl.pbus_in( newcmd&0xffff );
             }
+            if( !rtl.sadd() && last_sadd ) {
+                lr[ rtl.psel() ? 1 :0 ] = rtl.ser_out();
+            }
+            if( !last_psel && rtl.psel() ) {
+                wav.write( lr );
+            }
             if( last_pids==0 ) rtl.set_irq(0);
-            last_pids = rtl.pids();
-            if( !rtl.pods() ) {
-                rom_addr = 0;
+            if( rtl.pods()==1 && last_pods==0 ) {
+                rom_addr &= 0xFF'0000;
                 rom_addr |= rtl.pbus_out()&0xFFFF;
-                if( rtl.ser_out() != 0 ) {
-                    if( !rtl.vcd_dump ) printf("** Enabling VCD dumping\n");
-                    rtl.vcd_dump=true;
-                }
+                //if( rtl.ser_out() != 0 ) {
+                //    if( !rtl.vcd_dump ) printf("** Enabling VCD dumping\n");
+                //    rtl.vcd_dump=true;
+                //}
             }
-            rom_addr &= 0xFFFF;
-            rom_addr |= (rtl.ab()&0xff)<<16;
             if( rtl.ab()&0x8000 ) { // update the value only when external reads occur
+                int new_bank = rtl.ab()&0x7f;
+                rom_addr &= 0xFFFF;
+                rom_addr |= bank<<16;
+                bank = new_bank;
                 int din = samples.get( rom_addr );
-                //printf("Read %X from %X\n", din, rom_addr );
                 rtl.rb_din( din<<8 );
+                //printf("Read %X from %06X\n", din, rom_addr );
             }
+            last_pids = rtl.pids();
+            last_psel = rtl.psel();
+            last_sadd = rtl.sadd();
+            last_pods = rtl.pods();
             steps-=2;
         }
-    }while( sim_time < 3'000 );
+    }while( sim_time < 31'800 );
     rtl.dump_ram();
 
     return 0;

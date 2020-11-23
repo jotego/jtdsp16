@@ -4,6 +4,7 @@
 #include "verilated_vcd_c.h"
 
 #include <string>
+#include <fstream>
 
 class RTL {
     vluint64_t ticks, sim_time, half_period;
@@ -53,11 +54,13 @@ public:
     int64_t a1() { return top.debug_a1; }
 
     // SIO
+    int  sadd() { return top.sadd; }
     int  srta() { return top.debug_srta; }
     int  sioc() { return top.debug_sioc; }
     int ser_out() { return top.ser_out; }
 
     // PIO
+    int psel() { return top.psel; }
     int pids() { return top.pids_n; }
     int pods() { return top.pods_n; }
     int pbus_out() { return top.pbus_out; }
