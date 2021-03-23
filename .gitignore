@@ -1,6 +1,14 @@
 log.out
 sim
 test.lxt
+obj_dir
+*.fst
+*.vcd
+*.rom
+*.vgz
+*.vgm
+*.wav
+*.log
 *.bin
 dsp16as
 syn/*

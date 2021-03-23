@@ -9,8 +9,6 @@
 
 using namespace std;
 
-int playfiles();
-
 class QSndData {
     int get_offset( char *header, int p );
     int mask;
@@ -27,13 +25,13 @@ public:
     QSndLog( const char *path);
 };
 
-int playfiles( const char* vcd_file ) {
-    RTL rtl(vcd_file);
+int playfiles( const ParseArgs& args ) {
+    RTL rtl(args.vcd_file.c_str());
     ROM rom;
     QSndData samples("punisher.rom");
     rtl.read_rom(rom.data());
     VCDfile stim("punisher.vcd"); // VCD sample input from CPS 1.5 ver/game folder
-    WaveWritter wav("out.wav", 22000, false );
+    WaveWritter wav("out.wav", 24000, false );
     stim.report();
     // Move until rst is low
     //printf("VCD forwarded to %ld\n",  );
@@ -61,7 +59,8 @@ int playfiles( const char* vcd_file ) {
     do {
         int newcmd = n->val;
         int reads=0;
-        rtl.set_irq(1);
+        int irq=1;
+        rtl.set_irq(irq);
         rtl.pbus_in( newcmd>>16 );
         n++;
         if( n==cmdlist.cend() ) {
@@ -72,11 +71,11 @@ int playfiles( const char* vcd_file ) {
         next = n->time;
         int16_t lr[2];
         int steps = (next-vcdtime)/18;
-        if( steps>16'000'000 )
-            steps=16'000'000;
+        //if( steps>16'000'000 )
+        //    steps=16'000'000;
         sim_time = (int)(rtl.time()/1000'000L);
         //printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
-        while( steps>0 ) {
+        while( steps>0 || irq==1 || rtl.iack() ) { // stay here until IRQ is processed
             rtl.clk(2);
             if( rtl.pids()==1 && last_pids==0 ) {
                 reads++;
@@ -88,7 +87,10 @@ int playfiles( const char* vcd_file ) {
             if( !last_psel && rtl.psel() ) {
                 wav.write( lr );
             }
-            if( last_pids==0 ) rtl.set_irq(0);
+            if( last_pids==0 ) {
+                rtl.set_irq(0);
+                irq=0;
+            }
             if( rtl.pods()==1 && last_pods==0 ) {
                 rom_addr &= 0xFF'0000;
                 rom_addr |= rtl.pbus_out()&0xFFFF;
@@ -112,7 +114,7 @@ int playfiles( const char* vcd_file ) {
             last_pods = rtl.pods();
             steps-=2;
         }
-    }while( sim_time < 31'800 );
+    }while( sim_time < 31'800 || args.allcmd );
     rtl.dump_ram();
 
     return 0;

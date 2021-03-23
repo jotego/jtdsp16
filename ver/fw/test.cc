@@ -45,10 +45,10 @@ int random_tests( ParseArgs& args );
 
 int main( int argc, char *argv[] ) {
     ParseArgs args( argc, argv );
-
+    if( args.error ) return 1;
     try {
         if( args.playback )
-            return playfiles(args.vcd_file.c_str());
+            return playfiles(args);
         else if( args.tracecmp )
             return cmptrace(args);
         else
@@ -322,7 +322,8 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 }
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
-    extra = step = verbose = playback = tracecmp = false;
+    extra = step = verbose = playback = tracecmp = allcmd = false;
+    error = false;
     vcd_file="test.vcd";
     trace_file="wof.tr";
     seed=0;
@@ -337,6 +338,7 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
                 continue;
             }
             if( strcmp(argv[k],"-play")==0 ) { playback=true; continue; }
+            if( strcmp(argv[k],"-allcmd")==0 ) { allcmd=true; continue; }
             if( strcmp(argv[k],"-tracecmp")==0 ) { tracecmp=true; continue; }
             if( strcmp(argv[k],"-max")==0 ) {
                 if( ++k<argc ) {
@@ -348,6 +350,9 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
                 if( ++k < argc ) vcd_file=argv[k];
                 continue;
             }
+            error = true;
+            cout << "Error: cannot recognize argument " << argv[k] << '\n';
+            return;
         } else {
             // parse as seed
             seed = strtol(argv[k], NULL, 0);

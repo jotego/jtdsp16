@@ -93,7 +93,7 @@ public:
 
 class ParseArgs {
 public:
-    bool step, extra, verbose, playback, tracecmp;
+    bool step, extra, verbose, playback, tracecmp, allcmd, error;
     int max, seed;
     std::string vcd_file, trace_file;
     ParseArgs( int argc, char *argv[]);
