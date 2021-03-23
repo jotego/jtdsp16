@@ -2,6 +2,8 @@
 #include "vcd.h"
 #include "mametrace.h"
 #include <fstream>
+#include <sstream>
+#include <iostream>
 #include <cstdio>
 #include <vector>
 #include <string>
@@ -25,13 +27,16 @@ public:
     QSndLog( const char *path);
 };
 
+int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdlist,
+    bool allcmd, int min_sim_time );
+
 int playfiles( const ParseArgs& args ) {
     RTL rtl(args.vcd_file.c_str());
     ROM rom;
-    QSndData samples("punisher.rom");
+    QSndData samples(args.qsnd_rom.c_str());
     rtl.read_rom(rom.data());
+    rtl.vcd_dump = args.write_vcd;
     VCDfile stim("punisher.vcd"); // VCD sample input from CPS 1.5 ver/game folder
-    WaveWritter wav("out.wav", 24000, false );
     stim.report();
     // Move until rst is low
     //printf("VCD forwarded to %ld\n",  );
@@ -39,15 +44,32 @@ int playfiles( const ParseArgs& args ) {
 
     // VCDsignal* sig_irq = stim.get("dsp_irq");
     VCDsignal* sig_cpu2dsp = stim.get("cpu2dsp_s");
-    const VCDsignal::pointlist& cmdlist = sig_cpu2dsp->get_list();
-    VCDsignal::pointlist::const_iterator n = cmdlist.cbegin();
+    auto& cmdlist = sig_cpu2dsp->get_list();
 
+    return play_timeval( rtl, samples, cmdlist, args.allcmd, args.min_sim_time );
+}
+
+int play_qs( const ParseArgs& args ) {
+    RTL rtl(args.vcd_file.c_str());
+    ROM rom;
+    QSndData samples(args.qsnd_rom.c_str());
+    rtl.vcd_dump = args.write_vcd;
+    rtl.read_rom(rom.data());
+    QSCmd cmd(args.playfile);
+    return play_timeval( rtl, samples, cmd.cmdlist(), args.allcmd, args.min_sim_time );
+}
+
+
+int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdlist,
+    bool allcmd, int min_sim_time ) {
     int reads;
+    auto n = cmdlist.cbegin();
+    WaveWritter wav("out.wav", 24000, false );
+
     n++;
     int64_t vcdtime = n->time;
     int64_t next= n->time;
 
-    rtl.vcd_dump = false;
     rtl.clk( 0x800*4 );
     rtl.step();
     rtl.clk( 200'000 ); // initialization
@@ -60,21 +82,27 @@ int playfiles( const ParseArgs& args ) {
         int newcmd = n->val;
         int reads=0;
         int irq=1;
+
         rtl.set_irq(irq);
         rtl.pbus_in( newcmd>>16 );
-        n++;
+        sim_time = (int)(rtl.time()/1000'000L);
+        int64_t steps=0;
         if( n==cmdlist.cend() ) {
             printf("All VCD data points have been parsed\n");
-            break;
+            if( sim_time > min_sim_time ) {
+                break;
+            } else {
+                printf("Simulating up to %d ms\n",min_sim_time);
+                steps = (min_sim_time-sim_time)*1000'0000/18;
+            }
+        } else {
+            printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
+            n++;
+            vcdtime = next;
+            next = n->time;
+            steps = (next-vcdtime)/18;
         }
-        vcdtime = next;
-        next = n->time;
         int16_t lr[2];
-        int steps = (next-vcdtime)/18;
-        //if( steps>16'000'000 )
-        //    steps=16'000'000;
-        sim_time = (int)(rtl.time()/1000'000L);
-        //printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
         while( steps>0 || irq==1 || rtl.iack() ) { // stay here until IRQ is processed
             rtl.clk(2);
             if( rtl.pids()==1 && last_pids==0 ) {
@@ -114,7 +142,8 @@ int playfiles( const ParseArgs& args ) {
             last_pods = rtl.pods();
             steps-=2;
         }
-    }while( sim_time < 31'800 || args.allcmd );
+    }while( sim_time < 500'800 || (allcmd && sim_time>min_sim_time ) );
+    cout << "\n\nsim_time=" << sim_time << " min_sim_time="<<min_sim_time<<'\n';
     rtl.dump_ram();
 
     return 0;
@@ -235,7 +264,11 @@ int cmptrace( ParseArgs& args ) {
 
 QSndData::QSndData( const char *rompath ) {
     ifstream fin(rompath, ios_base::binary);
-    if( !fin.good() ) throw runtime_error("Cannot open ROM file for game");
+    if( !fin.good() ) {
+        stringstream ss;
+        ss << "Cannot open ROM file " << rompath;
+        throw runtime_error(ss.str());
+    }
     // Get the header
     char header[64];
     fin.read( header, 64 );
@@ -247,6 +280,7 @@ QSndData::QSndData( const char *rompath ) {
         expected = 8*1024*1024;
     data = new char[expected];
     mask = expected-1;
+    cout << "Reading " << rompath << '\n';
     printf("PCM data start %10X\nPCM data end   %10X. Mask=%0x\n", start, end, mask );
     fin.seekg( start+64 );
     if( !fin.good() ) {

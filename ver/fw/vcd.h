@@ -12,7 +12,7 @@ struct VCDpoint {
 
 class VCDsignal {
 public:
-    typedef std::list<VCDpoint> pointlist;
+    using pointlist=std::list<VCDpoint>;
 private:
     pointlist points;
     pointlist::iterator k, n;

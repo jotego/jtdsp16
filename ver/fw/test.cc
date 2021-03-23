@@ -46,9 +46,10 @@ int random_tests( ParseArgs& args );
 int main( int argc, char *argv[] ) {
     ParseArgs args( argc, argv );
     if( args.error ) return 1;
+    if( args.exit ) return 0;
     try {
         if( args.playback )
-            return playfiles(args);
+            return play_qs(args);
         else if( args.tracecmp )
             return cmptrace(args);
         else
@@ -126,6 +127,9 @@ int random_tests( ParseArgs& args ) {
 
 ROM::ROM() {
     ifstream fin("dl-1425.bin",ios_base::binary);
+    if( fin.bad() ) {
+        throw runtime_error("Cannot find dl-1425.bin");
+    }
     rom=new int16_t[4*1024];
     fin.read( (char*)rom, 8*1024 );
 }
@@ -323,9 +327,11 @@ void dump( RTL& rtl, DSP16emu& emu ) {
 
 ParseArgs::ParseArgs( int argc, char *argv[]) {
     extra = step = verbose = playback = tracecmp = allcmd = false;
+    exit = false;
     error = false;
     vcd_file="test.vcd";
     trace_file="wof.tr";
+    write_vcd=false;
     seed=0;
     max = 100'000;
     if( argc==1 ) return;
@@ -337,7 +343,21 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
                 if(verbose) step=true;
                 continue;
             }
-            if( strcmp(argv[k],"-play")==0 ) { playback=true; continue; }
+            if( strcmp(argv[k],"-w")==0 ) {
+                write_vcd=true;
+                continue;
+            }
+            if( strcmp(argv[k],"-play")==0 ) {
+                qsnd_rom = "spf2t.rom";
+                playfile = "spf2t_b1.qs";
+                if( k+1 < argc )
+                    qsnd_rom = argv[++k];
+                if( k+1 < argc ) {
+                    playfile = argv[++k];
+                }
+                playback=true;
+                continue;
+            }
             if( strcmp(argv[k],"-allcmd")==0 ) { allcmd=true; continue; }
             if( strcmp(argv[k],"-tracecmp")==0 ) { tracecmp=true; continue; }
             if( strcmp(argv[k],"-max")==0 ) {
@@ -346,9 +366,33 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
                 }
                 continue;
             }
-            if( strcmp(argv[k],"-vcd")==0 ) {
-                if( ++k < argc ) vcd_file=argv[k];
+            if( strcmp(argv[k],"-mintime")==0 ) {
+                if( ++k < argc )
+                    min_sim_time=atoi(argv[k]);
+                else {
+                    throw runtime_error("Expecting minimum simulation time after -mintime");
+                }
                 continue;
+            }
+            if( strcmp(argv[k],"-vcd")==0 ) {
+                if( ++k < argc )
+                    vcd_file=argv[k];
+                else {
+                    throw runtime_error("Expecting name of VCD file after -vcd");
+                }
+                continue;
+            }
+            if( strcmp(argv[k],"-h")==0 ) {
+                cout <<
+"-play [CPS rom file] [playfile] \n"
+"                      enables playback. The rom file is an MRA output.\n"
+"                      The play file should follow spf2t_b1.qs example\n"
+"-allcmd               parses all command inputs in the file\n"
+"-tracecmp             enables comparative traces\n"
+"-v                    verbose\n"
+"-vcd                  name of output VCD file\n";
+                exit=true;
+                break;
             }
             error = true;
             cout << "Error: cannot recognize argument " << argv[k] << '\n';
@@ -360,4 +404,48 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
     }
     srand(seed);
     if(!playback && !tracecmp) printf("Random seed = %d\n", seed);
+}
+
+QSCmd::QSCmd( const std::string& fname ) {
+    ifstream fin(fname);
+    if(!fin.good()) {
+        stringstream ss("Cannot open file ");
+        ss << fname;
+        throw runtime_error(ss.str());
+    }
+    string line;
+    bool first=true;
+    int ref_sample=10;
+    int skip=-1;
+    while( !fin.eof() ) {
+        getline(fin, line, '\n');
+        //cout << "0** " << line << "**\n";
+        if( fin.bad() ) {
+            cout << "ERROR: fin is bad\n";
+            break;
+        }
+
+        if( line.find('#')!= string::npos ) {
+            line = line.substr( 0, line.find_first_not_of(" \t#")-2 );
+        }
+        if( !line.size() ) {
+            skip++;
+            continue;
+        }
+        stringstream ss(line);
+        int sample, addr, cmd;
+        ss >> sample >> addr >> cmd;
+        if( first ) {
+            ref_sample = sample;
+            first = false;
+        }
+        decltype(VCDpoint::time) time=(sample-ref_sample)*20'833LL;
+        int val = (addr<<16) | (cmd&0xffff);
+        points.push_back( {time, val} );
+    }
+    // for( auto p : points ) {
+    //     cout << dec << p.time/1000'000 << "ms   " << hex << p.val << "\n";
+    // }
+    cout << "Read " << dec << points.size() << " data points ("<<skip<<" skipped)\n";
+    cout << "Final time=" << points.back().time/1000'000 << "ms\n";
 }

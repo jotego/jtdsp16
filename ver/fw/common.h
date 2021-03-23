@@ -2,7 +2,7 @@
 #define __DSP16_COMMON
 #include "Vjtdsp16.h"
 #include "verilated_vcd_c.h"
-
+#include "vcd.h"
 #include <string>
 #include <fstream>
 
@@ -93,10 +93,19 @@ public:
 
 class ParseArgs {
 public:
-    bool step, extra, verbose, playback, tracecmp, allcmd, error;
+    bool step, extra, verbose, playback, tracecmp, allcmd, error, exit,
+         write_vcd=false;
     int max, seed;
-    std::string vcd_file, trace_file;
+    int min_sim_time=0;
+    std::string vcd_file, trace_file, qsnd_rom="punisher.rom", playfile;
     ParseArgs( int argc, char *argv[]);
+};
+
+class QSCmd {
+    VCDsignal::pointlist points;
+public:
+    QSCmd( const std::string& fname );
+    const VCDsignal::pointlist cmdlist() const { return points; }
 };
 
 #endif
