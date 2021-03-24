@@ -94,11 +94,11 @@ reg         sat_tx;
 reg  [31:0] lfsr;
 reg         up_lfsr;
 
-wire [31:0] y;
-wire [36:0] as, y_ext;
-reg  [19:0] acc_in;
+wire signed [31:0] y;
+wire signed [36:0] as, y_ext;
+reg  signed [19:0] acc_in;
 wire [ 3:0] flags;
-wire [15:0] load_data;
+wire signed [15:0] load_data;
 wire        pre_ov, pre_lmv;
 wire        up_p;
 wire        up_y;
@@ -243,23 +243,23 @@ always @(posedge clk, posedge rst) begin
         // a0
         if( st_a0 ) begin
             if( st_ah ) begin
-                a0[35:16] <= acc_in;
+                a0[35:16] <= { {4{acc_in[15]}}, acc_in[15:0] };
                 if( clr_a0l ) a0[15:0] <= 16'd0;
             end else
                 a0[15:0] <= acc_in[15:0];
         end else if( load_a0 ) begin
-            a0  <= alu_out;
+            a0  <= { {4{alu_out[31]}}, alu_out[31:0]};
             ov0 <= pre_lmv;
         end
         // a1
         if( st_a1 ) begin
             if( st_ah ) begin
-                a1[35:16] <= acc_in;
+                a1[35:16] <= { {4{acc_in[15]}}, acc_in[15:0] };
                 if( clr_a1l ) a1[15:0] <= 16'd0;
             end else
                 a1[15:0] <= acc_in[15:0];
         end else if( load_a1 ) begin
-            a1  <= alu_out;
+            a1  <= { {4{alu_out[31]}}, alu_out[31:0]};
             ov1 <= pre_lmv;
         end
         // Counters
@@ -311,13 +311,13 @@ always @(posedge clk, posedge rst) begin
     end else if(!ph1) begin
         case( f_field )
             4'd0:    alu_special <= { as[36], as[36:1] };
-            4'd1:    alu_special <= { {5{as[30]}}, as[30:0], 1'd0 }; // shift << by 1
+            4'd1:    alu_special <= as<<1; // shift << by 1
             4'd2:    alu_special <= { {4{as[36]}}, as[36:4] };
-            4'd3:    alu_special <= { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
+            4'd3:    alu_special <= as<<4; // shift by 4
             4'd4:    alu_special <= { {8{as[36]}}, as[36:8] };
-            4'd5:    alu_special <= { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
+            4'd5:    alu_special <= as<<8; // shift by 8
             4'd6:    alu_special <= { {16{as[36]}}, as[36:16] }; // as >>> 16
-            4'd7:    alu_special <= { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
+            4'd7:    alu_special <= as<<16; // shift by 16
             4'd8:    alu_special <= p_ext;
             4'd9:    alu_special <= {as[36:16],16'd0} + 37'h1_0000; // aDh = aSh+1
             4'd11:   alu_special <= {as[36:16] + {20'd0,as[15]} , 16'd0 };
