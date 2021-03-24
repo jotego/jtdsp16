@@ -150,7 +150,9 @@ end
 
 always @(*) begin
     pre_step_sel = 0;
-    pre_ksel     = 0;
+    pre_ksel     = 0;   // k is only used in Z operations,
+                        // for which only a small subset is supported
+                        // QSound does not ever read the k register
     pre_inc_sel  = 2'd0;
     case( rom_dout[1:0] )
         2'd0: begin // *rN
