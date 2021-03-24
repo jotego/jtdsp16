@@ -214,13 +214,13 @@ inline u64 dsp16_device_base::core_state::dau_set_psw_flags(s64 d)
 	dau_psw &= 0x0fffU;
 	bool const negative(d & DAU_A_SIGN);
 	if (negative)
-		dau_psw |= 0x8000U;
+		dau_psw |= 0x8000U;	// lmi
 	if (!(d & DAU_A_MASK))
-		dau_psw |= 0x4000U;
+		dau_psw |= 0x4000U;	// leq
 	if ((d >> 36) != (negative ? -1 : 0))
-		dau_psw |= 0x2000U;
+		dau_psw |= 0x2000U;	// llv
 	if (((d >> 32) & ((1 << 4) - 1)) != (BIT(d, 31) ? 15 : 0))
-		dau_psw |= 0x1000U;
+		dau_psw |= 0x1000U;	// lmv
 	if (negative)
 		return d | DAU_A_EXT;
 	else
