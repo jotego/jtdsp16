@@ -108,4 +108,11 @@ public:
     const VCDsignal::pointlist cmdlist() const { return points; }
 };
 
+class RefCmp {
+    ROM rom;
+    RTL dut;
+public:
+    RefCmp( const char *vcdname );
+};
+
 #endif

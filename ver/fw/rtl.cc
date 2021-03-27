@@ -130,3 +130,6 @@ void RTL::dump(const char *s, int64_t d ) {
     printf("%4s = %010lX\n",s, d);
 }
 
+RefCmp::RefCmp( const char *vcdname ) : dut(vcdname) {
+    dut.read_rom( rom.data() );
+}
