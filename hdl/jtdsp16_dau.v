@@ -94,18 +94,18 @@ reg         sat_tx;
 reg  [31:0] lfsr;
 reg         up_lfsr;
 
-wire signed [31:0] y;
-wire signed [36:0] as, y_ext;
-reg  signed [19:0] acc_in;
+wire [31:0] y;
+wire [36:0] as, y_ext;
+reg  [19:0] acc_in;
 wire [ 3:0] flags;
-wire signed [15:0] load_data;
+wire [15:0] load_data;
 wire        pre_ov, pre_lmv;
 wire        up_p;
 wire        up_y;
 wire        up_a0h, up_a1h;
 wire        ad_sel;
 wire        as_sel;
-wire        clr_yl, clr_a1l, clr_a0l, clrax;
+wire        clr_yl, clr_a1l, clr_a0l;
 wire        sat_a1, sat_a0;
 wire        load_y, load_yl;
 wire        load_x, load_auc;
@@ -126,7 +126,6 @@ assign psw         = { flags, 2'b0, ov1, a1[35:32], ov0, a0[35:32] };
 assign clr_yl      = ~auc[6];
 assign clr_a1l     = ~auc[5];
 assign clr_a0l     = ~auc[4];
-assign clrax       = st_a0 ? clr_a0l : clr_a1l;
 assign sat_a1      = ~auc[3];
 assign sat_a0      = ~auc[2];
 assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit integer
@@ -244,23 +243,23 @@ always @(posedge clk, posedge rst) begin
         // a0
         if( st_a0 ) begin
             if( st_ah ) begin
-                a0[35:16] <= { {4{acc_in[15]}}, acc_in[15:0] };
+                a0[35:16] <= acc_in;
                 if( clr_a0l ) a0[15:0] <= 16'd0;
             end else
                 a0[15:0] <= acc_in[15:0];
         end else if( load_a0 ) begin
-            a0  <= { {4{alu_out[31]}}, alu_out[31:0]};
+            a0  <= alu_out;
             ov0 <= pre_lmv;
         end
         // a1
         if( st_a1 ) begin
             if( st_ah ) begin
-                a1[35:16] <= { {4{acc_in[15]}}, acc_in[15:0] };
+                a1[35:16] <= acc_in;
                 if( clr_a1l ) a1[15:0] <= 16'd0;
             end else
                 a1[15:0] <= acc_in[15:0];
         end else if( load_a1 ) begin
-            a1  <= { {4{alu_out[31]}}, alu_out[31:0]};
+            a1  <= alu_out;
             ov1 <= pre_lmv;
         end
         // Counters
@@ -274,7 +273,7 @@ always @(posedge clk, posedge rst) begin
         // special registers
         if( load_auc ) auc <= load_data[6:0];
         // Flags
-        if(dec_en && ( !f1_nop || special)) begin
+        if(dec_en && ( (!special && !f1_nop) || f2_st)) begin
             lmi <= alu_out[35];
             leq <= ~|alu_out;
             llv <= pre_ov;
@@ -294,10 +293,11 @@ always @(posedge clk, posedge rst) begin
             4'd3, 4'd7: alu_arith <= as-p_ext;
             4'd8:       alu_arith <= as | y_ext;
             4'd9:       alu_arith <= as ^ y_ext;
-            4'd10,4'd14:alu_arith <= as & y_ext;
+            4'd10:      alu_arith <= as & y_ext;
             4'd11,4'd15:alu_arith <= as - y_ext;
             4'd12:      alu_arith <= y_ext;
             4'd13:      alu_arith <= as + y_ext;
+            4'd14:      alu_arith <= as & y_ext;
             default:    alu_arith <= 37'd0;
         endcase
         f1_nop <= f_field==4'd2 || f_field==4'd6; // do not modify flags
@@ -310,16 +310,16 @@ always @(posedge clk, posedge rst) begin
             alu_special <= 37'd0;
     end else if(!ph1) begin
         case( f_field )
-            4'd0:    alu_special <= as>>>1;
-            4'd1:    alu_special <= as<<1; // shift << by 1
-            4'd2:    alu_special <= as>>>4;
-            4'd3:    alu_special <= as<<4; // shift by 4
-            4'd4:    alu_special <= as>>>8;
-            4'd5:    alu_special <= as<<8; // shift by 8
-            4'd6:    alu_special <= as>>>16;
-            4'd7:    alu_special <= as<<16; // shift by 16
+            4'd0:    alu_special <= { as[36], as[36:1] };
+            4'd1:    alu_special <= { {5{as[30]}}, as[30:0], 1'd0 }; // shift << by 1
+            4'd2:    alu_special <= { {4{as[36]}}, as[36:4] };
+            4'd3:    alu_special <= { {5{as[27]}}, as[27:0], 4'd0 }; // shift by 4
+            4'd4:    alu_special <= { {8{as[36]}}, as[36:8] };
+            4'd5:    alu_special <= { {5{as[23]}}, as[23:0], 8'd0 }; // shift by 8
+            4'd6:    alu_special <= { {16{as[36]}}, as[36:16] }; // as >>> 16
+            4'd7:    alu_special <= { {5{as[15]}}, as[15:0], 16'd0 }; // shift by 16
             4'd8:    alu_special <= p_ext;
-            4'd9:    alu_special <= { as[36:16]+1'd1, clrax ? 16'd0 : as[15:0]}; // aDh = aSh+1
+            4'd9:    alu_special <= {as[36:16],16'd0} + 37'h1_0000; // aDh = aSh+1
             4'd11:   alu_special <= {as[36:16] + {20'd0,as[15]} , 16'd0 };
             4'd12:   alu_special <= y_ext;
             4'd13:   alu_special <= as + 37'd1;
@@ -333,7 +333,7 @@ end
 always @(*) begin
     case( auc[1:0] )
         2'd0, 2'd3: p_ext[31:0] = p; // Makes reserved case 3 same as 0
-        2'd1: p_ext[31:0] = p>>>2;
+        2'd1: p_ext[31:0] = { {2{p[31]}}, p[31:2] }; // >> 2
         2'd2: p_ext[31:0] = p<<2; // << 4 better
     endcase
     p_ext[36:32] = {5{p_ext[31]}};
