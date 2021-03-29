@@ -140,11 +140,12 @@ always @(*) begin
     end else begin
         next_pc =
             icall     ? 16'd2 : (
-            (goto_ja || call_ja) ? ( irq_start ? 16'd1 : { pc[15:12], i_field }) : (
+            irq_start ? 16'd1 : (
+            (goto_ja || call_ja) ? { pc[15:12], i_field } : (
             (goto_pt || call_pt) ? pt : (
             ret                  ? pr : (
             iret                 ? pi : (
-            (pc_halt && (!do_start || do_redo)) ? pc : sequ_pc )))));
+            (pc_halt && (!do_start || do_redo)) ? pc : sequ_pc ))))));
     end
 end
 

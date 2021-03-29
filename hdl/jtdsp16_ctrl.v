@@ -324,7 +324,6 @@ always @(posedge clk, posedge rst) begin
 
         if( !double ) begin
             if( irq && !do_busy && irq_ok && !iack ) begin
-                goto_ja   <= 1;
                 irq_start <= 1;
                 pc_halt   <= 1;
                 double    <= 1;
