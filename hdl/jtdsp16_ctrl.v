@@ -411,7 +411,6 @@ always @(posedge clk, posedge rst) begin
                         end else begin
                             pdx_read <= rom_dout[9:6]==4'b0111;
                         end
-                        pc_halt <= 1;
                         if( rom_dout[15:11] == 5'b01100 ) begin
                             ram_we  <= 1; // RAM write
                         end else begin
@@ -419,7 +418,8 @@ always @(posedge clk, posedge rst) begin
                         end
                         rsel      <= rom_dout[ 8:6];
                         r_field   <= rom_dout[ 6:4];
-                        double   <= 1;
+                        pc_halt   <= 1;
+                        double    <= 1;
                         // Y control
                         post_load <= 1;
                         inc_sel   <= pre_inc_sel;
