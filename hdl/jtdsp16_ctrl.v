@@ -277,7 +277,7 @@ always @(posedge clk, posedge rst) begin
         post_load     <= 0;
         pc_halt       <= 0;
         con_check     <= 0;
-        do_short    <= 0;
+        do_short      <= 0;
 
         // XAAU
         goto_ja       <= 0;
@@ -447,7 +447,6 @@ always @(posedge clk, posedge rst) begin
 
                     5'b10011: begin // if CON F2
                         dau_dec_en    <= 1;
-                        a_field       <= rom_dout[10:9];
                         dau_special   <= 1;
                     end
 
