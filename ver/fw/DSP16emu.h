@@ -20,6 +20,7 @@ class DSP16emu {
     int  cache_start, cache_end, cache_left;
 
     void    update_regs();
+    void    update_overflow();
     int     get_register( int rfield );
     void    set_register( int rfield, int v );
     int64_t assign_high( int clr_mask, int64_t& dest, int val );
@@ -163,6 +164,18 @@ void DSP16emu::update_regs() {
     a0   = next_a0;
     a1   = next_a1;
     p    = next_p;
+    update_overflow();
+}
+
+void DSP16emu::update_overflow() {
+    if( ((a0>>32)&0xf) != (((a0>>31)&1) ? 0xf : 0) )
+        psw |= 0x10;
+    else
+        psw &= ~0x10;
+    if( ((a1>>32)&0xf) != (((a1>>31)&1) ? 0xf : 0) )
+        psw |= 0x200;
+    else
+        psw &= ~0x200;
 }
 
 int DSP16emu::get_register( int rfield ) {
@@ -828,6 +841,7 @@ int DSP16emu::eval() {
             aux = Yparse_read( op&0xf, false );
             assign_acc( ((~op)>>10)&1, (op>>4)&1, aux, false );
             delta = 1;
+            update_overflow();
             break;
         case 0x8: // aT = R
             aux = (op>>4)&0x3f;
@@ -838,6 +852,7 @@ int DSP16emu::eval() {
             else
                 a1 = assign_high( 2, next_a1, aux2 ); // 0 selects a1
             delta = 2;
+            update_overflow();
             break;
         case 0x9: // R = a0
             aux  = (op>>4)&0x3f;
