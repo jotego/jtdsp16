@@ -99,7 +99,6 @@ wire [36:0] as, y_ext;
 reg  [19:0] acc_in;
 wire [ 3:0] flags;
 wire [15:0] load_data;
-wire        pre_ov, pre_lmv;
 wire        up_p;
 wire        up_y;
 wire        up_a0h, up_a1h;
@@ -128,8 +127,6 @@ assign clr_a1l     = ~auc[5];
 assign clr_a0l     = ~auc[4];
 assign sat_a1      = ~auc[3];
 assign sat_a0      = ~auc[2];
-assign pre_ov      = alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit integer
-assign pre_lmv     = alu_out[35:32] != {4{alu_out[31]}}; // number doesn't fit in 32-bit integer
 
 assign f1_st       = dec_en && !special && (f_field!=4'd2 && f_field!=4'd6 && f_field!=4'd10 && f_field!=4'd11 );
 assign special_ok  = special && con_result;
@@ -161,6 +158,9 @@ assign debug_a1  = a1;
 assign debug_psw = psw;
 assign debug_auc = auc;
 assign debug_p   = p;
+
+assign ov1 = a1[35:32] != {4{a1[31]}};
+assign ov0 = a0[35:32] != {4{a0[31]}};
 
 // Accumulator output to memory
 always @(*) begin
@@ -226,8 +226,6 @@ always @(posedge clk, posedge rst) begin
         c0  <=  8'd0;
         c1  <=  8'd0;
         c2  <=  8'd0;
-        ov1 <=  0;
-        ov0 <=  0;
         { lmi, leq, llv, lmv } <= 4'd0;
     end else if(ph1) begin
         if( up_p   ) p <= x*yh;
@@ -249,7 +247,6 @@ always @(posedge clk, posedge rst) begin
                 a0[15:0] <= acc_in[15:0];
         end else if( load_a0 ) begin
             a0  <= alu_out;
-            ov0 <= pre_lmv;
         end
         // a1
         if( st_a1 ) begin
@@ -260,7 +257,6 @@ always @(posedge clk, posedge rst) begin
                 a1[15:0] <= acc_in[15:0];
         end else if( load_a1 ) begin
             a1  <= alu_out;
-            ov1 <= pre_lmv;
         end
         // Counters
         if( load_c0 ) c0 <= load_data[7:0];
@@ -275,9 +271,9 @@ always @(posedge clk, posedge rst) begin
         // Flags
         if(dec_en && ( (!special && !f1_nop) || f2_st)) begin
             lmi <= alu_out[35];
-            leq <= ~|alu_out;
-            llv <= pre_ov;
-            lmv <= pre_lmv;
+            leq <= alu_out==0;
+            llv <= alu_llv ^ alu_out[35]; // number doesn't fit in 36-bit integer
+            lmv <= alu_out[35:32] != {4{alu_out[31]}}; // number doesn't fit in 32-bit integer
         end
     end
 end
