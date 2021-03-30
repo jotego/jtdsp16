@@ -431,7 +431,6 @@ always @(posedge clk, posedge rst) begin
                     5'b00111: // aT=Y F1
                     begin
                         dau_dec_en    <= 1;
-                        a_field       <= rom_dout[10:9];
                         // accumulator storing
                         if( rom_dout[11] ) begin
                             st_a0      <=  rom_dout[10];
