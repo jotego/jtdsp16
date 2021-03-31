@@ -78,6 +78,12 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
     int last_pids=1, last_psel=1, last_sadd=1, last_pods=1;
     int rom_addr=0;
     int bank=0;
+
+    // Sample interval measurement
+    int sample_t0 = 0;
+    int sample_t1 = 0;
+    int last_pc=0;
+    int64_t ticks=0;
     do {
         int newcmd = n->val;
         int reads=0;
@@ -96,7 +102,7 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
                 steps = (min_sim_time-sim_time)*1000'0000/18;
             }
         } else {
-            printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
+            //printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
             n++;
             vcdtime = next;
             next = n->time;
@@ -105,6 +111,16 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
         int16_t lr[2];
         while( steps>0 || irq==1 || rtl.iack() ) { // stay here until IRQ is processed
             rtl.clk(2);
+            ticks++;
+            const int LOOP_PC=0x55e;
+            if( rtl.pc()==LOOP_PC && last_pc!=LOOP_PC ) {
+                sample_t0 = sample_t1;
+                sample_t1 = ticks;
+                int interval = sample_t1-sample_t0;
+                if( interval!=1249)
+                    printf("Sample ticks %d != 1249 (ticks %ld)\n", interval, ticks);
+            }
+            last_pc = rtl.pc();
             if( rtl.pids()==1 && last_pids==0 ) {
                 reads++;
                 if( reads==1 ) rtl.pbus_in( newcmd&0xffff );
