@@ -102,7 +102,7 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
                 steps = (min_sim_time-sim_time)*1000'0000/18;
             }
         } else {
-            //printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
+            printf("%d ms -> %02X_%04X\n", sim_time, newcmd>>16, newcmd&0xffff);
             n++;
             vcdtime = next;
             next = n->time;

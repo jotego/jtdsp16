@@ -214,8 +214,8 @@ inline u64 dsp16_device_base::core_state::dau_set_psw_flags(s64 d)
 	dau_psw &= 0x0fffU;
 	bool const negative(d & DAU_A_SIGN);
 	if (negative)
-		dau_psw |= 0x8000U;
-	if (!(d & DAU_A_MASK))
+		dau_psw |= 0x8000U;   // based on bit 35
+	if (!(d & DAU_A_MASK))    // only check the 36-bit result
 		dau_psw |= 0x4000U;
 	if ((d >> 36) != (negative ? -1 : 0))
 		dau_psw |= 0x2000U;
