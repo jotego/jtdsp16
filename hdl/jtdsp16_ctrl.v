@@ -516,8 +516,8 @@ always @(posedge clk, posedge rst) begin
                             pc_halt   <= 1;
                         end
                     end
-                    5'b10100, // F1, Y = y, 2 cycles
-                    5'b10111, // F1, y[k]=Y, 1 cycle
+                    5'b10100, // F1, Y = y[l], 2 cycles
+                    5'b10111, // F1, y[l]=Y, 1 cycle
                     5'b11100, // F1, Y=a0[l], 2 cycles
                     5'b00100: // F1, Y=a1[l], 2 cycles
                     begin
