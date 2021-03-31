@@ -11,7 +11,6 @@ class RTL {
     VerilatedVcdC vcd;
     void dump(const char *, int d );
     void dump(const char *, int64_t d );
-    bool step_clk;
 public:
     Vjtdsp16 top;
     bool vcd_dump;
@@ -79,7 +78,6 @@ public:
 
     void dump_ram();
     void screen_dump();
-    void step(bool s=true) { step_clk = s; }
 };
 
 class ROM {

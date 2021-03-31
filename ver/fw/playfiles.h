@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include "WaveWritter.h"
+#include "model.h"
 
 using namespace std;
 
@@ -27,52 +28,21 @@ public:
     QSndLog( const char *path);
 };
 
-int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdlist,
-    bool allcmd, int min_sim_time );
-
-int playfiles( const ParseArgs& args ) {
-    RTL rtl(args.vcd_file.c_str());
-    ROM rom;
-    QSndData samples(args.qsnd_rom.c_str());
-    rtl.read_rom(rom.data());
-    rtl.vcd_dump = args.write_vcd;
-    VCDfile stim("punisher.vcd"); // VCD sample input from CPS 1.5 ver/game folder
-    stim.report();
-    // Move until rst is low
-    //printf("VCD forwarded to %ld\n",  );
-    //int64_t vcdtime = stim.forward("dsp_rst",0);
-
-    // VCDsignal* sig_irq = stim.get("dsp_irq");
-    VCDsignal* sig_cpu2dsp = stim.get("cpu2dsp_s");
-    auto& cmdlist = sig_cpu2dsp->get_list();
-
-    return play_timeval( rtl, samples, cmdlist, args.allcmd, args.min_sim_time );
-}
-
-int play_qs( const ParseArgs& args ) {
-    RTL rtl(args.vcd_file.c_str());
-    ROM rom;
-    QSndData samples(args.qsnd_rom.c_str());
-    rtl.vcd_dump = args.write_vcd;
-    rtl.read_rom(rom.data());
-    QSCmd cmd(args.playfile);
-    return play_timeval( rtl, samples, cmd.cmdlist(), args.allcmd, args.min_sim_time );
-}
-
-
-int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdlist,
+int play_timeval( ROM& rom, RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdlist,
     bool allcmd, int min_sim_time ) {
     int reads;
     auto n = cmdlist.cbegin();
     WaveWritter wav("out.wav", 24000, false );
 
+    Model ref(rom);
+    Dual dual( ref, rtl );
+
     n++;
     int64_t vcdtime = n->time;
     int64_t next= n->time;
 
-    rtl.clk( 0x800*4 );
-    rtl.step();
-    rtl.clk( 200'000 ); // initialization
+    dual.clk( 200'000 ); // initialization
+
 
     int sim_time=0;
     int last_pids=1, last_psel=1, last_sadd=1, last_pods=1;
@@ -89,8 +59,8 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
         int reads=0;
         int irq=1;
 
-        rtl.set_irq(irq);
-        rtl.pbus_in( newcmd>>16 );
+        dual.set_irq(irq);
+        dual.pbus_in( newcmd>>16 );
         sim_time = (int)(rtl.time()/1000'000L);
         int64_t steps=0;
         if( n==cmdlist.cend() ) {
@@ -110,7 +80,7 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
         }
         int16_t lr[2];
         while( steps>0 || irq==1 || rtl.iack() ) { // stay here until IRQ is processed
-            rtl.clk(2);
+            dual.clk(2);
             ticks++;
             const int LOOP_PC=0x55e;
             if( rtl.pc()==LOOP_PC && last_pc!=LOOP_PC ) {
@@ -123,7 +93,7 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
             last_pc = rtl.pc();
             if( rtl.pids()==1 && last_pids==0 ) {
                 reads++;
-                if( reads==1 ) rtl.pbus_in( newcmd&0xffff );
+                if( reads==1 ) dual.pbus_in( newcmd&0xffff );
             }
             if( !rtl.sadd() && last_sadd ) {
                 lr[ rtl.psel() ? 1 :0 ] = rtl.ser_out();
@@ -132,7 +102,7 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
                 wav.write( lr );
             }
             if( last_pids==0 ) {
-                rtl.set_irq(0);
+                dual.set_irq(0);
                 irq=0;
             }
             if( rtl.pods()==1 && last_pods==0 ) {
@@ -149,7 +119,7 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
                 rom_addr |= bank<<16;
                 bank = new_bank;
                 int din = samples.get( rom_addr );
-                rtl.rb_din( din<<8 );
+                dual.rb_din( din<<8 );
                 //printf("Read %X from %06X\n", din, rom_addr );
             }
             last_pids = rtl.pids();
@@ -163,6 +133,35 @@ int play_timeval( RTL& rtl, QSndData& samples, const VCDsignal::pointlist& cmdli
     rtl.dump_ram();
 
     return 0;
+}
+
+int playfiles( const ParseArgs& args ) {
+    RTL rtl(args.vcd_file.c_str());
+    ROM rom;
+    QSndData samples(args.qsnd_rom.c_str());
+    rtl.read_rom(rom.data());
+    rtl.vcd_dump = args.write_vcd;
+    VCDfile stim("punisher.vcd"); // VCD sample input from CPS 1.5 ver/game folder
+    stim.report();
+    // Move until rst is low
+    //printf("VCD forwarded to %ld\n",  );
+    //int64_t vcdtime = stim.forward("dsp_rst",0);
+
+    // VCDsignal* sig_irq = stim.get("dsp_irq");
+    VCDsignal* sig_cpu2dsp = stim.get("cpu2dsp_s");
+    auto& cmdlist = sig_cpu2dsp->get_list();
+
+    return play_timeval( rom, rtl, samples, cmdlist, args.allcmd, args.min_sim_time );
+}
+
+int play_qs( const ParseArgs& args ) {
+    RTL rtl(args.vcd_file.c_str());
+    ROM rom;
+    QSndData samples(args.qsnd_rom.c_str());
+    rtl.vcd_dump = args.write_vcd;
+    rtl.read_rom(rom.data());
+    QSCmd cmd(args.playfile);
+    return play_timeval( rom, rtl, samples, cmd.cmdlist(), args.allcmd, args.min_sim_time );
 }
 
 #define CHECK( a ) if( rtl.a() != tr.a ) { /*printf("Register " #a " is wrong\n");*/ return false; }

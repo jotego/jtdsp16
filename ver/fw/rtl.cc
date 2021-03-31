@@ -52,11 +52,6 @@ void RTL::clk(int n) {
         top.eval();
         if(vcd_dump) vcd.dump(sim_time);
         ticks++;
-
-        // if( step_clk && (n&1)) {
-        //     screen_dump();
-        //     getchar();
-        // }
     }
 };
 
