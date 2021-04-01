@@ -41,6 +41,7 @@ public:
     int  auc(){ return top.debug_auc;}
     int  x()  { return top.debug_x;  }
     int  y()  { return top.debug_y;  }
+    int  yh() { return top.debug_y;  }
     int  yl() { return top.debug_yl; }
 
     int  c0() { return top.debug_c0; }

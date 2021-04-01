@@ -41,7 +41,11 @@ public:
     int r3() { return st.yauu_regs[R3]; }
     int  j() { return st.yauu_regs[ J]; }
     int  x() { return st.x; }
-    int  y() { return st.y; }
+    int yh() { return st.y>>16; }
+    int yl() { return st.y&0xFFFF; }
+    int  p() { return st.p; }
+    i64 a0() { return st.a[0]; }
+    i64 a1() { return st.a[1]; }
     int fault() { return st.fault; }
     // status access
     bool in_cache() { return st.cache.k>0; }
@@ -70,7 +74,11 @@ class Dual {
         PRINTM( r3, 0xFFFF )
         PRINTM(  j, 0xFFFF )
         PRINTM(  x, 0xFFFF )
-        PRINTM(  y, 0xFFFFFFFF )
+        PRINTM( yh, 0xFFFF )
+        PRINTM( yl, 0xFFFF )
+        PRINTM(  p, 0xFFFFFFFF )
+        PRINTM( a0, ~0L )
+        PRINTM( a1, ~0L )
     }
 
     void cmp() {
@@ -84,17 +92,22 @@ class Dual {
             CHECK( r3 );
             CHECK(  j );
             CHECK(  x );
-            CHECK(  y );
+            CHECK( yh );
+            CHECK( yl );
+            CHECK(  p );
+            CHECK( a0 );
+            CHECK( a1 );
         }
-        if( !good ) {
             side_dump();
-            if( ++bad > 40 )
+        if( !good ) {
+            if( ++bad > 4 )
                 throw std::runtime_error("Error: Ref and DUT diverged\n");
         }
         if( ref.fault() )
             throw std::runtime_error("Error: Ref is in fault state\n");
     }
 
+    bool do_comp=true;
 public:
     Dual( Model& _ref, RTL& _dut ) : ref(_ref), dut(_dut), ticks(0) { }
     void set_irq(int irq) {
@@ -111,13 +124,14 @@ public:
             dut.clk(1);
             ref.clk(1);
             ticks++;
-            cmp();
+            if(do_comp) cmp();
         }
     }
     void rb_din( int v ) {
         dut.rb_din(v);
         ref.rb_din(v);
     }
+    void nocomp() { do_comp=false; }
 };
 
 #undef CHECK
