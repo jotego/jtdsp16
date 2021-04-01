@@ -39,17 +39,22 @@ public:
     int r1() { return st.yauu_regs[R1]; }
     int r2() { return st.yauu_regs[R2]; }
     int r3() { return st.yauu_regs[R3]; }
+    int  j() { return st.yauu_regs[ J]; }
+    int  x() { return st.x; }
+    int  y() { return st.y; }
     int fault() { return st.fault; }
     // status access
     bool in_cache() { return st.cache.k>0; }
 };
 
 #define CHECK( a ) if( ref.a() != dut.a() ) good=false;
-#define PRINTM( a, M ) std::cout << std::setfill(' ') << #a << " = " \
+#define PRINTM( a, M ) std::cout << std::setfill(' ') << std::setw(2) << #a << " = " \
                                  << std::setfill('0') << std::setw(4) \
                                  << std::hex << (ref.a()&M) << " - " \
                                  << std::setfill('0') << std::setw(4) \
-                                 << std::hex << (dut.a()&M) << '\n';
+                                 << std::hex << (dut.a()&M) \
+                                 << (ref.a()!=dut.a()?'*':' ') \
+                                 <<'\n';
 
 class Dual {
     Model &ref;
@@ -63,17 +68,23 @@ class Dual {
         PRINTM( r1, 0xFFFF )
         PRINTM( r2, 0xFFFF )
         PRINTM( r3, 0xFFFF )
+        PRINTM(  j, 0xFFFF )
+        PRINTM(  x, 0xFFFF )
+        PRINTM(  y, 0xFFFFFFFF )
     }
 
     void cmp() {
         bool good = true;
         static int bad=0;
-        if( !ref.in_cache() ) {
+        if( /*!ref.in_cache()*/ 1) {
             //CHECK( pc );
             CHECK( r0 );
             CHECK( r1 );
             CHECK( r2 );
             CHECK( r3 );
+            CHECK(  j );
+            CHECK(  x );
+            CHECK(  y );
         }
         if( !good ) {
             side_dump();
