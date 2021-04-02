@@ -126,8 +126,7 @@ public:
         ref.pbus_in(v);
     }
     void clk(int p) {
-        // each one could go in a different thread
-        assert( (p&1) == 0);
+        assert( (p&1) == 0); // only even clock counts allowed
         while ( p>0 ) {
             ticks++;
             dut.clk(2);

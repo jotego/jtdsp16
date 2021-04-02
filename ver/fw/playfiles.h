@@ -89,8 +89,8 @@ int play_timeval( ROM& rom, RTL& rtl, QSndData& samples, const VCDsignal::pointl
                 sample_t0 = sample_t1;
                 sample_t1 = ticks;
                 int interval = sample_t1-sample_t0;
-                if( interval!=1249)
-                    printf("Sample ticks %d != 1249 (ticks %ld)\n", interval, ticks);
+                if( interval!=1250)
+                    printf("Sample ticks %d != 1250 (ticks %ld)\n", interval, ticks);
             }
             last_pc = rtl.pc();
             if( rtl.pids()==1 && last_pids==0 ) {

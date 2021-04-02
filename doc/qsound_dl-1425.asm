@@ -47,10 +47,10 @@ interrupt:
 	0:009: 4800       r0 = a0
 	0:00a: 61d0       *r0 = pdx0	; read data and write to destination
 	0:00b: c100       ireturn
-
+	
 	0:00c: 5110 0001  y = 0x0001
 	0:00e: 0011       goto 0x0011
-
+	
 	0:00f: 5110 0400  y = 0x0400
 	0:011: 5130 000c  auc = 0x000c	; disable alignment, disable A0 saturation, disable A1 saturation
 	0:013: 5020 00e3  move r2 = 0x00e3
@@ -61,25 +61,25 @@ update_dummy:
 	0:018: 51c0 3820  pioc = 0x3820	; enable INT interrupts
 	0:01a: 31a0       a0 = a0+y, *r0
 	0:01b: 51c0 3800  pioc = 0x3800	; disable INT interrupts
-
+	
 	0:01d: 51e0 0000  pdx1 = 0x0000
 	0:01f: 49a0       sdx = a0
 	0:020: 717f       do 127 { 0x0021...0x0022 }
 		0:021: 9e0e       a1 = a1>>1
 		0:022: 9e0e       a1 = a1>>1
-
+	
 	0:023: 51d0 0000  pdx0 = 0x0000
 	0:025: 49a0       sdx = a0
 	0:026: 717f       do 127 { 0x0027...0x0028 }
 		0:027: 9e0e       a1 = a1>>1
 		0:028: 9e0e       a1 = a1>>1
-
+	
 	0:029: 51e0 0000  pdx1 = 0x0000
 	0:02b: 49a0       sdx = a0
 	0:02c: 717f       do 127 { 0x002d...0x002e }
 		0:02d: 9e0e       a1 = a1>>1
 		0:02e: 9e0e       a1 = a1>>1
-
+	
 	0:02f: 51d0 0000  pdx0 = 0x0000
 	0:031: 49a0       sdx = a0
 	0:032: 70ff       do 127 { 0x0033 }
@@ -89,7 +89,7 @@ update_dummy:
 	0:036: 703f       redo 63
 	0:037: 7898       pr = *r2	; return offset = (*0x00E3)
 	0:038: c000       return
-
+	
 copy_filter_data_1:
 	0:039: 5020 02b5  move r2 = 0x02b5
 	0:03b: 5030 00da  move r3 = 0x00da
@@ -97,14 +97,14 @@ copy_filter_data_1:
 	0:03e: 715f       do 95 { 0x003f...0x0040 }	; loop for pt = *0x00DA..+0x5E, R2 = 0x02B5..0x313
 		0:03f: c8c0       y = a0, x = *pt++	; X = ROM[*0x00DA + n]
 		0:040: 6109       move *r2++ = x	; RAM[0x02B5 + n] = X
-
+	
 	0:041: 5020 0314  move r2 = 0x0314
 	0:043: 5030 00dc  move r3 = 0x00dc
 	0:045: 788c       pt = *r3			; set ROM Table Pointer = *0x00DC
 	0:046: 715f       do 95 { 0x0047...0x0048 }	; loop for pt = *0x00DC..+0x5E, R2 = 0x02B5..0x313
 		0:047: c8c0       y = a0, x = *pt++	; X = ROM[*0x00DC + n]
 		0:048: 6109       move *r2++ = x	; RAM[0x0314 + n] = X
-
+	
 	0:049: 5020 00e3  move r2 = 0x00e3
 	0:04b: 5030 0314  move r3 = 0x0314
 	0:04d: 6038       *r2 = r3	; set main offset = 0x0314 update_loop_1
@@ -117,30 +117,30 @@ copy_filter_data_2:
 	0:054: 712d       do 45 { 0x0055...0x0056 }
 		0:055: c8c0       y = a0, x = *pt++
 		0:056: 6109       move *r2++ = x
-
+	
 	0:057: 5020 02d6  move r2 = 0x02d6
 	0:059: 788d       pt = *r3++
 	0:05a: 712c       do 44 { 0x005b...0x005c }
 		0:05b: c8c0       y = a0, x = *pt++
 		0:05c: 6109       move *r2++ = x
-
+	
 	0:05d: 5020 0302  move r2 = 0x0302
 	0:05f: 788d       pt = *r3++
 	0:060: 712d       do 45 { 0x0061...0x0062 }
 		0:061: c8c0       y = a0, x = *pt++
 		0:062: 6109       move *r2++ = x
-
+	
 	0:063: 5020 032f  move r2 = 0x032f
 	0:065: 788c       pt = *r3
 	0:066: 712c       do 44 { 0x0067...0x0068 }
 		0:067: c8c0       y = a0, x = *pt++
 		0:068: 6109       move *r2++ = x
-
+	
 	0:069: 5020 00e3  move r2 = 0x00e3
 	0:06b: 5030 06b2  move r3 = 0x06b2
 	0:06d: 6038       *r2 = r3		; set main offset = 0x06B2 update_loop_2
 	0:06e: 06b2       goto 0x06b2	; update_loop_2
-
+	
 	dw	dup (0x0000) times 0xA1
 
 PanTable_FrontL:
@@ -226,8 +226,8 @@ main:
 	0:29b: 707f       redo 127
 	0:29c: 707f       redo 127
 	0:29d: 707f       redo 127
-	0:29e: 7010       redo 16	; clear words 07F0-07FF
-
+	0:29e: 7010       redo 16	; clear words 07F0-07FFF
+	
 	0:29f: 5000 00e3  move r0 = 0x00e3
 	0:2a1: 5010 0314  move r1 = 0x0314
 	0:2a3: 6010       *r0 = r1	; set main offset = 0x0314 update_loop_1
@@ -757,7 +757,7 @@ do_sample_1:
 	0:506: 5000 0078  move r0 = 0x0078	; ofs 078: channel 0 ROM bank
 	0:508: 7880       pt = *r0		; preload channel 0 bank
 	0:509: f880       a0 = p, y = *r0, x = *pt++	; A0 = P*4 (due to alignment), rest are dummy reads to apply the ROM bank
-
+	
 	0:50a: 1800       set r0 = 0x000	; ChnRAM+00: ROM bank for next channel
 	0:50b: 1a01       set r1 = 0x001	; ChnRAM+01: address
 	0:50c: 1c03       set r2 = 0x003	; ChnRAM+03: phase (sample address, 16-bit fraction)
@@ -778,7 +778,7 @@ do_sample_1:
 		0:51b: e057       p = x*y, *r1++j = a0	; P = sample*volume, save current offset [ChnRAM+01], advance R1 to next channel
 		0:51c: 3481       a1 = p, *r0++		; A1 = P*4, advance R0 to [ChnRAM+00] of next channel
 		0:51d: 209d       a0 = p, *r3++ = a1	; A0 = P*4 (makes A0=0 above work), save final sample to RAM at 10A..119
-
+	
 	0:51e: 190a       set r0 = 0x10a	; 10A..119: channel sample data
 	0:51f: 1cba       set r2 = 0x0ba	; 0BA..0C9: channel reverb volume
 	0:520: b8d1       au y = *r0++		; Y = ch 0 sample data
@@ -786,7 +786,7 @@ do_sample_1:
 	0:522: 7110       do 16 { 0x0523...0x0524 }
 		0:523: b049       p = x*y, x = *r2++	; P = channel reverb data, get next channel reverb
 		0:524: beb1       a1 = a1+p, y = *r0++	; accumulate total reverb, read next channel sample
-
+	
 	0:525: 5060 0554  move rb = 0x0554	; RB [reverb begin] = 0554
 	0:527: 1ed9       set r3 = 0x0d9
 	0:528: 787c       re = *r3		; RE [reverb end] = RAM[0x00D9] (reverb delay)
@@ -805,14 +805,14 @@ do_sample_1:
 	0:535: 36a0       a1 = a1+p, *r0
 	0:536: 20d1       *r0++ = a1
 	0:537: 6004       *r1 = r0
-
+	
 	0:538: 5060 0373  move rb = 0x0373	; RB [reverb begin] = 0373
 	0:53a: 5070 0553  move re = 0x0553	; RE [reverb end] = 0553
 	0:53c: 1b20       set r1 = 0x120
 	0:53d: 7804       r0 = *r1
 	0:53e: e0d1       *r0++ = a0		; write to *R0, then increase+wrap around R0 (if R0 == RE, then R0 = RB, else R0 ++)
 	0:53f: 6004       *r1 = r0
-
+	
 	0:540: 51c0 3820  pioc = 0x3820	; enable INT interrupts
 	0:542: 1cf7       set r2 = 0x0f7	; channel panning, right speaker (PanTable_FrontR)
 	0:543: 51c0 3800  pioc = 0x3800	; disable INT interrupts
@@ -839,7 +839,7 @@ do_sample_1:
 	0:55a: 30c0       nop, *r0
 	0:55b: 055e       goto 0x055e
 	0:55c: 5150 0000  c0 = 0x0000
-
+	
 	0:55e: 1b0a       set r1 = 0x10a	; 10A..11C: channel sample data
 	0:55f: 1880       set r0 = 0x080	; 080..092: channel panning (see PanTable_FrontL)
 	0:560: 1f1e       set r3 = 0x11e	; 11E: final mixed sample data
@@ -858,7 +858,7 @@ do_sample_1:
 	0:56f: befa       a1 = a1-p, y = *r2--
 	0:570: 31a0       a0 = a0+y, *r0	; add RAM[121] (unknown)
 	0:571: e0dc       *r3 = a0		; store final data
-
+	
 	; do some reverb
 	0:572: 5020 02b5  move r2 = 0x02b5
 	0:574: 15f9       set rb = 0x1f9
@@ -874,7 +874,7 @@ do_sample_1:
 	0:57f: 5910       move y = a1
 	0:580: a874       a0 = a0-p, p = x*y, *r1zp : y
 	0:581: 6010       *r0 = r1
-
+	
 	; do some filter
 	0:582: 1ce4       set r2 = 0x0e4
 	0:583: b0e9       a0 = a0-p, x = *r2++
@@ -902,7 +902,7 @@ do_sample_1:
 	0:59a: 3020       a0 = a0 + p, p = x*y, *r0
 	0:59b: 996e       a0 = rnd(a0)
 	0:59c: 49a0       sdx = a0	; output left channel sample data
-
+	
 	0:59d: 18f7       set r0 = 0x0f7	; channel panning, right speaker (PanTable_FrontR)
 	0:59e: 1b0a       set r1 = 0x10a	; 10A..11C: channel sample data
 	0:59f: 990e       if true a0 = p
@@ -915,7 +915,7 @@ do_sample_1:
 	0:5a6: 1d21       set r2 = 0x121
 	0:5a7: befa       a1 = a1-p, y = *r2--
 	0:5a8: e7bc       a1 = a1+y, *r3 = a0
-
+	
 	; do some reverb
 	0:5a9: 5020 0314  move r2 = 0x0314
 	0:5ab: 5060 0257  move rb = 0x0257
@@ -931,7 +931,7 @@ do_sample_1:
 	0:5b7: 5910       move y = a1
 	0:5b8: a874       a0 = a0-p, p = x*y, *r1zp : y
 	0:5b9: 6010       *r0 = r1
-
+	
 	; do some filter
 	0:5ba: 1ce6       set r2 = 0x0e6
 	0:5bb: b0e9       a0 = a0-p, x = *r2++
@@ -960,7 +960,7 @@ do_sample_1:
 	0:5d4: 996e       a0 = rnd(a0)
 	0:5d5: 51e0 0000  pdx1 = 0x0000
 	0:5d7: 49a0       sdx = a0	; output right channel sample data
-
+	
 	0:5d8: 1ae2       set r1 = 0x0e2	; load filter refresh flag offset
 	0:5d9: b8d4       au y = *r1
 	0:5da: 3180       a0 = y, *r0
@@ -969,7 +969,7 @@ filter_refresh_1:
 	0:5dd: 5020 00de  move r2 = 0x00de
 	0:5df: 5030 0126  move r3 = 0x0126
 	0:5e1: 5000 0125  move r0 = 0x0125
-
+	
 	0:5e3: 3cd1       a0 = *r0++	; A0 = *0x0125
 	0:5e4: b8d9       au y = *r2++	; Y = *0x00DE
 	0:5e5: 31e0       a0 = a0-y	; A0 = *0x0125 - *0x00DE
@@ -979,7 +979,7 @@ filter_refresh_1:
 	0:5eb: 3160       a0-y, *r0
 	0:5ec: 9bc0       if mi a0 = a1	; if (A0 < 0x012D) A0 = A1
 	0:5ed: e0d1       *r0++ = a0	; *0x0126 = A0
-
+	
 	0:5ee: 3cd1       a0 = *r0++	; A0 = *0x0127
 	0:5ef: b8d9       au y = *r2++	; Y = *0x00DF
 	0:5f0: 31e0       a0 = a0-y	; A0 = *0x0127 - *0x00DF
@@ -989,7 +989,7 @@ filter_refresh_1:
 	0:5f6: 3160       a0-y, *r0
 	0:5f7: 9bc0       if mi a0 = a1	; if (A0 < 0x0160) A0 = A1
 	0:5f8: e0d1       *r0++ = a0	; *0x0128 = A0
-
+	
 	0:5f9: 3cd1       a0 = *r0++	; A0 = *0x0129
 	0:5fa: b8d9       au y = *r2++
 	0:5fb: 31e0       a0 = a0-y	; A0 = *0x0129 - *0x00E0
@@ -999,7 +999,7 @@ filter_refresh_1:
 	0:601: 3160       a0-y, *r0
 	0:602: 9bc0       if mi a0 = a1	; if (A0 < 0x0193) A0 = A1
 	0:603: e0d1       *r0++ = a0	; *0x012A = A0
-
+	
 	0:604: 3cd1       a0 = *r0++	; A0 = *0x012B
 	0:605: b8d9       au y = *r2++
 	0:606: 31e0       a0 = a0-y	; A0 = *0x012B - *0x00E1
@@ -1009,7 +1009,7 @@ filter_refresh_1:
 	0:60c: 3160       a0-y, *r0
 	0:60d: 9bc0       if mi a0 = a1	; if (A0 < 0x01C6) A0 = A1
 	0:60e: e0d1       *r0++ = a0	; *0x012C = A0
-
+	
 	0:60f: 5110 0000  y = 0x0000
 	0:611: a0d4       au *r1 = y	; set filter refresh flag offset to "0" (no refresh required)
 loc_612:
@@ -1021,7 +1021,7 @@ loc_612:
 	0:617: 30c0       nop, *r0
 	0:618: 30c0       nop, *r0
 	0:619: c000       return
-
+	
 	0:61a: 51c0 3800  pioc = 0x3800	; disable INT interrupts
 	0:61c: 5110 0000  y = 0x0000
 	0:61e: 1800       set r0 = 0x000
@@ -1575,13 +1575,13 @@ update_loop_2:
 	0:89f: 1ae3       set r1 = 0x0e3
 	0:8a0: 7894       pr = *r1	; return offset = (*0x00E3)
 	0:8a1: c000       return
-
+	
 do_sample_2:
 	0:8a2: 5130 0002  auc = 0x0002
 	0:8a4: 5000 0078  move r0 = 0x0078
 	0:8a6: 7880       pt = *r0
 	0:8a7: f880       a0 = p, y = *r0, x = *pt++
-
+	
 	0:8a8: 1800       set r0 = 0x000
 	0:8a9: 1a01       set r1 = 0x001
 	0:8aa: 1c03       set r2 = 0x003
@@ -1602,7 +1602,7 @@ do_sample_2:
 		0:8b9: e057       p = x*y, *r1++j = a0
 		0:8ba: 3481       a1 = p, *r0++
 		0:8bb: 209d       a0 = p, *r3++ = a1
-
+	
 	0:8bc: 190a       set r0 = 0x10a
 	0:8bd: 1cba       set r2 = 0x0ba
 	0:8be: b8d1       au y = *r0++
@@ -1610,7 +1610,7 @@ do_sample_2:
 	0:8c0: 7110       do 16 { 0x08c1...0x08c2 }
 		0:8c1: b049       p = x*y, x = *r2++
 		0:8c2: beb1       a1 = a1+p, y = *r0++
-
+	
 	0:8c3: 5060 053c  move rb = 0x053c
 	0:8c5: 1ed9       set r3 = 0x0d9
 	0:8c6: 787c       re = *r3
@@ -1629,14 +1629,14 @@ do_sample_2:
 	0:8d3: 36a0       a1 = a1+p, *r0
 	0:8d4: 20d1       *r0++ = a1
 	0:8d5: 6004       *r1 = r0
-
+	
 	0:8d6: 5060 035b  move rb = 0x035b
 	0:8d8: 5070 053b  move re = 0x053b
 	0:8da: 1b20       set r1 = 0x120
 	0:8db: 7804       r0 = *r1
 	0:8dc: e0d1       *r0++ = a0
 	0:8dd: 6004       *r1 = r0
-
+	
 	0:8de: 51c0 3820  pioc = 0x3820	; enable INT interrupts
 	0:8e0: 1cf7       set r2 = 0x0f7
 	0:8e1: 51c0 3800  pioc = 0x3800	; disable INT interrupts
@@ -1663,7 +1663,7 @@ do_sample_2:
 	0:8f8: 30c0       nop, *r0
 	0:8f9: 08fc       goto 0x08fc
 	0:8fa: 5150 0000  c0 = 0x0000
-
+	
 	0:8fc: 1b0a       set r1 = 0x10a
 	0:8fd: 1880       set r0 = 0x080
 	0:8fe: 1f1e       set r3 = 0x11e
@@ -1682,7 +1682,7 @@ do_sample_2:
 	0:90d: befa       a1 = a1-p, y = *r2--
 	0:90e: 31a0       a0 = a0+y, *r0
 	0:90f: e0dc       *r3 = a0
-
+	
 	; do some reverb
 	0:910: 5020 02a9  move r2 = 0x02a9
 	0:912: 15fb       set rb = 0x1fb
@@ -1699,7 +1699,7 @@ do_sample_2:
 	0:91e: a874       a0 = a0-p, p = x*y, *r1zp : y
 	0:91f: 30e0       a0 = a0-p, *r0
 	0:920: 6010       *r0 = r1
-
+	
 	0:921: 5060 0253  move rb = 0x0253
 	0:923: 5070 027d  move re = 0x027d
 	0:925: 19f9       set r0 = 0x1f9
@@ -1713,7 +1713,7 @@ do_sample_2:
 	0:92d: b8dc       au y = *r3
 	0:92e: ae74       a1 = a1-p, p = x*y, *r1zp : y
 	0:92f: 6010       *r0 = r1
-
+	
 	; do some filter
 	0:930: 1ce4       set r2 = 0x0e4
 	0:931: b6e9       a1 = a1-p, x = *r2++
@@ -1741,7 +1741,7 @@ do_sample_2:
 	0:948: 3020       a0 = a0 + p, p = x*y, *r0
 	0:949: 996e       a0 = rnd(a0)
 	0:94a: 49a0       sdx = a0	; output left channel sample data
-
+	
 	0:94b: 18f7       set r0 = 0x0f7
 	0:94c: 1b0a       set r1 = 0x10a
 	0:94d: 990e       if true a0 = p
@@ -1754,7 +1754,7 @@ do_sample_2:
 	0:954: 1d21       set r2 = 0x121
 	0:955: befa       a1 = a1-p, y = *r2--
 	0:956: e7bc       a1 = a1+y, *r3 = a0
-
+	
 	; do some reverb
 	0:957: 5020 0302  move r2 = 0x0302
 	0:959: 5060 0227  move rb = 0x0227
@@ -1771,7 +1771,7 @@ do_sample_2:
 	0:966: a874       a0 = a0-p, p = x*y, *r1zp : y
 	0:967: 30e0       a0 = a0-p, *r0
 	0:968: 6010       *r0 = r1
-
+	
 	0:969: 5060 027e  move rb = 0x027e
 	0:96b: 5070 02a8  move re = 0x02a8
 	0:96d: 19fa       set r0 = 0x1fa
@@ -1785,7 +1785,7 @@ do_sample_2:
 	0:975: b8dc       au y = *r3
 	0:976: ae74       a1 = a1-p, p = x*y, *r1zp : y
 	0:977: 6010       *r0 = r1
-
+	
 	; do some filter
 	0:978: 1ce6       set r2 = 0x0e6
 	0:979: b6e9       a1 = a1-p, x = *r2++
@@ -1814,7 +1814,7 @@ do_sample_2:
 	0:992: 996e       a0 = rnd(a0)
 	0:993: 51e0 0000  pdx1 = 0x0000
 	0:995: 49a0       sdx = a0	; output right channel sample data
-
+	
 	0:996: 1ae2       set r1 = 0x0e2	; load filter refresh flag offset
 	0:997: b8d4       au y = *r1
 	0:998: 3180       a0 = y, *r0
@@ -1823,7 +1823,7 @@ filter_refresh_2:	; for comments see filter_refresh_1, which is identical, excep
 	0:99b: 5020 00de  move r2 = 0x00de
 	0:99d: 5030 0126  move r3 = 0x0126
 	0:99f: 5000 0125  move r0 = 0x0125
-
+	
 	0:9a1: 3cd1       a0 = *r0++
 	0:9a2: b8d9       au y = *r2++
 	0:9a3: 31e0       a0 = a0-y, *r0
@@ -1833,7 +1833,7 @@ filter_refresh_2:	; for comments see filter_refresh_1, which is identical, excep
 	0:9a9: 3160       a0-y, *r0
 	0:9aa: 9bc0       if mi a0 = a1
 	0:9ab: e0d1       *r0++ = a0
-
+	
 	0:9ac: 3cd1       a0 = *r0++
 	0:9ad: b8d9       au y = *r2++
 	0:9ae: 31e0       a0 = a0-y, *r0
@@ -1843,7 +1843,7 @@ filter_refresh_2:	; for comments see filter_refresh_1, which is identical, excep
 	0:9b4: 3160       a0-y, *r0
 	0:9b5: 9bc0       if mi a0 = a1
 	0:9b6: e0d1       *r0++ = a0
-
+	
 	0:9b7: 3cd1       a0 = *r0++
 	0:9b8: b8d9       au y = *r2++
 	0:9b9: 31e0       a0 = a0-y, *r0
@@ -1853,7 +1853,7 @@ filter_refresh_2:	; for comments see filter_refresh_1, which is identical, excep
 	0:9bf: 3160       a0-y, *r0
 	0:9c0: 9bc0       if mi a0 = a1
 	0:9c1: e0d1       *r0++ = a0
-
+	
 	0:9c2: 3cd1       a0 = *r0++
 	0:9c3: b8d9       au y = *r2++
 	0:9c4: 31e0       a0 = a0-y, *r0
@@ -1863,7 +1863,7 @@ filter_refresh_2:	; for comments see filter_refresh_1, which is identical, excep
 	0:9ca: 3160       a0-y, *r0
 	0:9cb: 9bc0       if mi a0 = a1
 	0:9cc: e0d1       *r0++ = a0
-
+	
 	0:9cd: 5110 0000  y = 0x0000
 	0:9cf: a0d4       au *r1 = y
 loc_9D0:
@@ -1961,12 +1961,12 @@ loc_9D0:
 0:F93	dw	0xFF48, 0xFFB4, 0x0114, 0xFF00, 0x012A, 0x00C4, 0x03DE, 0x00EC
 0:F9B	dw	0x045A, 0xFF82, 0x1119, 0x1995, 0x0317
 0:FA0	dw	0x0000, 0x0000, 0x0000, 0x0000
-0:FA4	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-0:FAC	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-0:FB4	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-0:FBC	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-0:FC4	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-0:FCC	dw	0x0000, 0x0000, 0x0000, 0xC000, 0x0000, 0x0000, 0x0000, 0x0000,
+0:FA4	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+0:FAC	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+0:FB4	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+0:FBC	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+0:FC4	dw	0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
+0:FCC	dw	0x0000, 0x0000, 0x0000, 0xC000, 0x0000, 0x0000, 0x0000, 0x0000, 
 
 
 0:FD4	dw	dup (0x0000) times 44

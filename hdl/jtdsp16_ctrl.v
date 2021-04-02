@@ -121,8 +121,8 @@ reg [1:0] pre_inc_sel;
 // do/redo loops
 reg [6:0] do_k_cnt, do_k;
 reg [3:0] do_ni_cnt, do_ni;
-reg       do_cnt_ld, do_incache, do_1done;
-wire      do_1stloop, do_busy, do_over;
+reg       do_cnt_ld, do_1done;
+wire      do_1stloop, do_busy, do_over, do_incache;
 
 // interrupts
 reg       irq_ok, clr_iack;
@@ -137,6 +137,7 @@ assign    do_start   = (!do_redo && do_1stloop) || (do_redo && !do_busy);
 assign    do_busy    = do_k_cnt!=7'd0;
 assign    do_1stloop = ((do_over && do_k_cnt==do_k && do_busy) || do_short) && !do_1done;
 assign    do_out     = do_busy && do_over && do_k_cnt==7'd1 && !double;
+assign    do_incache = do_k_cnt > 0 && do_k_cnt != do_k;
 
 // interrupts
 assign    icall      = 0; // software interrupts are not implemented
@@ -218,7 +219,6 @@ always @(posedge clk, posedge rst) begin
         do_redo       <= 0;
         do_ni         <= 4'd0;
         do_k          <= 7'd0;
-        do_incache    <= 0;
         do_1done      <= 0;
         do_save       <= 0;
         // interrupts
@@ -583,9 +583,7 @@ always @(posedge clk, posedge rst) begin
         if( (do_1stloop && !do_redo) || do_out ) begin
             // last instruction of 1st loop in DO takes two cycles
             // last instruction of whole DO/REDO sequence takes two cycles
-            if( do_1stloop ) do_incache <= 1;
-            else if( do_out ) begin
-                do_incache <= 0;
+            if( !do_1stloop && do_out ) begin
                 do_redo    <= 0;
             end
             pc_halt  <= 1;
