@@ -37,7 +37,7 @@ int play_timeval( ROM& rom, RTL& rtl, QSndData& samples, const VCDsignal::pointl
     Model ref(rom);
     Dual dual( ref, rtl );
 
-    //dual.nocomp();
+    dual.nocomp();
 
     n++;
     int64_t vcdtime = n->time;

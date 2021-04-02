@@ -127,11 +127,15 @@ public:
     }
     void clk(int p) {
         // each one could go in a different thread
-        while ( p-->0 ) {
-            dut.clk(2);
-            ref.clk(2);
+        assert( (p&1) == 0);
+        while ( p>0 ) {
             ticks++;
-            if(do_comp) cmp();
+            dut.clk(2);
+            if(do_comp) {
+                ref.clk(2);
+                cmp();
+            }
+            p-=2;
         }
     }
     void rb_din( int v ) {
