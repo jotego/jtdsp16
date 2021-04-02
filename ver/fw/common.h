@@ -38,6 +38,7 @@ public:
 
     // DAU
     int  psw(){ return top.debug_psw;}
+    int  fl() { return top.debug_psw>>12;} // flags
     int  auc(){ return top.debug_auc;}
     int  x()  { return top.debug_x;  }
     int  y()  { return top.debug_y;  }

@@ -44,20 +44,22 @@ public:
     int yh() { return st.y>>16; }
     int yl() { return st.y&0xFFFF; }
     int  p() { return st.p; }
+    int pt() { return st.pt; }
     i64 a0() { return st.a[0]; }
     i64 a1() { return st.a[1]; }
+    int fl() { return st.psw>>12; } // flags
     int fault() { return st.fault; }
     // status access
     bool in_cache() { return st.cache.k>0; }
 };
 
-#define CHECK( a ) if( ref.a() != dut.a() ) good=false;
+#define CHECK( a, M ) if( (ref.a()&M) != (dut.a()&M) ) good=false;
 #define PRINTM( a, M ) std::cout << std::setfill(' ') << std::setw(2) << #a << " = " \
                                  << std::setfill('0') << std::setw(4) \
                                  << std::hex << (ref.a()&M) << " - " \
                                  << std::setfill('0') << std::setw(4) \
                                  << std::hex << (dut.a()&M) \
-                                 << (ref.a()!=dut.a()?'*':' ') \
+                                 << ((ref.a()&M)!=(dut.a()&M)?'*':' ') \
                                  <<'\n';
 
 class Dual {
@@ -68,6 +70,8 @@ class Dual {
     void side_dump() {
         std::cout << "      Ref - DUT         (" << std::dec << ticks << ")\n";
         PRINTM( pc, 0xFFFF )
+        PRINTM( pt, 0xFFFF )
+        PRINTM( fl, 0xF    )
         PRINTM( r0, 0xFFFF )
         PRINTM( r1, 0xFFFF )
         PRINTM( r2, 0xFFFF )
@@ -86,20 +90,23 @@ class Dual {
         static int bad=0;
         if( /*!ref.in_cache()*/ 1) {
             //CHECK( pc );
-            CHECK( r0 );
-            CHECK( r1 );
-            CHECK( r2 );
-            CHECK( r3 );
-            CHECK(  j );
-            CHECK(  x );
-            CHECK( yh );
-            CHECK( yl );
-            CHECK(  p );
-            CHECK( a0 );
-            CHECK( a1 );
+            CHECK( fl, 0xf );
+            CHECK( r0, 0xffff );
+            CHECK( r1, 0xffff );
+            CHECK( r2, 0xffff );
+            CHECK( r3, 0xffff );
+            CHECK(  j, 0xffff );
+            CHECK(  x, 0xffff );
+            CHECK( yh, 0xffff );
+            CHECK( yl, 0xffff );
+            CHECK( pt, 0xffff );
+            CHECK(  p, 0xffffffff );
+            CHECK( a0, 0xfffffffff );
+            CHECK( a1, 0xfffffffff );
         }
             side_dump();
         if( !good ) {
+            if( bad==0 ) printf("qqqqqqqqqqqqqqqqqqqqq\n");
             if( ++bad > 4 )
                 throw std::runtime_error("Error: Ref and DUT diverged\n");
         }
@@ -121,8 +128,8 @@ public:
     void clk(int p) {
         // each one could go in a different thread
         while ( p-->0 ) {
-            dut.clk(1);
-            ref.clk(1);
+            dut.clk(2);
+            ref.clk(2);
             ticks++;
             if(do_comp) cmp();
         }

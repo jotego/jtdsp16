@@ -131,7 +131,7 @@ always @(posedge clk) begin
 end
 `endif
 
-/* verilator tracing_off */
+/* verilator tracing_on  */
 
 wire        ph1;   // cen divided by 2
 
