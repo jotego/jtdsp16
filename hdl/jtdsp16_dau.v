@@ -87,7 +87,7 @@ reg         lmi, leq,
             alu_llv;
 reg         f1_nop;     // indicates that F1 should not alter the flags
 wire [15:0] psw;        // processor status word
-reg         ov1, ov0;   // overflow
+wire        ov1, ov0;   // overflow
 reg         sat_tx;
 
 // LFSR
