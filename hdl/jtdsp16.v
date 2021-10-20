@@ -182,12 +182,6 @@ wire        dau_dec_en, dau_rmux_load, dau_special;
 wire [15:0] cache_dout;
 wire [15:0] dau_dout;
 
-// X load control
-wire        up_xram;
-wire        up_xrom;
-wire        up_xext;
-wire        up_xcache;
-
 // RAM
 wire [10:0] ram_addr;
 wire [15:0] ram_dout, rom_dout;
@@ -275,11 +269,6 @@ jtdsp16_ctrl u_ctrl(
     .con_result     ( con_result    ),
     .con_check      ( con_check     ),
     .acc_sel        ( acc_sel       ),
-    // X load control
-    .up_xram        ( up_xram       ),
-    .up_xrom        ( up_xrom       ),
-    .up_xext        ( up_xext       ),
-    .up_xcache      ( up_xcache     ),
     // Y load control
     .r_field        ( r_field       ),
     .rsel           ( rsel          ),

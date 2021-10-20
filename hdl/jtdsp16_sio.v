@@ -80,6 +80,7 @@ assign srta_load   = any_load && r_field==3'b001;
 assign sioc_load   = any_load && r_field==3'b000;
 assign any_load    = sio_imm_load || sio_acc_load || sio_ram_load;
 assign load_data   = sio_imm_load ? long_imm : ( sio_acc_load ? acc_dout : ram_dout );
+assign ose         = ocnt[16];
 
 // serial input related registers. Not supported
 assign ibf      = 0;

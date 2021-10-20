@@ -88,11 +88,6 @@ module jtdsp16_ctrl(
     output reg        do_save,
     output reg [10:0] do_data,
     output     [ 3:0] do_pc,
-    // X load control
-    output            up_xram,
-    output            up_xrom,
-    output            up_xext,
-    output            up_xcache,
 
     // Parallel port
     output reg        pio_imm_load,
