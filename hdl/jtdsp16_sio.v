@@ -35,9 +35,9 @@ module jtdsp16_sio(
     input             ph1,
     // DSP16 pins
     output reg        ock,      // serial output clock
-    output            sio_do,   // serial data output
+    output reg        sio_do,   // serial data output
     output            sadd,
-    output reg        old,  // output load
+    output reg        sio_old,  // output load
     output            ose,  // output shift register empty
     input             doen, // enable data output (ignored)
     // interface with CPU - only writes command are implemented
@@ -69,10 +69,10 @@ wire [15:0] load_data;
 wire        any_load;
 
 reg  [ 2:0] clkdiv;
-wire        posedge_ock;
+wire        posedge_ock, negedge_ock;
 
-assign sio_do      = obuf[15];
-assign posedge_ock = ock && !last_ock;
+assign posedge_ock = clkdiv==2;
+assign negedge_ock = clkdiv==5;
 assign obe         = ocnt[16];
 assign sadd        = addr_obuf[7] && !obe;
 assign sdx_load    = any_load && r_field==3'b010;
@@ -94,7 +94,7 @@ always @(posedge clk, posedge rst) begin
     if( rst ) begin
         clkdiv    <= 0;
         ocnt      <= ~17'h0;
-        old       <= 1;
+        sio_old       <= 1; // output load
         last_ock  <= 0;
         ock       <= 0;
         addr_obuf <= ~8'h0;
@@ -104,8 +104,8 @@ always @(posedge clk, posedge rst) begin
     end else if(ph1) begin
         clkdiv   <= clkdiv==5 ? 0 : clkdiv+3'd1;
         last_ock <= ock;
-        if( clkdiv==2  ) ock <= 1;
-        if( clkdiv==5 ) ock <= 0;
+        if( posedge_ock ) ock <= 1;
+        if( negedge_ock ) ock <= 0;
         if( any_load ) begin
             if( sdx_load ) begin
                 ser_out   <= load_data;
@@ -117,14 +117,14 @@ always @(posedge clk, posedge rst) begin
             if( srta_load ) srta <= load_data[7:0];
         end else begin
             if( posedge_ock && !obe ) begin
-                old  <= 0;
-                if( !old ) begin
-                    obuf <= obuf<<1;
+                sio_old  <= 0;
+                if( !sio_old ) begin
+                    { sio_do, obuf } = { obuf, 1'b0 };
                     ocnt <= ocnt<<1;
                     addr_obuf <= { addr_obuf[6:0], 1'b0 };
                 end
             end else if( obe ) begin
-                old <= 1;
+                sio_old <= 1;
             end
         end
     end

@@ -511,7 +511,7 @@ jtdsp16_sio u_sio(
     .ock            ( ock           ),  // serial output clock
     .sio_do         ( sdo           ),   // serial data output
     .sadd           ( sadd          ),
-    .old            ( old           ),  // output load
+    .sio_old        ( old           ),  // output load
     .ose            ( ose           ),  // output shift register empty
     .doen           ( doen          ),
     .ser_out        ( ser_out       ),
