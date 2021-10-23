@@ -43,7 +43,7 @@ end
 
 initial begin
     clk = 0;
-    forever #15 clk=~clk;
+    forever #8.333 clk=~clk;
 end
 
 always @(posedge run_finish) begin
@@ -135,7 +135,6 @@ jtdsp16 UUT(
     .rst        ( rst       ),
     .clk        ( clk       ),
     .clk_en     ( cen       ),
-    .ext_mode   ( 1'b0      ),
     // Parallel I/O
     .pbus_in    ( pbus_in   ),
     .pbus_out   ( pbus_out  ),

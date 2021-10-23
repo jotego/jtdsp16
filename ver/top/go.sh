@@ -53,7 +53,10 @@ while [ $# -gt 0 ]; do
     case "$1" in
         -h)
             cat <<EOF
-    Usage: go.sh path-to-asm file
+Usage: go.sh path-to-asm file
+    --quiet | -q        do not produce screen output
+    --clobber | -c      overwrite old simulation results in git
+    --nodump            do not dump waveforms
 EOF
             exit 0;;
         -q | --quiet)

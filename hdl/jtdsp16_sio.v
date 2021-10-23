@@ -34,7 +34,7 @@ module jtdsp16_sio(
     input             clk,
     input             ph1,
     // DSP16 pins
-    output reg        ock,  // serial output clock
+    output reg        ock,      // serial output clock
     output            sio_do,   // serial data output
     output            sadd,
     output reg        old,  // output load
@@ -68,7 +68,7 @@ wire        sdx_load, srta_load, sioc_load;
 wire [15:0] load_data;
 wire        any_load;
 
-reg  [ 3:0] clkdiv;
+reg  [ 2:0] clkdiv;
 wire        posedge_ock;
 
 assign sio_do      = obuf[15];
@@ -92,7 +92,7 @@ assign debug_sioc = sioc;
 
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
-        clkdiv    <= 4'd0;
+        clkdiv    <= 0;
         ocnt      <= ~17'h0;
         old       <= 1;
         last_ock  <= 0;
@@ -102,10 +102,10 @@ always @(posedge clk, posedge rst) begin
         obuf      <= 16'h0;
         ser_out  <= 16'd0;
     end else if(ph1) begin
-        clkdiv   <= clkdiv==4'd11 ? 4'd0: clkdiv+4'd1;
+        clkdiv   <= clkdiv==5 ? 0 : clkdiv+3'd1;
         last_ock <= ock;
-        if( clkdiv==4'd5  ) ock <= ~obe;
-        if( clkdiv==4'd11 ) ock <= 0;
+        if( clkdiv==2  ) ock <= 1;
+        if( clkdiv==5 ) ock <= 0;
         if( any_load ) begin
             if( sdx_load ) begin
                 ser_out   <= load_data;
