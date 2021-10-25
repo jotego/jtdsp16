@@ -74,7 +74,7 @@ wire        posedge_ock, negedge_ock;
 assign posedge_ock = clkdiv==2;
 assign negedge_ock = clkdiv==5;
 assign obe         = ocnt[16];
-assign sadd        = addr_obuf[7] && !obe;
+assign sadd        = addr_obuf[7];
 assign sdx_load    = any_load && r_field==3'b010;
 assign srta_load   = any_load && r_field==3'b001;
 assign sioc_load   = any_load && r_field==3'b000;
@@ -121,7 +121,7 @@ always @(posedge clk, posedge rst) begin
                 if( !sio_old ) begin
                     { sio_do, obuf } = { obuf, 1'b0 };
                     ocnt <= ocnt<<1;
-                    addr_obuf <= { addr_obuf[6:0], 1'b0 };
+                    addr_obuf <= { addr_obuf[6:0], 1'b1 };
                 end
             end else if( obe ) begin
                 sio_old <= 1;
