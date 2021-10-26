@@ -110,7 +110,7 @@ always @(posedge clk, posedge rst) begin
             if( sdx_load ) begin
                 ser_out   <= load_data;
                 obuf      <= load_data;
-                addr_obuf <= srta[7:0];
+                addr_obuf <= ~srta[7:0]; // active low, according to manual
                 ocnt      <= 17'h1;
             end
             if( sioc_load ) sioc <= load_data[9:0]; // contents ignored as config is fixed
