@@ -89,7 +89,7 @@ assign irq_posedge         = irq & pioc[5] & ~last_irq;
 
 assign pio_dout = r_field[1:0]==2'd0 ? {status[4], pioc[14:5],status} : (
                   r_field[1] ? pdx1_rd : pdx0_rd );
-assign status   = {siowr_empty, siord_full, 2'd0, irq&pioc[5]};
+assign status   = {siord_full, siowr_empty, 2'd0, irq&pioc[5]};
 
 // interrupt control
 always @(posedge clk, posedge rst) begin

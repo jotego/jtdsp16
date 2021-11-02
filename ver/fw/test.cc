@@ -389,6 +389,8 @@ ParseArgs::ParseArgs( int argc, char *argv[]) {
 "                      The play file should follow spf2t_b1.qs example\n"
 "-allcmd               parses all command inputs in the file\n"
 "-tracecmp             enables comparative traces\n"
+"-mintime              minimum time simulated\n"
+"-max                  maximum clock tits simulated for random tests\n"
 "-v                    verbose\n"
 "-vcd                  name of output VCD file\n";
                 exit=true;

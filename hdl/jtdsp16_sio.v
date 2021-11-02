@@ -37,8 +37,8 @@ module jtdsp16_sio(
     output reg        ock,      // serial output clock
     output reg        sio_do,   // serial data output
     output            sadd,
-    output reg        sio_old,  // output load
-    output            ose,  // output shift register empty
+    output reg        sio_old,  // output load - not implemented
+    output reg        ose,  // output shift register empty
     input             doen, // enable data output (ignored)
     // interface with CPU - only writes command are implemented
     input      [15:0] long_imm,
@@ -49,7 +49,7 @@ module jtdsp16_sio(
     input             sio_ram_load,
     input      [ 2:0] r_field,
     // status
-    output            obe,      // output buffer empty
+    output reg        obe,      // output buffer empty
     output            ibf,      // input buffer full - unused
     output reg [15:0] r_sio,    // output register
     // Debug
@@ -58,8 +58,8 @@ module jtdsp16_sio(
     output reg [15:0] ser_out
 );
 
-reg  [15:0] ibuf, obuf;
-reg  [16:0] ocnt;
+reg  [15:0] ibuf, obuf, odata;
+reg  [15:0] ocnt;
 reg  [ 9:0] sioc;
 reg  [ 7:0] srta, addr_obuf;
 reg         ifsr, ofsr;
@@ -73,14 +73,12 @@ wire        posedge_ock, negedge_ock;
 
 assign posedge_ock = clkdiv==2;
 assign negedge_ock = clkdiv==5;
-assign obe         = ocnt[16];
 assign sadd        = addr_obuf[7];
 assign sdx_load    = any_load && r_field==3'b010;
 assign srta_load   = any_load && r_field==3'b001;
 assign sioc_load   = any_load && r_field==3'b000;
 assign any_load    = sio_imm_load || sio_acc_load || sio_ram_load;
 assign load_data   = sio_imm_load ? long_imm : ( sio_acc_load ? acc_dout : ram_dout );
-assign ose         = ocnt[16];
 
 // serial input related registers. Not supported
 assign ibf      = 0;
@@ -93,14 +91,18 @@ assign debug_sioc = sioc;
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
         clkdiv    <= 0;
-        ocnt      <= ~17'h0;
-        sio_old       <= 1; // output load
+        ocnt      <= 16'h1;
+        sio_old   <= 1; // output load
         last_ock  <= 0;
         ock       <= 0;
         addr_obuf <= ~8'h0;
-        srta      <= 8'h0;
-        obuf      <= 16'h0;
-        ser_out  <= 16'd0;
+        srta      <= 0;
+        obuf      <= 0;
+        odata     <= 0;
+        odata     <= 0;
+        ser_out   <= 0;
+        obe       <= 1;
+        ose       <= 1;
     end else if(ph1) begin
         clkdiv   <= clkdiv==5 ? 0 : clkdiv+3'd1;
         last_ock <= ock;
@@ -110,21 +112,22 @@ always @(posedge clk, posedge rst) begin
             if( sdx_load ) begin
                 ser_out   <= load_data;
                 obuf      <= load_data;
-                addr_obuf <= ~srta[7:0]; // active low, according to manual
-                ocnt      <= 17'h1;
+                obe       <= 0;
             end
             if( sioc_load ) sioc <= load_data[9:0]; // contents ignored as config is fixed
             if( srta_load ) srta <= load_data[7:0];
-        end else begin
-            if( posedge_ock && !obe ) begin
-                sio_old  <= 0;
-                if( !sio_old ) begin
-                    { sio_do, obuf } = { obuf, 1'b0 };
-                    ocnt <= ocnt<<1;
-                    addr_obuf <= { addr_obuf[6:0], 1'b1 };
-                end
-            end else if( obe ) begin
-                sio_old <= 1;
+        end
+        if( posedge_ock ) begin
+            ocnt <= { ocnt[14:0], ocnt[15] };
+            if( !ocnt[15] || obe ) begin
+                { sio_do, odata } <= { odata, 1'b0 };
+                addr_obuf <= { addr_obuf[6:0], 1'b1 };
+                if( ocnt[15] ) ose <= 1;
+            end else if( !obe ) begin
+                { sio_do, odata } <= { obuf, 1'b0 };
+                addr_obuf <= ~srta[7:0]; // active low, according to manual
+                obe <= 1;
+                ose <= 0;
             end
         end
     end
