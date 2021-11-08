@@ -5,6 +5,7 @@ Verilog core compatible with ATT WE DSP16, famous for being the heart of CAPCOM 
 Designed by Jose Tejada (aka jotego).
 
 You can show your appreciation through
+* [Github sponsors](https://github.com/sponsors/jotego)
 * [Patreon](https://patreon.com/topapate), by supporting releases
 * [Paypal](https://paypal.me/topapate), with a donation
 
@@ -95,7 +96,9 @@ RAM      | r0,r1,r2,r3           | a0, a1, y, any register
 ROM      | pc, pt                | x
 external | pt                    | x
 
-Originally in DSP16A, AB pins were 3 stated. Because AB in this implementation can only be used with the pt register, bits AB[15:12] are low when the external memory is not accessed. When pt is used to access the external memory AB[15:12] will not be zero. So peeking AB[15:12] is a way of determining that an external access has occured.
+Originally in DSP16A, AB pins were 3 state. Because AB in this implementation can only be used with the pt register, bits AB[15:12] are low when the external memory is not accessed. When pt is used to access the external memory AB[15:12] will not be zero. So peeking at AB[15:12] is a way of determining that an external access has occured.
+
+The *ext_rq* output port can be used to identify when an access is done. In a real chip, AB keeps the last address accessed. Whether that happens because of the high impedance and low leakage in the floating pins, or whether AB is actively driven at all times is not clear. But measurements on QSound chips show that AB keeps its value after an external access. The JTDSP16 implementation does not behave like that, but AB is constantly changing reflecting the internal state of the address bus and regardles of whether an external access is done or not.
 
 # The Cache
 

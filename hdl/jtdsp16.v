@@ -23,7 +23,7 @@ module jtdsp16(
 
     output            cen_cko,      // clock output, interpret as clock enable signal
     // External memory
-    output     [15:0] ab,           // address bus
+    output     [15:0] ab,           // address bus - only valid if ext_rq is high
     input      [15:0] rb_din,       // ROM data bus
     output            ext_rq,
     input             ext_ok,
