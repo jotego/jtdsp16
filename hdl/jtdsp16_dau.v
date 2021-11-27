@@ -88,7 +88,6 @@ reg         lmi, leq,
 reg         f1_nop;     // indicates that F1 should not alter the flags
 wire [15:0] psw;        // processor status word
 wire        ov1, ov0;   // overflow
-reg         sat_tx;
 
 // LFSR
 reg  [31:0] lfsr;
@@ -166,11 +165,9 @@ assign ov0 = a0[35:32] != {4{a0[31]}};
 // Accumulator output to memory
 always @(*) begin
     acc_mux = a_field[0] ? a1 : a0;
-    sat_tx = 0;
     // saturation is not performed for y register loads
     if( ((a_field[0] && ov1 && sat_a1) || (!a_field[0] && ov0 && sat_a0)) && !up_y ) begin
         acc_mux = { {5{acc_mux[35]}}, {31{~acc_mux[35]}}}; // saturate to 32-bit integer
-        sat_tx = 1;
     end
     acc_dout = a_field[1] ? acc_mux[31:16] : acc_mux[15:0];
 end

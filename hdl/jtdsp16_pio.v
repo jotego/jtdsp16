@@ -50,7 +50,7 @@ module jtdsp16_pio(
 );
 
 reg  [14:5] pioc; // bit 15 is a copy of bit 4
-reg  [15:0] pdx_buffer;
+// reg  [15:0] pdx_buffer;
 reg  [ 3:0] pocnt, picnt;
 reg  [15:0] pdx0_rd, pdx1_rd;
 wire [ 4:0] status;
@@ -122,7 +122,7 @@ always @(posedge clk, posedge rst) begin
         psel       <= 0;
         pdx0_rd    <= 16'd0;
         pdx1_rd    <= 16'd0;
-        pdx_buffer <= 16'd0;
+        // pdx_buffer <= 16'd0;
         pioc       <= { 2'd0, 2'b11, 1'b0, 5'd0 };
         pbus_out   <= 16'd0;
     end else if(ph1) begin

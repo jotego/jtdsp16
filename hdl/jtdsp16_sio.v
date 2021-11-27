@@ -37,7 +37,7 @@ module jtdsp16_sio(
     output reg        ock,      // serial output clock
     output reg        sio_do,   // serial data output
     output            sadd,
-    output reg        sio_old,  // output load - not implemented
+    output            sio_old,  // output load - not implemented
     output reg        ose,  // output shift register empty
     input             doen, // enable data output (ignored)
     // interface with CPU - only writes command are implemented
@@ -63,7 +63,6 @@ reg  [15:0] ocnt;
 reg  [ 9:0] sioc;
 reg  [ 7:0] srta, addr_obuf;
 reg         ifsr, ofsr;
-reg         last_ock;
 wire        sdx_load, srta_load, sioc_load;
 wire [15:0] load_data;
 wire        any_load;
@@ -88,12 +87,13 @@ assign ibf      = 0;
 assign debug_srta = srta;
 assign debug_sioc = sioc;
 
+assign sio_old    = 1; // output load
+
+
 always @(posedge clk, posedge rst) begin
     if( rst ) begin
         clkdiv    <= 0;
         ocnt      <= 16'h1;
-        sio_old   <= 1; // output load
-        last_ock  <= 0;
         ock       <= 0;
         addr_obuf <= ~8'h0;
         srta      <= 0;
@@ -104,8 +104,7 @@ always @(posedge clk, posedge rst) begin
         obe       <= 1;
         ose       <= 1;
     end else if(ph1) begin
-        clkdiv   <= clkdiv==5 ? 0 : clkdiv+3'd1;
-        last_ock <= ock;
+        clkdiv <= clkdiv==5 ? 3'd0 : clkdiv+3'd1;
         if( posedge_ock ) ock <= 1;
         if( negedge_ock ) ock <= 0;
         if( any_load ) begin
