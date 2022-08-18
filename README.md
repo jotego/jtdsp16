@@ -6,7 +6,7 @@ Designed by Jose Tejada (aka jotego).
 
 You can show your appreciation through
 * [Github sponsors](https://github.com/sponsors/jotego)
-* [Patreon](https://patreon.com/topapate), by supporting releases
+* [Patreon](https://patreon.com/jotego), by supporting releases
 * [Paypal](https://paypal.me/topapate), with a donation
 
 You can contact the author via Twitter at @topapate.
