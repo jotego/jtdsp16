@@ -25,7 +25,6 @@ module jtdsp16_dau(
     input             special,   // selects F2 output
     input      [ 2:0] r_field,
     input      [ 1:0] a_field,  // select acc output
-    input      [ 4:0] t_field,
     input      [ 4:0] c_field,
     input      [ 5:0] op_fields,
     input             ram_load,

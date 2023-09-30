@@ -171,7 +171,7 @@ wire        ksel, step_sel;
 wire        short_load, long_load, acc_load, post_load, ram_load;
 
 // DAU
-wire [ 4:0] t_field, c_field;
+wire [ 4:0] c_field;
 wire [ 5:0] dau_op_fields;
 wire [ 1:0] y_field, a_field;
 wire        dau_acc_load, dau_imm_load, dau_ram_load, dau_pt_load,
@@ -228,7 +228,6 @@ jtdsp16_ctrl u_ctrl(
     .rst            ( rst           ),
     .clk            ( clk           ),
     .ph1            ( ph1           ),
-    .t_field        (               ),
     // ROM AAU - XAAU
     .goto_ja        ( goto_ja       ),
     .goto_b         ( goto_b        ),
@@ -434,7 +433,6 @@ jtdsp16_dau u_dau(
     .dec_en         ( dau_dec_en    ),
     .special        ( dau_special   ),
     .r_field        ( r_field       ),
-    .t_field        ( t_field       ),
     .a_field        ( a_field       ),
     .c_field        ( c_field       ),
     .op_fields      ( dau_op_fields ),
