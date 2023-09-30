@@ -234,6 +234,7 @@ jtdsp16_ctrl u_ctrl(
     .call_ja        ( call_ja       ),
     .icall          ( icall         ),
     .i_field        ( i_field       ),
+    .t_field        (               ),
     .pc_halt        ( pc_halt       ),
     .xaau_ram_load  ( xaau_ram_load ),
     .xaau_imm_load  ( xaau_imm_load ),
